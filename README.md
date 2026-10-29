@@ -9,7 +9,18 @@
 | `apps/web` | интерфейс: React + Vite + Mantine + TanStack Router/Query |
 | `packages/shared` | общие типы и проверки (zod) для сервера и интерфейса |
 | `deploy/caddy` | HTTPS-шлюз: сертификат, перенаправление на https, заголовки безопасности |
-| `docs/` | анализ, архитектура, описание БД, [развёртывание](docs/03-razvertyvanie.md), [расчёт показателей](docs/04-raschet-pokazateley.md), [экраны направлений](docs/05-ekrany-napravleniy.md), [ввод данных](docs/06-vvod-dannyh.md), [конструктор направлений](docs/07-konstruktor.md), [замечания и файлы](docs/08-zamechaniya-i-faily.md), [прогнозы, задачи, телефон](docs/09-prognozy-zadachi-telefon.md), **[план запуска](docs/10-zapusk.md)** |
+| `docs/` | анализ, архитектура, описание БД, [развёртывание](docs/03-razvertyvanie.md), [расчёт показателей](docs/04-raschet-pokazateley.md), [экраны направлений](docs/05-ekrany-napravleniy.md), [ввод данных](docs/06-vvod-dannyh.md), [конструктор направлений](docs/07-konstruktor.md), [замечания и файлы](docs/08-zamechaniya-i-faily.md), [прогнозы, задачи, телефон](docs/09-prognozy-zadachi-telefon.md), **[план запуска](docs/10-zapusk.md)**, **[запуск на своём компьютере](docs/11-lokalnyy-zapusk.md)** |
+
+## Посмотреть на своём компьютере (Windows)
+
+Нужны Node.js 22+ и MySQL 8.0+. В папке проекта:
+
+```bat
+local.cmd setup     :: один раз: спросит подключение к MySQL, загрузит демо-данные и демо-учётки
+local.cmd start     :: http://localhost:5173 — admin / Admin2026local, kurator / Kurator2026demo, vvod / Vvod2026demo
+```
+
+Подробно, с Docker-вариантом и решением проблем — [docs/11-lokalnyy-zapusk.md](docs/11-lokalnyy-zapusk.md).
 
 ## Запуск на сервере (Docker, HTTPS)
 

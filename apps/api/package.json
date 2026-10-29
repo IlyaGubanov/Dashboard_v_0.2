@@ -14,7 +14,8 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:sql": "prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script",
     "db:demo": "tsx prisma/demo/import.ts",
-    "db:demo:verify": "tsx prisma/demo/verify.ts"
+    "db:demo:verify": "tsx prisma/demo/verify.ts",
+    "db:demo:users": "tsx prisma/demo/users.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

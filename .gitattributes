@@ -1,0 +1,4 @@
+# Переводы строк — как в Linux (сервер — Ubuntu): скрипты с CRLF там не запускаются
+* text=auto eol=lf
+*.sh text eol=lf
+*.png binary

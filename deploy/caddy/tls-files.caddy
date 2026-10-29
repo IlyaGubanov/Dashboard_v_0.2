@@ -1,0 +1,3 @@
+# Сертификат организации: положите cert.pem (вместе с цепочкой) и key.pem в deploy/certs/.
+tls /certs/cert.pem /certs/key.pem
+header Strict-Transport-Security "max-age=31536000"

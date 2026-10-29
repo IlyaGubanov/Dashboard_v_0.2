@@ -1,0 +1,106 @@
+# МВС СТ: БД + API + веб + HTTPS-шлюз. Запуск: docker compose up -d --build
+# Приложение: https://${DOMAIN}. Снаружи открыты только порты 80 (перенаправление на https) и 443.
+# Подробно: docs/03-razvertyvanie.md
+# журналы контейнеров: не больше 5 × 10 МБ на сервис, чтобы не заполнить диск
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  db:
+    logging: *logging
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      TZ: Europe/Moscow
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+      - --default-time-zone=+03:00
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    # Порт наружу не публикуем. Для MySQL Workbench с самого сервера раскомментируйте
+    # (только 127.0.0.1 — из сети база недоступна):
+    # ports:
+    #   - "127.0.0.1:3306:3306"
+
+  api:
+    logging: *logging
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@db:3306/${MYSQL_DATABASE}
+      SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-12}
+      # cookie входа передаётся только по HTTPS
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      # перед API два прокси (caddy → nginx): реальный IP пользователя — для журнала и лимита попыток входа
+      TRUST_PROXY_HOPS: 2
+      API_DOCS: ${API_DOCS:-false}
+      ADMIN_LOGIN: ${ADMIN_LOGIN:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      DEMO_DATA: ${DEMO_DATA:-true}
+      # фото и документы (вложения) — в отдельном томе, его тоже нужно копировать в резервную копию
+      FILES_DIR: /data/files
+      TZ: Europe/Moscow
+    volumes:
+      - files_data:/data/files
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      # первый запуск: миграции и загрузка демо-данных
+      start_period: 5m
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    logging: *logging
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    # наружу не публикуется: запросы приходят только через caddy
+    depends_on:
+      - api
+
+  caddy:
+    logging: *logging
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp" # HTTP/3
+    environment:
+      DOMAIN: ${DOMAIN:?Укажите DOMAIN в .env}
+      TLS_MODE: ${TLS_MODE:-auto}
+      # откуда браузеру разрешено грузить подложку карты (политика безопасности страниц)
+      MAP_TILES_HOST: ${MAP_TILES_HOST:-https://tile.openstreetmap.org}
+    volumes:
+      - ./deploy/caddy:/etc/caddy:ro
+      - ./deploy/certs:/certs:ro
+      - caddy_data:/data # сертификаты и ключи — не удалять
+      - caddy_config:/config
+    depends_on:
+      - web
+
+volumes:
+  db_data:
+  files_data:
+  caddy_data:
+  caddy_config:

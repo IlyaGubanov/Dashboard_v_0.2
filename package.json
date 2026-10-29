@@ -1,0 +1,28 @@
+{
+  "name": "mvs-st",
+  "private": true,
+  "description": "МВС СТ — производственный дашборд и управление данными направлений",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "npm run build -w @mvs/shared && npm run build -w @mvs/api && npm run build -w @mvs/web",
+    "dev:api": "npm run dev -w @mvs/api",
+    "dev:web": "npm run dev -w @mvs/web",
+    "db:generate": "npm run db:generate -w @mvs/api",
+    "db:migrate": "npm run db:migrate -w @mvs/api",
+    "db:seed": "npm run db:seed -w @mvs/api",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "allowScripts": {
+    "prisma@6.19.3": true,
+    "@prisma/engines@6.19.3": true,
+    "@prisma/client@6.19.3": true,
+    "esbuild@0.27.7": true,
+    "esbuild@0.28.2": true
+  }
+}

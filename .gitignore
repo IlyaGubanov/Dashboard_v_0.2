@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.env
+*.log
+.vite/
+coverage/
+
+# сертификаты и ключи
+deploy/certs/*.pem
+deploy/certs/*.key
+
+# загруженные файлы при запуске API без Docker
+apps/api/data/
+
+# локальные настройки инструментов разработки
+.claude/

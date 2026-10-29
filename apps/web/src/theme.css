@@ -1,0 +1,93 @@
+/*
+ * Смысловые цвета. Меняются здесь — меняются во всём приложении.
+ *  --status-*  состояние (в графике / отставание / критично) — только вместе с иконкой и подписью;
+ *  --series-*  серии графиков, порядок фиксирован, проверен на различимость при нарушениях цветового зрения
+ *              (светлая и тёмная темы — отдельные ступени, не инверсия).
+ */
+:root {
+  --status-good: #0ca30c;
+  --status-warning: #fab219;
+  --status-critical: #d03b3b;
+  --status-none: #9aa4b2;
+
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+
+  /* последовательная шкала (величина): одна синяя гамма, светлое — мало, тёмное — много */
+  --seq-0: #cde2fb;
+  --seq-1: #9ec5f4;
+  --seq-2: #6da7ec;
+  --seq-3: #3987e5;
+  --seq-4: #256abf;
+  --seq-5: #184f95;
+  --seq-6: #0d366b;
+  --seq-ink-0: #0d366b;
+  --seq-ink-1: #0d366b;
+  --seq-ink-2: #0d366b;
+  --seq-ink-3: #ffffff;
+  --seq-ink-4: #ffffff;
+  --seq-ink-5: #ffffff;
+  --seq-ink-6: #ffffff;
+
+  /* изменённое, но ещё не сохранённое поле */
+  --dirty: #fff4cc;
+
+  --track: #eceef2;
+  --plan-mark: #3b3b3b;
+  --surface-muted: #f5f7fa;
+}
+
+[data-mantine-color-scheme='dark'] {
+  --status-none: #6b7480;
+
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+
+  /* в тёмной теме величина растёт к светлому: «много» должно сильнее выделяться на тёмном фоне */
+  --seq-0: #1e2a3a;
+  --seq-1: #104281;
+  --seq-2: #184f95;
+  --seq-3: #256abf;
+  --seq-4: #3987e5;
+  --seq-5: #6da7ec;
+  --seq-6: #9ec5f4;
+  --seq-ink-0: #e8eef7;
+  --seq-ink-1: #e8eef7;
+  --seq-ink-2: #e8eef7;
+  --seq-ink-3: #e8eef7;
+  --seq-ink-4: #0b1a2e;
+  --seq-ink-5: #0b1a2e;
+  --seq-ink-6: #0b1a2e;
+
+  --dirty: #3d3519;
+
+  --track: #34373d;
+  --plan-mark: #e8e8e8;
+  --surface-muted: #1f2329;
+}
+
+body {
+  font-variant-numeric: tabular-nums;
+}
+
+/* карточка-ссылка: подсветка при наведении и с клавиатуры */
+.card-link {
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+.card-link:hover,
+.card-link:focus-visible {
+  border-color: var(--mantine-color-blue-filled);
+  box-shadow: var(--mantine-shadow-sm);
+}
+
+/* строка списка, по которой можно перейти */
+.row-link {
+  cursor: pointer;
+  border-radius: var(--mantine-radius-sm);
+}
+.row-link:hover,
+.row-link:focus-visible {
+  background: var(--surface-muted);
+}

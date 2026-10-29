@@ -1,0 +1,48 @@
+# HTTPS-шлюз МВС СТ. Принимает запросы из интернета и локальной сети, выдаёт сертификат,
+# перенаправляет http → https и передаёт запросы веб-контейнеру.
+#
+# Настройки — переменные окружения (файл .env):
+#   DOMAIN     адрес приложения: dashboard.example.ru (или IP / localhost для режима internal)
+#   TLS_MODE   auto     — бесплатный сертификат Let's Encrypt (нужны домен и открытые порты 80 и 443)
+#              files    — свой сертификат организации: deploy/certs/cert.pem и key.pem
+#              internal — собственный сертификат Caddy (браузер предупредит; для проверки и внутренней сети)
+
+{
+	http_port {$HTTP_PORT:80}
+	https_port {$HTTPS_PORT:443}
+	# не трогать хранилище сертификатов системы, на которой запущен Caddy
+	skip_install_trust
+	servers {
+		# защита от медленных клиентов
+		timeouts {
+			read_header 10s
+			idle 2m
+		}
+	}
+}
+
+{$DOMAIN} {
+	import /etc/caddy/tls-{$TLS_MODE:auto}.caddy
+
+	encode zstd gzip
+
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options SAMEORIGIN
+		Referrer-Policy same-origin
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: {$MAP_TILES_HOST:https://tile.openstreetmap.org}; font-src 'self' data:; connect-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'"
+		-Server
+	}
+
+	# документация API снаружи не публикуется
+	@docs path /api/docs /api/docs/* /api/docs-json
+	respond @docs 404
+
+	reverse_proxy {$UPSTREAM:web:80}
+
+	log {
+		output stdout
+		format console
+	}
+}

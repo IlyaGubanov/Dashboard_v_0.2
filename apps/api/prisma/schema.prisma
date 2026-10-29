@@ -1,0 +1,931 @@
+// МВС СТ — схема базы данных (MySQL 8.0+).
+//
+// Принцип: одна универсальная модель «направление → объекты → позиции работ → факт за период».
+// Особенности направления задаются данными: доп. поля (field_def + attrs JSON), статусы (status_def),
+// трекеры-надстройки (tracker*), способ расчёта и пороги (direction), раскладки экранов (dashboard_layout).
+// Подробно: docs/02-baza-dannyh.md
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================ Пользователи и доступ
+
+enum GlobalRole {
+  ADMIN // всё, включая пользователей и конструктор направлений
+  MANAGEMENT // просмотр всех направлений и сводки
+  USER // доступ по назначениям в направлениях
+}
+
+/// Учётная запись. Сотрудник без входа в систему (прораб, ГИП подрядчика) — запись с canLogin = false:
+/// его можно назначить ответственным, но войти он не может.
+model User {
+  id                 Int        @id @default(autoincrement())
+  login              String?    @unique @db.VarChar(64)
+  passwordHash       String?    @map("password_hash") @db.VarChar(100)
+  canLogin           Boolean    @default(false) @map("can_login")
+  mustChangePassword Boolean    @default(true) @map("must_change_password")
+  globalRole         GlobalRole @default(USER) @map("global_role")
+  fullName           String     @map("full_name") @db.VarChar(200)
+  position           String?    @db.VarChar(200)
+  email              String?    @db.VarChar(200)
+  phone              String?    @db.VarChar(50)
+  organizationId     Int?       @map("organization_id")
+  isActive           Boolean    @default(true) @map("is_active")
+  isExample          Boolean    @default(false) @map("is_example")
+  lastLoginAt        DateTime?  @map("last_login_at")
+  /// неудачных попыток входа подряд; после 5 — блокировка на 15 минут (locked_until)
+  failedLogins       Int        @default(0) @map("failed_logins")
+  lockedUntil        DateTime?  @map("locked_until")
+  createdAt          DateTime   @default(now()) @map("created_at")
+  updatedAt          DateTime   @updatedAt @map("updated_at")
+
+  organization     Organization?     @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  sessions         UserSession[]
+  memberships      DirectionMember[]
+  siteAssignments  SiteAssignment[]
+  responsibleItems WorkItem[]        @relation("WorkItemResponsible")
+  enteredProgress  ProgressEntry[]   @relation("ProgressEnteredBy")
+  updatedProgress  ProgressEntry[]   @relation("ProgressUpdatedBy")
+  enteredReports   SiteReport[]      @relation("SiteReportEnteredBy")
+  updatedReports   SiteReport[]      @relation("SiteReportUpdatedBy")
+  sitesCreated     Site[]            @relation("SiteCreatedBy")
+  sitesUpdated     Site[]            @relation("SiteUpdatedBy")
+  periodsOpened    ReportingPeriod[] @relation("PeriodOpenedBy")
+  periodsClosed    ReportingPeriod[] @relation("PeriodClosedBy")
+  remarksAuthored  Remark[]          @relation("RemarkAuthor")
+  remarksAssigned  Remark[]          @relation("RemarkAssignee")
+  remarksResolved  Remark[]          @relation("RemarkResolvedBy")
+  remarkEvents     RemarkEvent[]
+  trackerValues    TrackerValue[]
+  attachments      Attachment[]
+  layouts          DashboardLayout[] @relation("LayoutOwner")
+  auditEntries     AuditLog[]
+
+  @@index([fullName])
+  @@map("user")
+}
+
+/// Сессия входа. В cookie хранится случайный токен, в БД — только его SHA-256.
+model UserSession {
+  id         Int       @id @default(autoincrement())
+  userId     Int       @map("user_id")
+  tokenHash  String    @unique @map("token_hash") @db.Char(64)
+  createdAt  DateTime  @default(now()) @map("created_at")
+  lastSeenAt DateTime  @default(now()) @map("last_seen_at")
+  expiresAt  DateTime  @map("expires_at")
+  revokedAt  DateTime? @map("revoked_at")
+  ip         String?   @db.VarChar(45)
+  userAgent  String?   @map("user_agent") @db.VarChar(400)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("user_session")
+}
+
+enum MemberRole {
+  CURATOR // куратор направления: отвечает за направление, правит всё, закрывает периоды
+  EDITOR // ответственный за ввод: правит факт в пределах scope
+  VIEWER // только просмотр
+}
+
+/// На какие объекты распространяются права ответственного за ввод.
+enum MemberScope {
+  ALL // всё направление
+  SECTIONS // выбранные лоты / разделы (direction_member_section)
+  SITES // только назначенные объекты (site_assignment ENTRY/CURATOR)
+}
+
+/// Роль пользователя в направлении. Назначает администратор.
+model DirectionMember {
+  id          Int         @id @default(autoincrement())
+  directionId Int         @map("direction_id")
+  userId      Int         @map("user_id")
+  role        MemberRole
+  scope       MemberScope @default(ALL)
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  direction Direction                @relation(fields: [directionId], references: [id], onDelete: Cascade)
+  user      User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sections  DirectionMemberSection[]
+
+  @@unique([directionId, userId])
+  @@map("direction_member")
+}
+
+/// Лоты / разделы, закреплённые за ответственным (scope = SECTIONS).
+model DirectionMemberSection {
+  memberId  Int @map("member_id")
+  sectionId Int @map("section_id")
+
+  member  DirectionMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  section Section         @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  @@id([memberId, sectionId])
+  @@map("direction_member_section")
+}
+
+/// Подрядчики, проектировщики, поставщики. Справочник свой у каждого направления.
+model Organization {
+  id          Int              @id @default(autoincrement())
+  directionId Int              @map("direction_id")
+  name        String           @db.VarChar(300)
+  kind        OrganizationKind @default(CONTRACTOR)
+  inn         String?          @db.VarChar(12)
+  note        String?          @db.Text
+  isExample   Boolean          @default(false) @map("is_example")
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  direction       Direction  @relation(fields: [directionId], references: [id], onDelete: Cascade)
+  users           User[]
+  sitesContractor Site[]     @relation("SiteContractor")
+  sitesDesigner   Site[]     @relation("SiteDesigner")
+  workItems       WorkItem[]
+  contracts       Contract[]
+
+  @@unique([directionId, name, kind])
+  @@map("organization")
+}
+
+enum OrganizationKind {
+  CONTRACTOR // подрядчик
+  SUBCONTRACTOR
+  DESIGNER // проектировщик
+  SUPPLIER // поставщик
+  REVIEWER // экспертиза
+  OTHER
+}
+
+// ============================================================ Направление и его настройки
+
+enum PeriodKind {
+  DAY // ежедневный ввод (Школы)
+  WEEK // отчётные недели (МКД, Сети)
+  REPORT // отчёты на произвольные даты (Благоустройство)
+}
+
+enum ProgressMethod {
+  WEIGHTED_BY_COST // Σ(% × стоимость) / Σ стоимость — МКД, Сети
+  WEIGHTED_BY_WORK_WEIGHT // Σ(% × вес вида работ) / Σ весов — Школы
+  SHARE_COMPLETED // доля позиций, где факт ≥ плана — Благоустройство
+  SIMPLE_AVERAGE // среднее % по позициям
+}
+
+enum PlanMethod {
+  LINEAR_ITEM_DATES // линейно между началом и окончанием позиции
+  LINEAR_SITE_DATES // линейно между началом и окончанием объекта
+  NONE // графика нет
+}
+
+enum MoneySource {
+  WORK_ITEMS // стоимость позиций (договор по позиции)
+  CONTRACTS // договоры объекта
+  SITE_LIMIT // лимит финансирования объекта
+  NONE
+}
+
+/// Направление (Школы, МКД, Сети, Благоустройство, …). Создаётся в админке, без программиста.
+model Direction {
+  id             Int            @id @default(autoincrement())
+  code           String         @unique @db.VarChar(32)
+  name           String         @db.VarChar(200)
+  shortName      String         @map("short_name") @db.VarChar(60)
+  description    String?        @db.Text
+  icon           String?        @db.VarChar(40)
+  color          String?        @db.VarChar(20)
+  sort           Int            @default(0)
+  isActive       Boolean        @default(true) @map("is_active")
+  /// только просмотр (данные приходят отчётами, без ручного ввода факта)
+  isReadonly     Boolean        @default(false) @map("is_readonly")
+  periodKind     PeriodKind     @map("period_kind")
+  /// для WEEK: день недели, на который считается план (1 = пн … 7 = вс)
+  planWeekday    Int            @default(3) @map("plan_weekday") @db.TinyInt
+  progressMethod ProgressMethod @map("progress_method")
+  planMethod     PlanMethod     @map("plan_method")
+  moneySource    MoneySource    @default(NONE) @map("money_source")
+  moneyLabel     String?        @map("money_label") @db.VarChar(40)
+  /// порог «отставание», п.п. (отрицательное число, напр. -2)
+  thrWarn        Decimal        @default(-2) @map("thr_warn") @db.Decimal(6, 2)
+  /// порог «критично», п.п. (напр. -10)
+  thrCrit        Decimal        @default(-10) @map("thr_crit") @db.Decimal(6, 2)
+  /// как называть объекты во множественном числе: «адресов», «школ», «объектов»
+  siteUnit       String         @default("объектов") @map("site_unit") @db.VarChar(40)
+  /// прочие настройки отображения (подписи KPI, видимость вкладок и т.п.)
+  settings       Json?
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  members       DirectionMember[]
+  organizations Organization[]
+  sections      Section[]
+  workGroups    WorkGroup[]
+  workTypes     WorkType[]
+  statusDefs    StatusDef[]
+  fieldDefs     FieldDef[]
+  sites         Site[]
+  periods       ReportingPeriod[]
+  trackers      Tracker[]
+  layouts       DashboardLayout[]
+  kpiCache      KpiSnapshot[]
+  remarks       Remark[]
+
+  @@map("direction")
+}
+
+/// Раздел / лот направления (Лот 1, Коллекторы, Пруды…).
+model Section {
+  id          Int     @id @default(autoincrement())
+  directionId Int     @map("direction_id")
+  code        String  @db.VarChar(64)
+  name        String  @db.VarChar(200)
+  note        String? @db.VarChar(500)
+  sort        Int     @default(0)
+  isArchived  Boolean @default(false) @map("is_archived")
+
+  direction Direction                @relation(fields: [directionId], references: [id], onDelete: Cascade)
+  sites     Site[]
+  editors   DirectionMemberSection[]
+
+  @@unique([directionId, code])
+  @@map("section")
+}
+
+model WorkGroup {
+  id          Int    @id @default(autoincrement())
+  directionId Int    @map("direction_id")
+  name        String @db.VarChar(200)
+  sort        Int    @default(0)
+
+  direction Direction  @relation(fields: [directionId], references: [id], onDelete: Cascade)
+  workTypes WorkType[]
+
+  @@unique([directionId, name])
+  @@map("work_group")
+}
+
+/// Вид работ направления.
+model WorkType {
+  id          Int       @id @default(autoincrement())
+  directionId Int       @map("direction_id")
+  groupId     Int?      @map("group_id")
+  code        String    @db.VarChar(64)
+  name        String    @db.VarChar(200)
+  fullName    String?   @map("full_name") @db.VarChar(400)
+  unit        String?   @db.VarChar(20)
+  /// вес в готовности объекта (метод WEIGHTED_BY_WORK_WEIGHT)
+  weight      Decimal?  @db.Decimal(8, 5)
+  /// типовые сроки вида работ (если одинаковы для всех объектов)
+  planStart   DateTime? @map("plan_start") @db.Date
+  planEnd     DateTime? @map("plan_end") @db.Date
+  sort        Int       @default(0)
+  isArchived  Boolean   @default(false) @map("is_archived")
+
+  direction Direction  @relation(fields: [directionId], references: [id], onDelete: Cascade)
+  group     WorkGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  workItems WorkItem[]
+
+  @@unique([directionId, code])
+  @@map("work_type")
+}
+
+enum StatusEntity {
+  SITE
+  WORK_ITEM
+}
+
+/// Справочник статусов направления (для объекта и для позиции).
+model StatusDef {
+  id              Int          @id @default(autoincrement())
+  directionId     Int          @map("direction_id")
+  entity          StatusEntity
+  code            String       @db.VarChar(32)
+  name            String       @db.VarChar(100)
+  shortName       String?      @map("short_name") @db.VarChar(40)
+  color           String?      @db.VarChar(20)
+  sort            Int          @default(0)
+  /// позиция в этом статусе считается выполненной на 100 % (КС-2 подписаны, оплачено)
+  countsAsDone    Boolean      @default(false) @map("counts_as_done")
+  /// позиция исключается из расчёта готовности (снята с договора)
+  excludeFromCalc Boolean      @default(false) @map("exclude_from_calc")
+  isFinal         Boolean      @default(false) @map("is_final")
+
+  direction     Direction       @relation(fields: [directionId], references: [id], onDelete: Cascade)
+  sites         Site[]
+  progressItems ProgressEntry[]
+
+  @@unique([directionId, entity, code])
+  @@map("status_def")
+}
+
+enum FieldEntity {
+  SITE
+  WORK_ITEM
+  CONTRACT
+  SITE_REPORT
+}
+
+enum FieldType {
+  TEXT
+  LONGTEXT
+  NUMBER
+  MONEY
+  PERCENT
+  DATE
+  BOOL
+  SELECT
+  MULTISELECT
+  USER
+  ORGANIZATION
+  URL
+}
+
+/// Описание дополнительного поля. Значения лежат в колонке attrs (JSON) соответствующей сущности
+/// под ключом code; сервер проверяет их по этому описанию.
+model FieldDef {
+  id          Int         @id @default(autoincrement())
+  directionId Int         @map("direction_id")
+  entity      FieldEntity
+  code        String      @db.VarChar(64)
+  label       String      @db.VarChar(200)
+  type        FieldType
+  /// для SELECT/MULTISELECT: [{ "value": "…", "label": "…", "color": "…" }]
+  options     Json?
+  unit        String?     @db.VarChar(20)
+  required    Boolean     @default(false)
+  /// группа полей в карточке («Финансы», «Проект»…)
+  groupName   String?     @map("group_name") @db.VarChar(100)
+  hint        String?     @db.VarChar(400)
+  showInList  Boolean     @default(false) @map("show_in_list")
+  sort        Int         @default(0)
+  isArchived  Boolean     @default(false) @map("is_archived")
+
+  direction Direction @relation(fields: [directionId], references: [id], onDelete: Cascade)
+
+  @@unique([directionId, entity, code])
+  @@map("field_def")
+}
+
+// ============================================================ Объекты и работы
+
+/// Объект направления (адрес МКД, школа, участок сети, улица).
+model Site {
+  id           Int       @id @default(autoincrement())
+  directionId  Int       @map("direction_id")
+  sectionId    Int?      @map("section_id")
+  /// код из источника (o1, rec7…) — для импорта и ссылок
+  code         String    @db.VarChar(120)
+  num          Int?
+  name         String    @db.VarChar(1000)
+  shortName    String?   @map("short_name") @db.VarChar(200)
+  address      String?   @db.VarChar(500)
+  okrug        String?   @db.VarChar(20)
+  district     String?   @db.VarChar(100)
+  lat          Decimal?  @db.Decimal(9, 6)
+  lon          Decimal?  @db.Decimal(9, 6)
+  statusId     Int?      @map("status_id")
+  planStart    DateTime? @map("plan_start") @db.Date
+  planEnd      DateTime? @map("plan_end") @db.Date
+  contractorId Int?      @map("contractor_id")
+  designerId   Int?      @map("designer_id")
+  /// лимит / бюджет объекта (MoneySource.SITE_LIMIT)
+  limitAmount  Decimal?  @map("limit_amount") @db.Decimal(18, 2)
+  attrs        Json?
+  note         String?   @db.Text
+  sort         Int       @default(0)
+  isArchived   Boolean   @default(false) @map("is_archived")
+  isExample    Boolean   @default(false) @map("is_example")
+  /// номер версии для защиты от одновременной правки
+  version      Int       @default(1)
+  createdById  Int?      @map("created_by_id")
+  updatedById  Int?      @map("updated_by_id")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  direction   Direction        @relation(fields: [directionId], references: [id], onDelete: Cascade)
+  section     Section?         @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  status      StatusDef?       @relation(fields: [statusId], references: [id], onDelete: SetNull)
+  contractor  Organization?    @relation("SiteContractor", fields: [contractorId], references: [id], onDelete: SetNull)
+  designer    Organization?    @relation("SiteDesigner", fields: [designerId], references: [id], onDelete: SetNull)
+  createdBy   User?            @relation("SiteCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy   User?            @relation("SiteUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  assignments SiteAssignment[]
+  workItems   WorkItem[]
+  contracts   Contract[]
+  reports     SiteReport[]
+  remarks     Remark[]
+  trackerRows TrackerRow[]
+  attachments Attachment[]
+
+  @@unique([directionId, code])
+  @@index([directionId, sectionId])
+  @@map("site")
+}
+
+enum AssignmentRole {
+  CURATOR // куратор объекта
+  ENTRY // ответственный за ввод данных
+  RESPONSIBLE // ответственный от подрядчика
+  FOREMAN // прораб / начальник участка
+  CHIEF_ENGINEER // ГИП
+}
+
+/// Кто за что отвечает на объекте.
+model SiteAssignment {
+  id        Int            @id @default(autoincrement())
+  siteId    Int            @map("site_id")
+  userId    Int            @map("user_id")
+  role      AssignmentRole
+  createdAt DateTime       @default(now()) @map("created_at")
+
+  site Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([siteId, userId, role])
+  @@index([userId])
+  @@map("site_assignment")
+}
+
+/// Позиция работ: вид работ на объекте (или линия прокладки в Сетях).
+model WorkItem {
+  id            Int       @id @default(autoincrement())
+  siteId        Int       @map("site_id")
+  workTypeId    Int       @map("work_type_id")
+  code          String    @db.VarChar(64)
+  num           Int?
+  /// собственная подпись позиции, если отличается от вида работ («Открытая прокладка Ø400»)
+  label         String?   @db.VarChar(300)
+  unit          String?   @db.VarChar(20)
+  planQty       Decimal?  @map("plan_qty") @db.Decimal(18, 3)
+  /// стоимость по договору
+  planCost      Decimal?  @map("plan_cost") @db.Decimal(18, 2)
+  planStart     DateTime? @map("plan_start") @db.Date
+  planEnd       DateTime? @map("plan_end") @db.Date
+  responsibleId Int?      @map("responsible_id")
+  contractorId  Int?      @map("contractor_id")
+  contractId    Int?      @map("contract_id")
+  attrs         Json?
+  note          String?   @db.Text
+  sort          Int       @default(0)
+  isArchived    Boolean   @default(false) @map("is_archived")
+  isExample     Boolean   @default(false) @map("is_example")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  site        Site            @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  workType    WorkType        @relation(fields: [workTypeId], references: [id], onDelete: Restrict)
+  responsible User?           @relation("WorkItemResponsible", fields: [responsibleId], references: [id], onDelete: SetNull)
+  contractor  Organization?   @relation(fields: [contractorId], references: [id], onDelete: SetNull)
+  contract    Contract?       @relation(fields: [contractId], references: [id], onDelete: SetNull)
+  progress    ProgressEntry[]
+  remarks     Remark[]
+
+  @@unique([siteId, code])
+  @@index([workTypeId])
+  @@map("work_item")
+}
+
+model Contract {
+  id             Int       @id @default(autoincrement())
+  siteId         Int       @map("site_id")
+  organizationId Int?      @map("organization_id")
+  number         String?   @db.VarChar(100)
+  signedAt       DateTime? @map("signed_at") @db.Date
+  endAt          DateTime? @map("end_at") @db.Date
+  amount         Decimal?  @db.Decimal(18, 2)
+  advanceAmount  Decimal?  @map("advance_amount") @db.Decimal(18, 2)
+  attrs          Json?
+  note           String?   @db.Text
+  isExample      Boolean   @default(false) @map("is_example")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  site         Site          @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  workItems    WorkItem[]
+
+  @@index([siteId])
+  @@map("contract")
+}
+
+// ============================================================ Периоды и факт
+
+enum PeriodStatus {
+  OPEN // ввод открыт
+  CLOSED // куратор закрыл: правки только куратором
+  LOCKED // заблокирован: правки только администратором
+}
+
+/// Отчётная точка: неделя (дата понедельника), день или дата отчёта.
+model ReportingPeriod {
+  id          Int          @id @default(autoincrement())
+  directionId Int          @map("direction_id")
+  date        DateTime     @db.Date
+  label       String?      @db.VarChar(100)
+  status      PeriodStatus @default(OPEN)
+  /// для REPORT: программа отчёта (kbu, current…)
+  program     String       @default("") @db.VarChar(32)
+  openedById  Int?         @map("opened_by_id")
+  closedById  Int?         @map("closed_by_id")
+  closedAt    DateTime?    @map("closed_at")
+  createdAt   DateTime     @default(now()) @map("created_at")
+
+  direction Direction       @relation(fields: [directionId], references: [id], onDelete: Cascade)
+  openedBy  User?           @relation("PeriodOpenedBy", fields: [openedById], references: [id], onDelete: SetNull)
+  closedBy  User?           @relation("PeriodClosedBy", fields: [closedById], references: [id], onDelete: SetNull)
+  progress  ProgressEntry[]
+  reports   SiteReport[]
+  remarks   Remark[]
+  kpiCache  KpiSnapshot[]
+
+  @@unique([directionId, program, date])
+  @@map("reporting_period")
+}
+
+enum DataSource {
+  MANUAL
+  IMPORT
+  MIGRATION
+  API
+}
+
+/// Факт по позиции на отчётную точку. Одна строка на (позиция, период) — история не затирается.
+model ProgressEntry {
+  id          Int        @id @default(autoincrement())
+  workItemId  Int        @map("work_item_id")
+  periodId    Int        @map("period_id")
+  statusId    Int?       @map("status_id")
+  /// физическая готовность, 0–100
+  pct         Decimal?   @db.Decimal(6, 2)
+  factQty     Decimal?   @map("fact_qty") @db.Decimal(18, 3)
+  /// принято по КС-2 нарастающим итогом
+  ksAmount    Decimal?   @map("ks_amount") @db.Decimal(18, 2)
+  /// оплачено нарастающим итогом
+  paidAmount  Decimal?   @map("paid_amount") @db.Decimal(18, 2)
+  attrs       Json?
+  note        String?    @db.VarChar(1000)
+  source      DataSource @default(MANUAL)
+  isExample   Boolean    @default(false) @map("is_example")
+  version     Int        @default(1)
+  enteredById Int?       @map("entered_by_id")
+  enteredAt   DateTime   @default(now()) @map("entered_at")
+  updatedById Int?       @map("updated_by_id")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  workItem  WorkItem        @relation(fields: [workItemId], references: [id], onDelete: Cascade)
+  period    ReportingPeriod @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  status    StatusDef?      @relation(fields: [statusId], references: [id], onDelete: SetNull)
+  enteredBy User?           @relation("ProgressEnteredBy", fields: [enteredById], references: [id], onDelete: SetNull)
+  updatedBy User?           @relation("ProgressUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@unique([workItemId, periodId])
+  @@index([periodId])
+  @@map("progress_entry")
+}
+
+/// Показатели объекта на отчётную точку: ресурсы, деньги на уровне объекта, статус из отчёта.
+model SiteReport {
+  id              Int        @id @default(autoincrement())
+  siteId          Int        @map("site_id")
+  periodId        Int        @map("period_id")
+  workers         Int?
+  machines        Int?
+  /// люди / техника из «чёрного списка» (не допущены)
+  workersBlocked  Int?       @map("workers_blocked")
+  machinesBlocked Int?       @map("machines_blocked")
+  ksAmount        Decimal?   @map("ks_amount") @db.Decimal(18, 2)
+  advanceAmount   Decimal?   @map("advance_amount") @db.Decimal(18, 2)
+  paidAmount      Decimal?   @map("paid_amount") @db.Decimal(18, 2)
+  /// статус объекта текстом из отчёта («Ведутся работы»)
+  statusText      String?    @map("status_text") @db.VarChar(200)
+  remarksCount    Int?       @map("remarks_count")
+  attrs           Json?
+  note            String?    @db.VarChar(1000)
+  source          DataSource @default(MANUAL)
+  isExample       Boolean    @default(false) @map("is_example")
+  /// номер версии для защиты от одновременной правки
+  version         Int        @default(1)
+  enteredById     Int?       @map("entered_by_id")
+  enteredAt       DateTime   @default(now()) @map("entered_at")
+  updatedById     Int?       @map("updated_by_id")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+
+  site      Site            @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  period    ReportingPeriod @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  enteredBy User?           @relation("SiteReportEnteredBy", fields: [enteredById], references: [id], onDelete: SetNull)
+  updatedBy User?           @relation("SiteReportUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@unique([siteId, periodId])
+  @@index([periodId])
+  @@map("site_report")
+}
+
+enum RemarkSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum RemarkStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED // подрядчик устранил
+  VERIFIED // куратор принял
+  REJECTED
+}
+
+/// Замечание по объекту (с жизненным циклом: открыто → устранено → принято).
+model Remark {
+  id           Int            @id @default(autoincrement())
+  directionId  Int            @map("direction_id")
+  /// номер замечания в направлении (№ 12) — по нему замечание называют в переписке
+  num          Int
+  siteId       Int            @map("site_id")
+  workItemId   Int?           @map("work_item_id")
+  periodId     Int?           @map("period_id")
+  text         String         @db.Text
+  /// «Качество работ», «ОТ и ТБ», «Документация»… — свободный список направления
+  category     String?        @db.VarChar(100)
+  severity     RemarkSeverity @default(MEDIUM)
+  status       RemarkStatus   @default(OPEN)
+  dueDate      DateTime?      @map("due_date") @db.Date
+  authorId     Int?           @map("author_id")
+  assigneeId   Int?           @map("assignee_id")
+  /// кто и когда закрыл (принял или снял); при повторном открытии очищается
+  resolvedById Int?           @map("resolved_by_id")
+  resolvedAt   DateTime?      @map("resolved_at")
+  isExample    Boolean        @default(false) @map("is_example")
+  /// номер версии для защиты от одновременной правки
+  version      Int            @default(1)
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+
+  direction  Direction        @relation(fields: [directionId], references: [id], onDelete: Cascade)
+  site       Site             @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  workItem   WorkItem?        @relation(fields: [workItemId], references: [id], onDelete: SetNull)
+  period     ReportingPeriod? @relation(fields: [periodId], references: [id], onDelete: SetNull)
+  author     User?            @relation("RemarkAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  assignee   User?            @relation("RemarkAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  resolvedBy User?            @relation("RemarkResolvedBy", fields: [resolvedById], references: [id], onDelete: SetNull)
+  events     RemarkEvent[]
+
+  @@unique([directionId, num])
+  @@index([directionId, status])
+  @@index([siteId, status])
+  @@map("remark")
+}
+
+/// Лента замечания: создание, смена статуса с комментарием, правка, комментарий. К событию прикладываются фото.
+model RemarkEvent {
+  id         Int           @id @default(autoincrement())
+  remarkId   Int           @map("remark_id")
+  kind       String        @db.VarChar(20)
+  fromStatus RemarkStatus? @map("from_status")
+  toStatus   RemarkStatus? @map("to_status")
+  text       String?       @db.Text
+  authorId   Int?          @map("author_id")
+  createdAt  DateTime      @default(now()) @map("created_at")
+
+  remark Remark @relation(fields: [remarkId], references: [id], onDelete: Cascade)
+  author User?  @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([remarkId])
+  @@map("remark_event")
+}
+
+// ============================================================ Трекеры-надстройки
+//
+// Трекер — таблица «строки × этапы» на каждом объекте, описанная данными:
+//   Закупки (Школы):   строки = материалы,      этапы = оплата / поставка / монтаж (PERCENT)
+//   Испытания (Школы): строки = системы,        этапы = статус (STATUS), исполнит. документация (BOOL)
+//   МГЭ (Школы):       одна строка «Проект»,    этапы = даты и статус экспертизы (layout CARD)
+//   Документация (Сети): одна строка,           этапы = ПСД / РД / МГЭ / согласования / ордер
+// Новое направление добавляет свои трекеры в админке.
+
+enum TrackerLayout {
+  MATRIX // строки × этапы
+  CARD // одна строка, этапы — поля карточки
+}
+
+enum TrackerValueType {
+  BOOL
+  PERCENT
+  NUMBER
+  STATUS
+  DATE
+  TEXT
+}
+
+model Tracker {
+  id          Int           @id @default(autoincrement())
+  directionId Int           @map("direction_id")
+  code        String        @db.VarChar(64)
+  name        String        @db.VarChar(200)
+  layout      TrackerLayout @default(MATRIX)
+  description String?       @db.VarChar(500)
+  sort        Int           @default(0)
+  isActive    Boolean       @default(true) @map("is_active")
+
+  direction Direction      @relation(fields: [directionId], references: [id], onDelete: Cascade)
+  items     TrackerItem[]
+  stages    TrackerStage[]
+
+  @@unique([directionId, code])
+  @@map("tracker")
+}
+
+/// Строка трекера (материал, система, документ).
+model TrackerItem {
+  id         Int     @id @default(autoincrement())
+  trackerId  Int     @map("tracker_id")
+  code       String  @db.VarChar(64)
+  name       String  @db.VarChar(300)
+  category   String? @db.VarChar(200)
+  unit       String? @db.VarChar(20)
+  attrs      Json?
+  sort       Int     @default(0)
+  isArchived Boolean @default(false) @map("is_archived")
+
+  tracker Tracker      @relation(fields: [trackerId], references: [id], onDelete: Cascade)
+  rows    TrackerRow[]
+
+  @@unique([trackerId, code])
+  @@map("tracker_item")
+}
+
+/// Этап / колонка трекера.
+model TrackerStage {
+  id         Int              @id @default(autoincrement())
+  trackerId  Int              @map("tracker_id")
+  code       String           @db.VarChar(64)
+  name       String           @db.VarChar(200)
+  valueType  TrackerValueType @map("value_type")
+  /// для STATUS: [{ "value": "готово", "label": "Готово", "color": "…", "done": true }]
+  options    Json?
+  /// этап учитывается в проценте готовности трекера
+  inProgress Boolean          @default(true) @map("in_progress")
+  sort       Int              @default(0)
+
+  tracker Tracker        @relation(fields: [trackerId], references: [id], onDelete: Cascade)
+  values  TrackerValue[]
+
+  @@unique([trackerId, code])
+  @@map("tracker_stage")
+}
+
+/// Строка трекера на конкретном объекте (+ свои атрибуты: производитель, поставщик, кол-во, сроки).
+model TrackerRow {
+  id        Int       @id @default(autoincrement())
+  siteId    Int       @map("site_id")
+  itemId    Int       @map("item_id")
+  qty       Decimal?  @db.Decimal(18, 3)
+  unit      String?   @db.VarChar(20)
+  planDate  DateTime? @map("plan_date") @db.Date
+  dueDate   DateTime? @map("due_date") @db.Date
+  attrs     Json?
+  note      String?   @db.VarChar(1000)
+  isExample Boolean   @default(false) @map("is_example")
+
+  site   Site           @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  item   TrackerItem    @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  values TrackerValue[]
+
+  @@unique([siteId, itemId])
+  @@map("tracker_row")
+}
+
+model TrackerValue {
+  id          Int       @id @default(autoincrement())
+  rowId       Int       @map("row_id")
+  stageId     Int       @map("stage_id")
+  valueNum    Decimal?  @map("value_num") @db.Decimal(18, 4)
+  valueText   String?   @map("value_text") @db.VarChar(500)
+  valueDate   DateTime? @map("value_date") @db.Date
+  valueBool   Boolean?  @map("value_bool")
+  updatedById Int?      @map("updated_by_id")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  row       TrackerRow   @relation(fields: [rowId], references: [id], onDelete: Cascade)
+  stage     TrackerStage @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  updatedBy User?        @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@unique([rowId, stageId])
+  @@map("tracker_value")
+}
+
+// ============================================================ Файлы, экраны, кэш, журнал
+
+model Attachment {
+  id           Int      @id @default(autoincrement())
+  siteId       Int?     @map("site_id")
+  /// к чему приложен: site, remark, work_item, contract…
+  entity       String   @db.VarChar(40)
+  entityId     Int      @map("entity_id")
+  fileName     String   @map("file_name") @db.VarChar(300)
+  mimeType     String   @map("mime_type") @db.VarChar(100)
+  size         Int
+  storagePath  String   @map("storage_path") @db.VarChar(500)
+  uploadedById Int?     @map("uploaded_by_id")
+  /// убранный файл скрыт, но хранится (удаление = архив)
+  isArchived   Boolean  @default(false) @map("is_archived")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  site       Site? @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  uploadedBy User? @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  @@index([entity, entityId])
+  @@map("attachment")
+}
+
+enum LayoutScope {
+  OVERVIEW // сводка руководства
+  DIRECTION // экраны направления
+  SITE // карточка объекта
+}
+
+/// Раскладка экрана: вкладки и виджеты с настройками. userId = null — общая раскладка направления.
+model DashboardLayout {
+  id          Int         @id @default(autoincrement())
+  scope       LayoutScope
+  directionId Int?        @map("direction_id")
+  userId      Int?        @map("user_id")
+  name        String      @db.VarChar(200)
+  layout      Json
+  isDefault   Boolean     @default(false) @map("is_default")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  direction Direction? @relation(fields: [directionId], references: [id], onDelete: Cascade)
+  user      User?      @relation("LayoutOwner", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([scope, directionId, userId])
+  @@map("dashboard_layout")
+}
+
+/// Кэш рассчитанных показателей направления на отчётную точку (формат KPI payload сводки).
+model KpiSnapshot {
+  id          Int      @id @default(autoincrement())
+  directionId Int      @map("direction_id")
+  periodId    Int?     @map("period_id")
+  asOf        DateTime @map("as_of") @db.Date
+  payload     Json
+  computedAt  DateTime @default(now()) @map("computed_at")
+
+  direction Direction        @relation(fields: [directionId], references: [id], onDelete: Cascade)
+  period    ReportingPeriod? @relation(fields: [periodId], references: [id], onDelete: SetNull)
+
+  @@index([directionId, asOf])
+  @@map("kpi_snapshot")
+}
+
+/// Общие настройки приложения (ключ → JSON): пороги сводки, название организации и т.п.
+model AppSetting {
+  key       String   @id @db.VarChar(64)
+  value     Json
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("app_setting")
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  LOGIN
+  LOGIN_FAILED
+  LOGOUT
+  IMPORT
+  EXPORT
+  PERIOD_OPEN
+  PERIOD_CLOSE
+  PASSWORD_CHANGE
+}
+
+/// Журнал всех изменений: кто, когда, что было → что стало.
+model AuditLog {
+  id          BigInt      @id @default(autoincrement())
+  at          DateTime    @default(now())
+  userId      Int?        @map("user_id")
+  action      AuditAction
+  entity      String      @db.VarChar(40)
+  entityId    String?     @map("entity_id") @db.VarChar(64)
+  directionId Int?        @map("direction_id")
+  siteId      Int?        @map("site_id")
+  before      Json?
+  after       Json?
+  comment     String?     @db.VarChar(1000)
+  ip          String?     @db.VarChar(45)
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([entity, entityId])
+  @@index([userId, at])
+  @@index([directionId, at])
+  @@index([siteId, at])
+  @@map("audit_log")
+}

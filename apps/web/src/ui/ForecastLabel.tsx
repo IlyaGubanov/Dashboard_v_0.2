@@ -1,5 +1,5 @@
 import { Group, Text, Tooltip } from '@mantine/core';
-import { IconCircleCheck, IconCircleDashed, IconClockExclamation, IconPlayerPause, IconTargetArrow } from '@tabler/icons-react';
+import { IconCircleCheck, IconCircleDashed, IconExclamationCircle, IconPlayerPause, IconTargetArrow } from '@tabler/icons-react';
 import type { Forecast } from '@mvs/shared';
 import { date } from './format';
 
@@ -36,10 +36,11 @@ export function ForecastLabel({ f, size = 'sm', withDate = true }: { f: Forecast
   const view = {
     done: { Icon: IconCircleCheck, color: 'var(--status-good)', text: 'выполнено' },
     ontime: { Icon: IconTargetArrow, color: 'var(--status-good)', text: withDate ? `${date(f.date)} · в срок` : 'в срок' },
+    // опоздание — отставание от срока: со знаком «−» и значком «!»
     late: {
-      Icon: IconClockExclamation,
+      Icon: IconExclamationCircle,
       color: (f.delayDays ?? 0) > 30 ? 'var(--status-critical)' : 'var(--status-warning)',
-      text: `${withDate ? `${date(f.date)} · ` : ''}+${f.delayDays} ${days(f.delayDays ?? 0)}`,
+      text: `${withDate ? `${date(f.date)} · ` : ''}−${f.delayDays} ${days(f.delayDays ?? 0)}`,
     },
     stalled: { Icon: IconPlayerPause, color: 'var(--status-critical)', text: 'темпа нет' },
     noplan: { Icon: IconCircleDashed, color: 'var(--status-none)', text: date(f.date) },

@@ -127,6 +127,10 @@ export interface SiteKpiRow {
   overdueItems: number;
   curators: string[];
   entry: string[];
+  /** подрядчик объекта */
+  contractor: { id: number; name: string } | null;
+  /** подрядчики отдельных позиций (кроме подрядчика объекта) */
+  subcontractors: { id: number; name: string }[];
   lat: number | null;
   lon: number | null;
   isExample: boolean;

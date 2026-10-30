@@ -411,6 +411,7 @@ export class ManageService {
       const row = id
         ? await this.prisma.organization.update({ where: { id }, data })
         : await this.prisma.organization.create({ data: { ...data, directionId: d.id } });
+      this.kpi.invalidate(d.id);
       await this.audit.write({ userId: user.id, action: id ? 'UPDATE' : 'CREATE', entity: 'organization', entityId: row.id, directionId: d.id, after: data, comment: `организация «${body.name}»`, ip });
       return { id: row.id };
     } catch (e) {

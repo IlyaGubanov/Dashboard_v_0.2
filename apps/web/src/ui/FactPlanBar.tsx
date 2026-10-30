@@ -1,5 +1,6 @@
 import { Box, Tooltip } from '@mantine/core';
-import { pct, pp } from './format';
+import { pct } from './format';
+import { Lag } from './Lag';
 
 /**
  * Полоса «факт против плана»: заливка — факт, вертикальная метка — план на дату.
@@ -27,7 +28,9 @@ export function FactPlanBar({
       {plan != null && (
         <>
           <div>План на дату: {pct(plan)}</div>
-          <div>Отклонение: {pp(fact != null ? fact - plan : null)}</div>
+          <div>
+            Отклонение: <Lag v={fact != null ? fact - plan : null} size="xs" />
+          </div>
         </>
       )}
     </div>

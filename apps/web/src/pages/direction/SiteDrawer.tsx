@@ -10,7 +10,9 @@ import { FactPlanBar } from '../../ui/FactPlanBar';
 import { RiskBadge, riskColor } from '../../ui/RiskBadge';
 import { factPlanChart } from '../../ui/charts';
 import { TrackerValue, type TrackerRawValue, type TrackerStage } from '../../ui/TrackerValue';
-import { date, int, money, pct, pp } from '../../ui/format';
+import { date, int, money, pct } from '../../ui/format';
+import { Lag } from '../../ui/Lag';
+import { useFinanceHidden } from '../../ui/finance';
 import { SiteFiles, SiteRemarks } from './SiteExtras';
 import { ForecastLabel } from '../../ui/ForecastLabel';
 
@@ -78,6 +80,7 @@ export function SiteDrawer({
 
 function Card({ data: c, code, onOpenRemark }: { data: SiteCard; code: string; onOpenRemark: (id: number) => void }) {
   const r = c.row;
+  const financeHidden = useFinanceHidden();
   const hasHistory = c.history.filter((h) => h.fact != null).length > 1;
   return (
     <Stack>
@@ -94,7 +97,7 @@ function Card({ data: c, code, onOpenRemark }: { data: SiteCard; code: string; o
           {r.plan != null && (
             <div style={{ textAlign: 'right' }}>
               <Text size="sm">план {pct(r.plan)}</Text>
-              <Text fw={600}>{pp(r.lag)}</Text>
+              <Lag v={r.lag} crit={r.risk === 'crit'} size="md" />
             </div>
           )}
           <RiskBadge risk={r.risk} />
@@ -102,9 +105,10 @@ function Card({ data: c, code, onOpenRemark }: { data: SiteCard; code: string; o
         <FactPlanBar fact={r.fact} plan={r.plan} color={r.plan == null ? 'var(--series-1)' : riskColor(r.risk)} />
         <SimpleGrid cols={{ base: 2, sm: 4 }} mt="xs">
           <Kv k="Сроки" v={r.planStart || r.planEnd ? `${date(r.planStart)} — ${date(r.planEnd)}` : '—'} />
-          {r.money.portfolio != null && <Kv k="Стоимость" v={money(r.money.portfolio)} />}
-          {r.money.closed != null && <Kv k="Закрыто по КС-2" v={money(r.money.closed)} />}
-          {r.money.paid != null && <Kv k="Оплачено" v={money(r.money.paid)} />}
+          {r.contractor && <Kv k="Подрядчик" v={r.contractor.name} />}
+          {!financeHidden && r.money.portfolio != null && <Kv k="Стоимость" v={money(r.money.portfolio)} />}
+          {!financeHidden && r.money.closed != null && <Kv k="Закрыто по КС-2" v={money(r.money.closed)} />}
+          {!financeHidden && r.money.paid != null && <Kv k="Оплачено" v={money(r.money.paid)} />}
           {r.people != null && <Kv k="Людей / техники" v={`${int(r.people)} / ${int(r.tech)}`} />}
           {r.remarks != null && <Kv k="Замечаний" v={int(r.remarks)} />}
           {r.overdueItems > 0 && <Kv k="Просрочено позиций" v={int(r.overdueItems)} />}
@@ -159,8 +163,8 @@ function Card({ data: c, code, onOpenRemark }: { data: SiteCard; code: string; o
                 <Table.Th>Подрядчик</Table.Th>
                 <Table.Th>Заключён</Table.Th>
                 <Table.Th>Окончание</Table.Th>
-                <Table.Th ta="right">Сумма</Table.Th>
-                <Table.Th ta="right">Аванс</Table.Th>
+                {!financeHidden && <Table.Th ta="right">Сумма</Table.Th>}
+                {!financeHidden && <Table.Th ta="right">Аванс</Table.Th>}
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -170,8 +174,8 @@ function Card({ data: c, code, onOpenRemark }: { data: SiteCard; code: string; o
                   <Table.Td>{k.organization ?? '—'}</Table.Td>
                   <Table.Td>{date(k.signedAt)}</Table.Td>
                   <Table.Td>{date(k.endAt)}</Table.Td>
-                  <Table.Td ta="right">{money(k.amount)}</Table.Td>
-                  <Table.Td ta="right">{money(k.advance)}</Table.Td>
+                  {!financeHidden && <Table.Td ta="right">{money(k.amount)}</Table.Td>}
+                  {!financeHidden && <Table.Td ta="right">{money(k.advance)}</Table.Td>}
                 </Table.Tr>
               ))}
             </Table.Tbody>
@@ -197,10 +201,12 @@ function Kv({ k, v }: { k: string; v: React.ReactNode }) {
 
 /** Позиции работ: факт, план на дату, объёмы, деньги, кто и когда внёс. */
 function Items({ c }: { c: SiteCard }) {
+  const financeHidden = useFinanceHidden();
   const has = {
     qty: c.items.some((i) => i.planQty != null),
-    cost: c.items.some((i) => i.planCost != null),
-    ks: c.items.some((i) => i.ks != null),
+    cost: !financeHidden && c.items.some((i) => i.planCost != null),
+    ks: !financeHidden && c.items.some((i) => i.ks != null),
+    contractor: c.items.some((i) => i.contractor),
     status: c.items.some((i) => i.status),
     plan: c.items.some((i) => i.plan != null),
     resp: c.items.some((i) => i.responsible),
@@ -218,6 +224,7 @@ function Items({ c }: { c: SiteCard }) {
             {has.cost && <Table.Th ta="right">Стоимость</Table.Th>}
             {has.ks && <Table.Th ta="right">КС-2 / оплачено</Table.Th>}
             <Table.Th>Сроки</Table.Th>
+            {has.contractor && <Table.Th>Подрядчик</Table.Th>}
             {has.resp && <Table.Th>Ответственный</Table.Th>}
             <Table.Th>Внесено</Table.Th>
           </Table.Tr>
@@ -287,6 +294,7 @@ function Items({ c }: { c: SiteCard }) {
                 </Table.Td>
               )}
               <Table.Td>{i.planStart || i.planEnd ? `${date(i.planStart)} — ${date(i.planEnd)}` : '—'}</Table.Td>
+              {has.contractor && <Table.Td>{i.contractor ?? c.contractor ?? '—'}</Table.Td>}
               {has.resp && <Table.Td>{i.responsible ?? '—'}</Table.Td>}
               <Table.Td>
                 {i.asOf ? (
@@ -335,8 +343,9 @@ function fieldValue(f: SiteCardField) {
 }
 
 function Passport({ c }: { c: SiteCard }) {
+  const financeHidden = useFinanceHidden();
   const groups = new Map<string, SiteCardField[]>();
-  for (const f of c.fields) groups.set(f.group ?? 'Дополнительно', [...(groups.get(f.group ?? 'Дополнительно') ?? []), f]);
+  for (const f of c.fields.filter((x) => !(financeHidden && x.type === 'MONEY'))) groups.set(f.group ?? 'Дополнительно', [...(groups.get(f.group ?? 'Дополнительно') ?? []), f]);
   return (
     <Stack>
       <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }}>
@@ -345,7 +354,7 @@ function Passport({ c }: { c: SiteCard }) {
         {(c.okrug || c.district) && <Kv k="Округ / район" v={[c.okrug, c.district].filter(Boolean).join(' · ')} />}
         {c.contractor && <Kv k="Подрядчик" v={c.contractor} />}
         {c.designer && <Kv k="Проектировщик" v={c.designer} />}
-        {c.limit != null && <Kv k="Лимит" v={money(c.limit)} />}
+        {!financeHidden && c.limit != null && <Kv k="Лимит" v={money(c.limit)} />}
         {c.row.lat != null && <Kv k="Координаты" v={`${c.row.lat}, ${c.row.lon}`} />}
         {c.note && <Kv k="Примечание" v={c.note} />}
       </SimpleGrid>

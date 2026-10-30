@@ -16,6 +16,7 @@ import { RemarksModule } from './remarks/remarks.module';
 import { AttachmentsModule } from './attachments/attachments.module';
 import { TasksModule } from './tasks/tasks.module';
 import { ContractorsModule } from './contractors/contractors.module';
+import { AppearanceModule } from './appearance/appearance.module';
 import { HealthController } from './health.controller';
 
 @Module({
@@ -35,6 +36,7 @@ import { HealthController } from './health.controller';
     AttachmentsModule,
     TasksModule,
     ContractorsModule,
+    AppearanceModule,
   ],
   controllers: [HealthController],
   providers: [

@@ -12,6 +12,7 @@ import { parseDirectionSearch } from './pages/direction/search';
 import { UsersPage } from './pages/UsersPage';
 import { AdminDirectionsPage } from './pages/admin/AdminDirectionsPage';
 import { DirectionEditorPage } from './pages/admin/DirectionEditorPage';
+import { AppearancePage } from './pages/admin/AppearancePage';
 import { HelpPage } from './pages/HelpPage';
 import { ContractorsPage } from './pages/ContractorsPage';
 
@@ -103,6 +104,7 @@ const adminOnly = ({ context }: { context: { queryClient: QueryClient } }) => {
 const usersRoute = createRoute({ getParentRoute: () => appRoute, path: '/admin/users', beforeLoad: adminOnly, component: UsersPage });
 const adminDirectionsRoute = createRoute({ getParentRoute: () => appRoute, path: '/admin/directions', beforeLoad: adminOnly, component: AdminDirectionsPage });
 const directionEditorRoute = createRoute({ getParentRoute: () => appRoute, path: '/admin/directions/$code', beforeLoad: adminOnly, component: DirectionEditorPage });
+const appearanceRoute = createRoute({ getParentRoute: () => appRoute, path: '/admin/appearance', beforeLoad: adminOnly, component: AppearancePage });
 
 const contractorsRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -118,7 +120,7 @@ const helpRoute = createRoute({ getParentRoute: () => appRoute, path: '/help', c
 const routeTree = rootRoute.addChildren([
   loginRoute,
   changePasswordRoute,
-  appRoute.addChildren([overviewRoute, directionRoute, usersRoute, adminDirectionsRoute, directionEditorRoute, contractorsRoute, helpRoute]),
+  appRoute.addChildren([overviewRoute, directionRoute, usersRoute, adminDirectionsRoute, directionEditorRoute, appearanceRoute, contractorsRoute, helpRoute]),
 ]);
 
 export const router = createRouter({ routeTree, context: { queryClient }, defaultPreload: 'intent' });

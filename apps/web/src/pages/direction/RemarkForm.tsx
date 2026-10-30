@@ -76,7 +76,7 @@ export function RemarkForm({
   };
 
   return (
-    <Modal opened={opened} onClose={onClose} title={edit ? `Замечание № ${edit.num}` : 'Новое замечание'} size="lg" zIndex={400}>
+    <Modal className="direction-page" opened={opened} onClose={onClose} title={edit ? `Замечание № ${edit.num}` : 'Новое замечание'} size="lg" zIndex={400}>
       <Stack>
         <Select
           comboboxProps={DROPDOWN}

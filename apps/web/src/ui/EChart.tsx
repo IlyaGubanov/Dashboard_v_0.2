@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Box, Loader, useComputedColorScheme } from '@mantine/core';
 import type { EChartsOption, EChartsType } from 'echarts';
+import { useAppearance } from './appearance';
 
 /** Цвета графика из темы (theme.css + Mantine) — меняются вместе со светлой/тёмной темой. */
 export interface ChartColors {
@@ -13,12 +14,16 @@ export interface ChartColors {
   grid: string;
   plan: string;
   surface: string;
+  /** размер подписей, px: 12 × множитель текста направления (--text-scale из «Оформления») */
+  fontSize: number;
 }
 
-function readColors(): ChartColors {
+function readColors(el: HTMLElement | null): ChartColors {
   const s = getComputedStyle(document.documentElement);
   const v = (name: string) => s.getPropertyValue(name).trim();
+  const scale = el ? parseFloat(getComputedStyle(el).getPropertyValue('--text-scale')) || 1 : 1;
   return {
+    fontSize: Math.round(12 * scale),
     series: [v('--series-1'), v('--series-2'), v('--series-3')],
     good: v('--status-good'),
     warning: v('--status-warning'),
@@ -35,7 +40,7 @@ function readColors(): ChartColors {
 export function baseOption(c: ChartColors): EChartsOption {
   return {
     animation: false,
-    textStyle: { fontFamily: 'Montserrat, "Segoe UI", Arial, sans-serif', color: c.text, fontSize: 12 },
+    textStyle: { fontFamily: 'Montserrat, "Segoe UI", Arial, sans-serif', color: c.text, fontSize: c.fontSize },
     grid: { left: 12, right: 20, top: 42, bottom: 12, containLabel: true },
     tooltip: {
       trigger: 'axis',
@@ -43,10 +48,10 @@ export function baseOption(c: ChartColors): EChartsOption {
       padding: [10, 14],
       backgroundColor: c.surface,
       borderColor: c.grid,
-      textStyle: { color: c.text, fontSize: 12 },
+      textStyle: { color: c.text, fontSize: c.fontSize },
       axisPointer: { type: 'line', lineStyle: { color: c.muted } },
     },
-    legend: { top: 0, left: 0, itemGap: 20, icon: 'roundRect', itemWidth: 16, itemHeight: 4, textStyle: { color: c.text, fontSize: 12 } },
+    legend: { top: 0, left: 0, itemGap: 20, icon: 'roundRect', itemWidth: 16, itemHeight: 4, textStyle: { color: c.text, fontSize: c.fontSize } },
   };
 }
 
@@ -61,6 +66,8 @@ export function EChart({ option, height = 280, ariaLabel }: { option: (c: ChartC
   const ref = useRef<HTMLDivElement>(null);
   const chart = useRef<EChartsType | null>(null);
   const scheme = useComputedColorScheme('light');
+  // цвета меняются и при правке оформления администратором
+  const { appearance } = useAppearance();
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -84,9 +91,9 @@ export function EChart({ option, height = 280, ariaLabel }: { option: (c: ChartC
   useEffect(() => {
     if (!ready || !chart.current) return;
     // цвета темы применяются после того, как Mantine обновил атрибут схемы
-    const id = requestAnimationFrame(() => chart.current?.setOption(option(readColors()), true));
+    const id = requestAnimationFrame(() => chart.current?.setOption(option(readColors(ref.current)), true));
     return () => cancelAnimationFrame(id);
-  }, [ready, option, scheme]);
+  }, [ready, option, scheme, appearance]);
 
   return (
     <Box pos="relative" h={height} role="img" aria-label={ariaLabel}>

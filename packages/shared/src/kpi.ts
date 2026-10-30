@@ -16,7 +16,10 @@ export type KpiFormat = 'money' | 'int' | 'qty' | 'days' | 'percent';
 
 /** Дополнительный показатель направления (набор задаётся в настройках направления). */
 export interface KpiTile {
+  /** метрика */
   key: string;
+  /** место в «Показателях сводки» направления (0…5) — по нему плитку находит настройка «Плитки обзора» */
+  slot?: number;
   label: string;
   value: number | null;
   format: KpiFormat;

@@ -191,7 +191,7 @@ function Sections({ code, refs }: { code: string; refs: ManageRefs }) {
           ))}
         </Table.Tbody>
       </Table>
-      <Modal opened={!!edit} onClose={() => setEdit(null)} title={edit?.id ? 'Раздел' : 'Новый раздел'}>
+      <Modal className="direction-page" opened={!!edit} onClose={() => setEdit(null)} title={edit?.id ? 'Раздел' : 'Новый раздел'}>
         {edit && (
           <Stack>
             <TextInput label="Название" required error={errors.name} value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.currentTarget.value })} />
@@ -266,7 +266,7 @@ function WorkTypes({ code, refs }: { code: string; refs: ManageRefs }) {
           </Table.Tbody>
         </Table>
       </Table.ScrollContainer>
-      <Modal opened={!!edit} onClose={() => setEdit(null)} title={edit?.id ? 'Вид работ' : 'Новый вид работ'}>
+      <Modal className="direction-page" opened={!!edit} onClose={() => setEdit(null)} title={edit?.id ? 'Вид работ' : 'Новый вид работ'}>
         {edit && (
           <Stack>
             <TextInput label="Название" required error={errors.name} value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.currentTarget.value })} />
@@ -337,7 +337,7 @@ function Orgs({ code, refs }: { code: string; refs: ManageRefs }) {
           ))}
         </Table.Tbody>
       </Table>
-      <Modal opened={!!edit} onClose={() => setEdit(null)} title={edit?.id ? 'Организация' : 'Новая организация'}>
+      <Modal className="direction-page" opened={!!edit} onClose={() => setEdit(null)} title={edit?.id ? 'Организация' : 'Новая организация'}>
         {edit && (
           <Stack>
             <TextInput label="Название" required error={errors.name} value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.currentTarget.value })} />

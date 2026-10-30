@@ -365,6 +365,7 @@ function PeriodBar({
       </Group>
 
       <Modal
+        className="direction-page"
         opened={action != null}
         onClose={() => setAction(null)}
         title={

@@ -44,6 +44,7 @@ export function SiteDrawer({
   const { data, error, isLoading } = useQuery({ ...directionQueries.site(code, siteId ?? 0, asOf), enabled: !!siteId });
   return (
     <Drawer
+      className="direction-page"
       opened={!!siteId}
       onClose={onClose}
       position="right"
@@ -92,7 +93,7 @@ function Card({ data: c, code, onOpenRemark }: { data: SiteCard; code: string; o
             <Text size="xs" c="dimmed">
               Готовность на {date(c.asOf)}
             </Text>
-            <Text fz={32} fw={700} lh={1}>
+            <Text fz="calc(32px * var(--text-scale, 1))" fw={700} lh={1}>
               {pct(r.fact)}
             </Text>
           </div>

@@ -65,7 +65,7 @@ export function RemarksTab({ code, onOpen, initial }: { code: string; onOpen: (i
             <Text size="xs" c="dimmed">
               {s.label}
             </Text>
-            <Text fz={26} fw={700} c={s.critical && s.value > 0 ? 'var(--status-critical)' : undefined}>
+            <Text fz="calc(26px * var(--text-scale, 1))" fw={700} c={s.critical && s.value > 0 ? 'var(--status-critical)' : undefined}>
               {int(s.value)}
             </Text>
           </Card>
@@ -73,7 +73,7 @@ export function RemarksTab({ code, onOpen, initial }: { code: string; onOpen: (i
       </SimpleGrid>
 
       <Group justify="space-between" align="flex-end">
-        <Group gap="sm" align="flex-end">
+        <Group gap="sm" align="flex-end" maw="100%" miw={0}>
           <SegmentedControl
             style={{ maxWidth: '100%', overflowX: 'auto' }}
             value={view}

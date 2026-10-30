@@ -55,7 +55,7 @@ function MatrixTracker({ t, onOpenSite }: { t: Tracker; onOpenSite: (id: number)
             <Text size="xs" c="dimmed">
               {s.name}
             </Text>
-            <Text fz={22} fw={700}>
+            <Text fz="calc(22px * var(--text-scale, 1))" fw={700}>
               {pct(done, 0)}
             </Text>
             <Text size="xs" c="dimmed">
@@ -73,7 +73,7 @@ function MatrixTracker({ t, onOpenSite }: { t: Tracker; onOpenSite: (id: number)
           )}
         </Group>
         <Box style={{ overflow: 'auto', maxHeight: '65vh' }}>
-          <Table striped stickyHeader verticalSpacing={4} styles={{ td: { whiteSpace: 'nowrap', fontSize: 13 }, th: { whiteSpace: 'nowrap' } }}>
+          <Table striped stickyHeader verticalSpacing={4} styles={{ td: { whiteSpace: 'nowrap', fontSize: 'calc(13px * var(--text-scale, 1))' }, th: { whiteSpace: 'nowrap' } }}>
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Позиция</Table.Th>

@@ -66,6 +66,7 @@ export class RemarksService {
     const d = await this.prisma.direction.findUnique({ where: { code } });
     if (!d) throw new NotFoundException('Направление не найдено');
     await this.access.assertViewDirection(user, d.id);
+    this.access.assertSection(user, 'remarks');
     return d;
   }
 
@@ -157,7 +158,7 @@ export class RemarksService {
     const used = rows.map((r) => r.category).filter((c): c is string => !!c);
     return {
       rows: rows.map((r) => this.row(r, photos.get(r.id) ?? 0)),
-      canCreate: can.all || can.ids.size > 0,
+      canCreate: this.access.has(user, 'remarksCreate') && (can.all || can.ids.size > 0),
       sites: sites.map((s) => ({ id: s.id, name: s.shortName ?? s.name })),
       people,
       categories: [...new Set([...CATEGORIES, ...used])],
@@ -217,6 +218,7 @@ export class RemarksService {
 
   async create(user: AuthUser, code: string, b: RemarkData, ip: string | null) {
     const d = await this.dir(user, code);
+    this.access.assertFeature(user, 'remarksCreate');
     const site = await this.prisma.site.findUnique({ where: { id: b.siteId }, select: { id: true, directionId: true, isArchived: true } });
     if (!site || site.directionId !== d.id || site.isArchived) throw new BadRequestException({ message: 'Объект не найден', fields: { siteId: 'Не найден' } });
     const can = await this.creatable(user, d.id);

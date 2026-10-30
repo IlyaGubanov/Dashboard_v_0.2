@@ -36,7 +36,12 @@ model User {
   email              String?    @db.VarChar(200)
   phone              String?    @db.VarChar(50)
   organizationId     Int?       @map("organization_id")
-  isActive           Boolean    @default(true) @map("is_active")
+  departmentId       Int?       @map("department_id")
+  /// скрытые разделы (ключи APP_SECTIONS); null — видит всё, что позволяют роли. Администратору не применяется.
+  hiddenSections     Json?      @map("hidden_sections")
+  /// отключённые возможности (ключи FEATURES): финансы, создание замечаний, выгрузка, журнал изменений
+  deniedFeatures     Json?      @map("denied_features")
+  isActive          Boolean    @default(true) @map("is_active")
   isExample          Boolean    @default(false) @map("is_example")
   lastLoginAt        DateTime?  @map("last_login_at")
   /// неудачных попыток входа подряд; после 5 — блокировка на 15 минут (locked_until)
@@ -46,7 +51,8 @@ model User {
   updatedAt          DateTime   @updatedAt @map("updated_at")
 
   organization     Organization?     @relation(fields: [organizationId], references: [id], onDelete: SetNull)
-  sessions         UserSession[]
+  department       Department?       @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  sessions        UserSession[]
   memberships      DirectionMember[]
   siteAssignments  SiteAssignment[]
   responsibleItems WorkItem[]        @relation("WorkItemResponsible")
@@ -69,6 +75,18 @@ model User {
 
   @@index([fullName])
   @@map("user")
+}
+
+/// Подразделение сотрудника (отдел, служба). Справочник общий для всех направлений; удаление = архив.
+model Department {
+  id         Int      @id @default(autoincrement())
+  name       String   @unique @db.VarChar(200)
+  isArchived Boolean  @default(false) @map("is_archived")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  users User[]
+
+  @@map("department")
 }
 
 /// Сессия входа. В cookie хранится случайный токен, в БД — только его SHA-256.

@@ -1,7 +1,9 @@
 import type { Request } from 'express';
 import type { GlobalRole } from '@prisma/client';
+import type { AccessRestrictions } from '@mvs/shared';
 
-export interface AuthUser {
+/** Вошедший пользователь. hiddenSections / deniedFeatures — ограничения из карточки сотрудника (у администратора пусто). */
+export interface AuthUser extends AccessRestrictions {
   id: number;
   login: string;
   fullName: string;

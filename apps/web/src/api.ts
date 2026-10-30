@@ -19,6 +19,7 @@ import type {
   SiteKpiRow,
   TrackersView,
   UserListItem,
+  DepartmentItem,
   WorkGrid,
 } from '@mvs/shared';
 
@@ -138,4 +139,10 @@ export const contractorsQuery = queryOptions({
 export const usersQuery = queryOptions({
   queryKey: ['users'],
   queryFn: () => api<UserListItem[]>('/users'),
+});
+
+/** Справочник подразделений (вместе с архивными). */
+export const departmentsQuery = queryOptions({
+  queryKey: ['departments'],
+  queryFn: () => api<DepartmentItem[]>('/departments'),
 });

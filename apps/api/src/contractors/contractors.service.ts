@@ -32,6 +32,7 @@ export class ContractorsService {
   }
 
   async list(user: AuthUser): Promise<ContractorsView> {
+    this.access.assertSection(user, 'contractors');
     const dirs = await this.viewable(user);
     const [orgs, sites, manage] = await Promise.all([
       this.prisma.organization.findMany({
@@ -80,6 +81,7 @@ export class ContractorsService {
 
   /** Добавить подрядчика в выбранные направления; где он уже есть с этой ролью — пропустить. */
   async create(user: AuthUser, body: ContractorCreateData, ip: string | null) {
+    this.access.assertSection(user, 'contractors');
     const dirs = (await this.viewable(user)).filter((d) => body.directions.includes(d.code));
     if (dirs.length !== new Set(body.directions).size) throw new ForbiddenException('Нет доступа к части направлений');
     for (const d of dirs) await this.access.assertManageDirection(user, d.id);

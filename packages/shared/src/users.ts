@@ -8,6 +8,7 @@ import {
   type MemberRole,
   type MemberScope,
 } from './auth';
+import { APP_SECTIONS, FEATURES, type AccessRestrictions } from './access';
 
 const optionalText = (max: number) =>
   z
@@ -18,13 +19,32 @@ const optionalText = (max: number) =>
     .nullable()
     .optional();
 
+/** Телефон: цифры, пробелы, + ( ) - и «доб. 123»; не меньше 5 цифр. Пусто — нет телефона. */
+const phoneSchema = optionalText(50).refine(
+  (v) => v == null || (/^[\d\s+().,-]+((доб|ext)\.?\s*\d+)?$/i.test(v) && (v.match(/\d/g)?.length ?? 0) >= 5),
+  'Номер телефона: цифры, пробелы и знаки + ( ) -, например +7 (495) 123-45-67',
+);
+
+const departmentId = z.number().int().positive().nullable().optional();
+const hiddenSections = z
+  .array(z.enum(APP_SECTIONS))
+  .max(APP_SECTIONS.length)
+  .transform((a) => [...new Set(a)]);
+const deniedFeatures = z
+  .array(z.enum(FEATURES))
+  .max(FEATURES.length)
+  .transform((a) => [...new Set(a)]);
+
 export const userCreateSchema = z
   .object({
     fullName: z.string().trim().min(2, 'Укажите ФИО').max(200),
     position: optionalText(200),
+    departmentId,
     email: z.union([z.literal(''), z.email('Неверный e-mail')]).nullable().optional(),
-    phone: optionalText(50),
+    phone: phoneSchema,
     globalRole: z.enum(GLOBAL_ROLES).default('USER'),
+    hiddenSections: hiddenSections.default([]),
+    deniedFeatures: deniedFeatures.default([]),
     canLogin: z.boolean().default(true),
     login: z
       .string()
@@ -42,15 +62,20 @@ export const userCreateSchema = z
 export type UserCreateInput = z.input<typeof userCreateSchema>;
 export type UserCreateData = z.output<typeof userCreateSchema>;
 
+/** Правка карточки сотрудника: передаются только изменяемые поля. */
 export const userUpdateSchema = z.object({
-  fullName: z.string().trim().min(2).max(200).optional(),
+  fullName: z.string().trim().min(2, 'Укажите ФИО').max(200).optional(),
   position: optionalText(200),
+  departmentId,
   email: z.union([z.literal(''), z.email('Неверный e-mail')]).nullable().optional(),
-  phone: optionalText(50),
+  phone: phoneSchema,
   globalRole: z.enum(GLOBAL_ROLES).optional(),
   isActive: z.boolean().optional(),
+  hiddenSections: hiddenSections.optional(),
+  deniedFeatures: deniedFeatures.optional(),
 });
 export type UserUpdateInput = z.input<typeof userUpdateSchema>;
+export type UserUpdateData = z.output<typeof userUpdateSchema>;
 
 export const resetPasswordSchema = z.object({ password: passwordSchema });
 
@@ -74,11 +99,12 @@ export const membershipSchema = z
 export type MembershipInput = z.input<typeof membershipSchema>;
 export type MembershipData = z.output<typeof membershipSchema>;
 
-export interface UserListItem {
+export interface UserListItem extends AccessRestrictions {
   id: number;
   login: string | null;
   fullName: string;
   position: string | null;
+  department: { id: number; name: string } | null;
   email: string | null;
   phone: string | null;
   globalRole: GlobalRole;
@@ -105,6 +131,7 @@ export const IMPORT_FIELDS = [
   { key: 'fullName', label: 'ФИО', aliases: ['фио', 'сотрудник', 'фамилия имя отчество', 'фамилия'] },
   { key: 'login', label: 'Логин', aliases: ['логин', 'login', 'учетная запись', 'учётная запись'] },
   { key: 'position', label: 'Должность', aliases: ['должность'] },
+  { key: 'department', label: 'Подразделение', aliases: ['подразделение', 'отдел', 'служба'] },
   { key: 'email', label: 'E-mail', aliases: ['e-mail', 'email', 'почта', 'электронная почта'] },
   { key: 'phone', label: 'Телефон', aliases: ['телефон', 'тел'] },
   { key: 'globalRole', label: 'Роль в системе', aliases: ['роль в системе', 'системная роль'] },

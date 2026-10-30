@@ -1,4 +1,5 @@
 export * from './auth';
+export * from './access';
 export * from './directions';
 export * from './users';
 export * from './kpi';

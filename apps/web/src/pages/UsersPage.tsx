@@ -1,58 +1,35 @@
 import { useState } from 'react';
-import {
-  ActionIcon,
-  Badge,
-  Button,
-  Group,
-  Menu,
-  Modal,
-  MultiSelect,
-  PasswordInput,
-  Select,
-  Stack,
-  Switch,
-  Table,
-  Text,
-  TextInput,
-  Title,
-} from '@mantine/core';
+import { ActionIcon, Anchor, Badge, Button, Group, Menu, Modal, PasswordInput, Select, Stack, Table, Text, TextInput, Title, Tooltip } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { IconDots, IconFileUpload, IconPlus, IconSearch } from '@tabler/icons-react';
-import {
-  GLOBAL_ROLE_LABELS,
-  GLOBAL_ROLES,
-  MEMBER_ROLE_LABELS,
-  MEMBER_ROLES,
-  MEMBER_SCOPE_LABELS,
-  MEMBER_SCOPES,
-  passwordSchema,
-  userCreateSchema,
-  type MemberRole,
-  type MemberScope,
-  type MembershipInput,
-  type UserCreateInput,
-  type UserListItem,
-} from '@mvs/shared';
-import { api, ApiError, directionsQuery, usersQuery } from '../api';
+import { IconBuildingCommunity, IconDots, IconEyeOff, IconFileUpload, IconPlus, IconSearch } from '@tabler/icons-react';
+import { GLOBAL_ROLE_LABELS, MEMBER_ROLE_LABELS, passwordSchema, type UserListItem } from '@mvs/shared';
+import { api, ApiError, departmentsQuery, meQuery, usersQuery } from '../api';
 import { UsersImport } from './UsersImport';
-import { zodValidate } from '../ui/zodValidate';
+import { CreateUserModal, UserCard, type UserCardTab } from './UserCard';
+import { DepartmentsModal } from './Departments';
 
-const roleOptions = GLOBAL_ROLES.map((r) => ({ value: r, label: GLOBAL_ROLE_LABELS[r] }));
+/** Отбор по подразделению: id, «без подразделения» или все. */
+const NO_DEPARTMENT = 'none';
 
 export function UsersPage() {
   const { data: users = [] } = useQuery(usersQuery);
+  const { data: departments = [] } = useQuery(departmentsQuery);
+  const { data: me } = useQuery(meQuery);
   const [q, setQ] = useState('');
+  const [dep, setDep] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [importing, setImporting] = useState(false);
-  const [rolesFor, setRolesFor] = useState<UserListItem | null>(null);
+  const [deps, setDeps] = useState(false);
+  const [card, setCard] = useState<{ id: number; tab: UserCardTab } | null>(null);
   const [pwdFor, setPwdFor] = useState<UserListItem | null>(null);
   const qc = useQueryClient();
 
   const toggleActive = useMutation({
     mutationFn: (u: UserListItem) => api(`/users/${u.id}`, { method: 'PATCH', body: { isActive: !u.isActive } }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['users'] }),
+    onError: (e) => notifications.show({ color: 'red', message: e instanceof ApiError ? e.message : 'Не удалось сохранить' }),
   });
   const unlock = useMutation({
     mutationFn: (u: UserListItem) => api(`/users/${u.id}/unlock`, { method: 'POST' }),
@@ -63,9 +40,18 @@ export function UsersPage() {
   });
 
   const ql = q.trim().toLowerCase();
+  const digits = ql.replace(/\D/g, '');
   const shown = users.filter(
-    (u) => !ql || u.fullName.toLowerCase().includes(ql) || u.login?.toLowerCase().includes(ql) || u.position?.toLowerCase().includes(ql),
+    (u) =>
+      (!dep || (dep === NO_DEPARTMENT ? !u.department : String(u.department?.id) === dep)) &&
+      (!ql ||
+        u.fullName.toLowerCase().includes(ql) ||
+        u.login?.toLowerCase().includes(ql) ||
+        u.position?.toLowerCase().includes(ql) ||
+        u.department?.name.toLowerCase().includes(ql) ||
+        (digits.length >= 3 && u.phone?.replace(/\D/g, '').includes(digits))),
   );
+  const open = (u: UserListItem, tab: UserCardTab = 'profile') => setCard({ id: u.id, tab });
 
   return (
     <Stack>
@@ -73,32 +59,55 @@ export function UsersPage() {
         <div>
           <Title order={2}>Пользователи и роли</Title>
           <Text c="dimmed" size="sm">
-            Учётные записи, кураторы и ответственные за ввод по направлениям. Все изменения пишутся в журнал.
+            Сотрудники, их данные, роли в направлениях и доступ к разделам. Все изменения пишутся в журнал.
           </Text>
         </div>
         <Group gap="xs">
+          <Button variant="default" leftSection={<IconBuildingCommunity size={16} />} onClick={() => setDeps(true)}>
+            Подразделения
+          </Button>
           <Button variant="default" leftSection={<IconFileUpload size={16} />} onClick={() => setImporting(true)}>
             Загрузить списком
           </Button>
           <Button leftSection={<IconPlus size={16} />} onClick={() => setCreating(true)}>
-            Добавить
+            Добавить сотрудника
           </Button>
         </Group>
       </Group>
 
-      <TextInput
-        aria-label="Поиск по ФИО, логину, должности" placeholder="Поиск по ФИО, логину, должности"
-        leftSection={<IconSearch size={16} />}
-        value={q}
-        onChange={(e) => setQ(e.currentTarget.value)}
-        maw={420}
-      />
+      <Group gap="sm" align="flex-end">
+        <TextInput
+          aria-label="Поиск по ФИО, логину, должности, телефону"
+          placeholder="ФИО, логин, должность, телефон"
+          leftSection={<IconSearch size={16} />}
+          value={q}
+          onChange={(e) => setQ(e.currentTarget.value)}
+          w={340}
+          maw="100%"
+        />
+        <Select
+          aria-label="Подразделение"
+          placeholder="Все подразделения"
+          clearable
+          searchable
+          w={280}
+          maw="100%"
+          value={dep}
+          onChange={setDep}
+          data={[{ value: NO_DEPARTMENT, label: 'Без подразделения' }, ...departments.map((d) => ({ value: String(d.id), label: d.isArchived ? `${d.name} (архив)` : d.name }))]}
+        />
+        <Text size="sm" c="dimmed">
+          {shown.length} из {users.length}
+        </Text>
+      </Group>
 
-      <Table.ScrollContainer minWidth={800}>
+      <Table.ScrollContainer minWidth={980}>
         <Table striped highlightOnHover verticalSpacing="xs">
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>ФИО</Table.Th>
+              <Table.Th>ФИО, должность</Table.Th>
+              <Table.Th>Подразделение</Table.Th>
+              <Table.Th>Телефон</Table.Th>
               <Table.Th>Логин</Table.Th>
               <Table.Th>Роль</Table.Th>
               <Table.Th>Направления</Table.Th>
@@ -107,225 +116,103 @@ export function UsersPage() {
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {shown.map((u) => (
-              <Table.Tr key={u.id} style={{ opacity: u.isActive ? 1 : 0.5 }}>
-                <Table.Td>
-                  <Text size="sm" fw={500}>
-                    {u.fullName}
-                  </Text>
-                  <Text size="xs" c="dimmed">
-                    {u.position}
-                  </Text>
-                </Table.Td>
-                <Table.Td>
-                  {u.canLogin ? u.login : <Text c="dimmed" size="sm">без входа</Text>}
-                  {u.lockedUntil && (
-                    <Badge ml={6} color="red" variant="light" size="sm">
-                      заблокирован до {new Date(u.lockedUntil).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
-                    </Badge>
-                  )}
-                </Table.Td>
-                <Table.Td>{GLOBAL_ROLE_LABELS[u.globalRole]}</Table.Td>
-                <Table.Td>
-                  <Group gap={4}>
-                    {u.memberships.map((m) => (
-                      <Badge key={m.directionId} variant={m.role === 'CURATOR' ? 'filled' : 'light'} size="sm">
-                        {m.directionName}: {MEMBER_ROLE_LABELS[m.role]}
-                        {m.role === 'EDITOR' && m.scope === 'SECTIONS' && ` · лотов: ${m.sectionIds.length}`}
-                        {m.role === 'EDITOR' && m.scope === 'SITES' && ' · свои объекты'}
+            {shown.map((u) => {
+              const limited = u.globalRole !== 'ADMIN' && u.hiddenSections.length + u.deniedFeatures.length;
+              return (
+                <Table.Tr key={u.id} style={{ opacity: u.isActive ? 1 : 0.5 }}>
+                  <Table.Td>
+                    <Anchor component="button" type="button" size="sm" fw={500} onClick={() => open(u)} ta="left">
+                      {u.fullName}
+                    </Anchor>
+                    <Text size="xs" c="dimmed">
+                      {u.position}
+                    </Text>
+                  </Table.Td>
+                  <Table.Td>{u.department?.name ?? <Text c="dimmed" size="sm">—</Text>}</Table.Td>
+                  <Table.Td style={{ whiteSpace: 'nowrap' }}>{u.phone ? <Anchor href={`tel:${u.phone.replace(/[^\d+]/g, '')}`} size="sm">{u.phone}</Anchor> : '—'}</Table.Td>
+                  <Table.Td>
+                    {u.canLogin ? u.login : <Text c="dimmed" size="sm">без входа</Text>}
+                    {u.lockedUntil && (
+                      <Badge ml={6} color="red" variant="light" size="sm">
+                        заблокирован до {new Date(u.lockedUntil).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
                       </Badge>
-                    ))}
-                  </Group>
-                </Table.Td>
-                <Table.Td>{u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString('ru-RU') : '—'}</Table.Td>
-                <Table.Td>
-                  <Menu position="bottom-end">
-                    <Menu.Target>
-                      <ActionIcon variant="subtle" aria-label="Действия">
-                        <IconDots size={16} />
-                      </ActionIcon>
-                    </Menu.Target>
-                    <Menu.Dropdown>
-                      <Menu.Item onClick={() => setRolesFor(u)}>Роли в направлениях</Menu.Item>
-                      <Menu.Item onClick={() => setPwdFor(u)}>{u.canLogin ? 'Сбросить пароль' : 'Дать доступ'}</Menu.Item>
-                      {u.lockedUntil && <Menu.Item onClick={() => unlock.mutate(u)}>Снять блокировку входа</Menu.Item>}
-                      <Menu.Item color={u.isActive ? 'red' : undefined} onClick={() => toggleActive.mutate(u)}>
-                        {u.isActive ? 'Заблокировать' : 'Разблокировать'}
-                      </Menu.Item>
-                    </Menu.Dropdown>
-                  </Menu>
-                </Table.Td>
-              </Table.Tr>
-            ))}
+                    )}
+                  </Table.Td>
+                  <Table.Td>
+                    <Group gap={6} wrap="nowrap">
+                      {GLOBAL_ROLE_LABELS[u.globalRole]}
+                      {!!limited && (
+                        <Tooltip label={`Ограничен доступ: скрыто разделов — ${u.hiddenSections.length}, отключено возможностей — ${u.deniedFeatures.length}`}>
+                          <Badge
+                            component="button"
+                            type="button"
+                            size="sm"
+                            variant="light"
+                            color="orange"
+                            leftSection={<IconEyeOff size={12} />}
+                            style={{ cursor: 'pointer' }}
+                            onClick={() => open(u, 'access')}
+                          >
+                            ограничен
+                          </Badge>
+                        </Tooltip>
+                      )}
+                    </Group>
+                  </Table.Td>
+                  <Table.Td>
+                    <Group gap={4}>
+                      {u.memberships.map((m) => (
+                        <Badge key={m.directionId} variant={m.role === 'CURATOR' ? 'filled' : 'light'} size="sm">
+                          {m.directionName}: {MEMBER_ROLE_LABELS[m.role]}
+                          {m.role === 'EDITOR' && m.scope === 'SECTIONS' && ` · лотов: ${m.sectionIds.length}`}
+                          {m.role === 'EDITOR' && m.scope === 'SITES' && ' · свои объекты'}
+                        </Badge>
+                      ))}
+                    </Group>
+                  </Table.Td>
+                  <Table.Td>{u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString('ru-RU') : '—'}</Table.Td>
+                  <Table.Td>
+                    <Menu position="bottom-end">
+                      <Menu.Target>
+                        <ActionIcon variant="subtle" aria-label={`Действия: ${u.fullName}`}>
+                          <IconDots size={16} />
+                        </ActionIcon>
+                      </Menu.Target>
+                      <Menu.Dropdown>
+                        <Menu.Item onClick={() => open(u)}>Личные данные</Menu.Item>
+                        <Menu.Item onClick={() => open(u, 'roles')}>Роли в направлениях</Menu.Item>
+                        <Menu.Item onClick={() => open(u, 'access')}>Разделы и возможности</Menu.Item>
+                        <Menu.Divider />
+                        <Menu.Item onClick={() => setPwdFor(u)}>{u.canLogin ? 'Сбросить пароль' : 'Дать доступ'}</Menu.Item>
+                        {u.lockedUntil && <Menu.Item onClick={() => unlock.mutate(u)}>Снять блокировку входа</Menu.Item>}
+                        {u.id !== me?.id && (
+                          <Menu.Item color={u.isActive ? 'red' : undefined} onClick={() => toggleActive.mutate(u)}>
+                            {u.isActive ? 'Заблокировать' : 'Разблокировать'}
+                          </Menu.Item>
+                        )}
+                      </Menu.Dropdown>
+                    </Menu>
+                  </Table.Td>
+                </Table.Tr>
+              );
+            })}
           </Table.Tbody>
         </Table>
       </Table.ScrollContainer>
 
-      <CreateUserModal opened={creating} onClose={() => setCreating(false)} />
-      {rolesFor && <RolesModal user={rolesFor} onClose={() => setRolesFor(null)} />}
+      <CreateUserModal
+        opened={creating}
+        onClose={() => setCreating(false)}
+        onCreated={(u) => {
+          setCreating(false);
+          setCard({ id: u.id, tab: 'roles' });
+        }}
+      />
+      {card && <UserCard key={card.id} userId={card.id} tab={card.tab} onClose={() => setCard(null)} />}
       {pwdFor && <PasswordModal user={pwdFor} onClose={() => setPwdFor(null)} />}
       <UsersImport opened={importing} onClose={() => setImporting(false)} />
+      <DepartmentsModal opened={deps} onClose={() => setDeps(false)} />
     </Stack>
-  );
-}
-
-function CreateUserModal({ opened, onClose }: { opened: boolean; onClose: () => void }) {
-  const qc = useQueryClient();
-  const form = useForm<UserCreateInput>({
-    initialValues: { fullName: '', position: '', email: '', phone: '', globalRole: 'USER', canLogin: true, login: '', password: '' },
-    validate: zodValidate(userCreateSchema),
-  });
-
-  async function submit(v: UserCreateInput) {
-    try {
-      await api('/users', {
-        method: 'POST',
-        body: { ...v, login: v.canLogin ? v.login : undefined, password: v.canLogin ? v.password : undefined },
-      });
-      await qc.invalidateQueries({ queryKey: ['users'] });
-      notifications.show({ color: 'green', message: `Пользователь «${v.fullName}» создан` });
-      form.reset();
-      onClose();
-    } catch (e) {
-      if (e instanceof ApiError) form.setErrors(e.fields);
-    }
-  }
-
-  return (
-    <Modal opened={opened} onClose={onClose} title="Новый пользователь" size="md">
-      <form onSubmit={form.onSubmit(submit)}>
-        <Stack>
-          <TextInput label="ФИО" required {...form.getInputProps('fullName')} />
-          <TextInput label="Должность" {...form.getInputProps('position')} />
-          <Group grow>
-            <TextInput label="E-mail" {...form.getInputProps('email')} />
-            <TextInput label="Телефон" {...form.getInputProps('phone')} />
-          </Group>
-          <Select label="Роль в системе" data={roleOptions} allowDeselect={false} {...form.getInputProps('globalRole')} />
-          <Switch
-            label="Может входить в систему"
-            description="Без входа — только как ответственный в данных (прораб, ГИП подрядчика)"
-            {...form.getInputProps('canLogin', { type: 'checkbox' })}
-          />
-          {form.values.canLogin && (
-            <Group grow align="flex-start">
-              <TextInput label="Логин" {...form.getInputProps('login')} />
-              <PasswordInput label="Временный пароль" description="Сменит при первом входе" {...form.getInputProps('password')} />
-            </Group>
-          )}
-          <Group justify="flex-end">
-            <Button variant="default" onClick={onClose}>
-              Отмена
-            </Button>
-            <Button type="submit" loading={form.submitting}>
-              Создать
-            </Button>
-          </Group>
-        </Stack>
-      </form>
-    </Modal>
-  );
-}
-
-interface RoleRow {
-  role: MemberRole | '';
-  scope: MemberScope;
-  sectionIds: string[];
-}
-
-/** Роли пользователя по направлениям. Ответственному за ввод можно ограничить лоты/разделы или объекты. */
-function RolesModal({ user, onClose }: { user: UserListItem; onClose: () => void }) {
-  const { data: directions = [] } = useQuery(directionsQuery);
-  const qc = useQueryClient();
-  const [error, setError] = useState<string | null>(null);
-  const [rows, setRows] = useState<Record<number, RoleRow>>(() =>
-    Object.fromEntries(
-      user.memberships.map((m) => [m.directionId, { role: m.role, scope: m.scope, sectionIds: m.sectionIds.map(String) }]),
-    ),
-  );
-  const save = useMutation({
-    mutationFn: () => {
-      const body: MembershipInput[] = Object.entries(rows)
-        .filter(([, r]) => r.role)
-        .map(([id, r]) => ({
-          directionId: Number(id),
-          role: r.role as MemberRole,
-          scope: r.scope,
-          sectionIds: r.sectionIds.map(Number),
-        }));
-      return api(`/users/${user.id}/memberships`, { method: 'PUT', body });
-    },
-    onSuccess: async () => {
-      await Promise.all([qc.invalidateQueries({ queryKey: ['users'] }), qc.invalidateQueries({ queryKey: ['directions'] })]);
-      notifications.show({ color: 'green', message: 'Роли сохранены' });
-      onClose();
-    },
-    onError: (e) => setError(e instanceof ApiError ? Object.values(e.fields)[0] ?? e.message : 'Не удалось сохранить'),
-  });
-
-  return (
-    <Modal opened onClose={onClose} title={`Роли: ${user.fullName}`} size="xl">
-      <Stack>
-        {directions.map((d) => {
-          const r = rows[d.id] ?? { role: '', scope: 'ALL', sectionIds: [] };
-          const set = (patch: Partial<RoleRow>) => setRows({ ...rows, [d.id]: { ...r, ...patch } });
-          const scopes = MEMBER_SCOPES.filter((s) => s !== 'SECTIONS' || d.sections.length);
-          return (
-            <Stack key={d.id} gap={6}>
-              <Group wrap="nowrap" align="flex-end">
-                <Text size="sm" fw={500} w={140}>
-                  {d.shortName}
-                </Text>
-                <Select
-                  w={230}
-                  aria-label="Нет доступа" placeholder="Нет доступа"
-                  clearable
-                  data={MEMBER_ROLES.map((m) => ({ value: m, label: MEMBER_ROLE_LABELS[m] }))}
-                  value={r.role || null}
-                  onChange={(v) => set({ role: (v as MemberRole) ?? '' })}
-                />
-                {r.role === 'EDITOR' && (
-                  <Select
-                    w={260}
-                    allowDeselect={false}
-                    data={scopes.map((s) => ({ value: s, label: MEMBER_SCOPE_LABELS[s] }))}
-                    value={r.scope}
-                    onChange={(v) => set({ scope: (v as MemberScope) ?? 'ALL' })}
-                  />
-                )}
-              </Group>
-              {r.role === 'EDITOR' && r.scope === 'SECTIONS' && (
-                <MultiSelect
-                  ml={156}
-                  aria-label="Выберите лоты / разделы" placeholder="Выберите лоты / разделы"
-                  data={d.sections.map((s) => ({ value: String(s.id), label: s.name }))}
-                  value={r.sectionIds}
-                  onChange={(v) => set({ sectionIds: v })}
-                />
-              )}
-              {r.role === 'EDITOR' && r.scope === 'SITES' && (
-                <Text size="xs" c="dimmed" ml={156}>
-                  Объекты назначаются в карточке объекта (поле «Ответственный за ввод»).
-                </Text>
-              )}
-            </Stack>
-          );
-        })}
-        {error && (
-          <Text c="red" size="sm">
-            {error}
-          </Text>
-        )}
-        <Group justify="flex-end">
-          <Button variant="default" onClick={onClose}>
-            Отмена
-          </Button>
-          <Button loading={save.isPending} onClick={() => save.mutate()}>
-            Сохранить
-          </Button>
-        </Group>
-      </Stack>
-    </Modal>
   );
 }
 

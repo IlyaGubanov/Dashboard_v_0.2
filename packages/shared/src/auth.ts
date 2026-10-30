@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { AccessRestrictions } from './access';
 
 export const GLOBAL_ROLES = ['ADMIN', 'MANAGEMENT', 'USER'] as const;
 export type GlobalRole = (typeof GLOBAL_ROLES)[number];
@@ -55,8 +56,11 @@ export interface DirectionAccess {
   sectionIds: number[];
 }
 
-/** Текущий пользователь, как его видит клиент (GET /api/auth/me). */
-export interface Me {
+/**
+ * Текущий пользователь, как его видит клиент (GET /api/auth/me).
+ * hiddenSections / deniedFeatures — что скрыто у сотрудника (у администратора всегда пусто).
+ */
+export interface Me extends AccessRestrictions {
   id: number;
   login: string;
   fullName: string;

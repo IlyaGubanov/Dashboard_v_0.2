@@ -8,7 +8,8 @@
  *     несколько строк одного человека — его роли в нескольких направлениях;
  *   - логин не указан, а вход нужен — составляется из ФИО (petrova.an), при совпадении добавляется цифра;
  *   - новым учётным записям выдаётся временный пароль, при первом входе система попросит сменить его;
- *   - у существующих пароль и ФИО не меняются, должность и контакты — если указаны; роли в указанных направлениях
+ *   - подразделение ищется в справочнике по названию, нового — добавляется в справочник;
+ *   - у существующих пароль и ФИО не меняются, должность, подразделение и контакты — если указаны; роли в указанных направлениях
  *     заменяются, в остальных — сохраняются.
  */
 import { Injectable } from '@nestjs/common';
@@ -83,6 +84,7 @@ interface Person {
   login: string | null;
   loginGiven: boolean;
   position: string | null;
+  department: string | null;
   email: string | null;
   phone: string | null;
   globalRole: GlobalRole | undefined;
@@ -107,6 +109,8 @@ export class UsersImportService {
       return dirs.find((d) => low(d.code) === s || low(d.shortName) === s || low(d.name) === s);
     };
     const users = await this.prisma.user.findMany({ select: { id: true, login: true, fullName: true, canLogin: true } });
+    const departments = new Set((await this.prisma.department.findMany({ select: { name: true } })).map((d) => low(d.name)));
+    const newDepartments = new Set<string>();
     const byLogin = new Map(users.filter((u) => u.login).map((u) => [u.login!.toLowerCase(), u]));
     const byName = new Map<string, typeof users>();
     for (const u of users) byName.set(low(u.fullName), [...(byName.get(low(u.fullName)) ?? []), u]);
@@ -123,7 +127,7 @@ export class UsersImportService {
       if (!p) {
         p = {
           key, lines: [], fullName, login: loginRaw || null, loginGiven: !!loginRaw,
-          position: norm(r.position) || null, email: norm(r.email) || null, phone: norm(r.phone) || null,
+          position: norm(r.position) || null, department: norm(r.department).slice(0, 200) || null, email: norm(r.email) || null, phone: norm(r.phone) || null,
           globalRole: undefined, canLogin: can ?? true, memberships: [], errors: [], notes: [], existingId: null,
         };
         people.set(key, p);
@@ -133,6 +137,10 @@ export class UsersImportService {
       if (fullName.length < 2) err('не указано ФИО');
       if (can === null) err(`«Вход»: ожидается «да» или «нет», а не «${r.canLogin}»`);
       if (loginRaw && !/^[a-z0-9._-]{3,64}$/.test(loginRaw)) err(`логин «${loginRaw}»: латиница, цифры, точка, дефис, от 3 символов`);
+      if (p.department && !departments.has(low(p.department)) && !newDepartments.has(low(p.department))) {
+        newDepartments.add(low(p.department));
+        p.notes.push(`подразделение «${p.department}» будет добавлено в справочник`);
+      }
       if (p.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(p.email)) err(`e-mail «${p.email}» указан неверно`);
       const g = parseGlobal(r.globalRole ?? '');
       if (g === null) err(`роль в системе «${r.globalRole}»: ${Object.values(GLOBAL_ROLE_LABELS).join(' / ')}`);
@@ -226,6 +234,10 @@ export class UsersImportService {
 
   private async apply(actor: AuthUser, p: Person, password: string | undefined, ip: string | null) {
     await this.prisma.$transaction(async (tx) => {
+      // подразделение: по названию (без учёта регистра), нового — в справочник; архивное возвращается из архива
+      const departmentId = p.department
+        ? (await tx.department.upsert({ where: { name: p.department }, create: { name: p.department }, update: { isArchived: false } })).id
+        : undefined;
       let id = p.existingId;
       if (id) {
         await tx.user.update({
@@ -233,6 +245,7 @@ export class UsersImportService {
           // ФИО существующего не меняем (переименование — в карточке пользователя), остальное — если указано
           data: {
             ...(p.position ? { position: p.position } : {}),
+            ...(departmentId ? { departmentId } : {}),
             ...(p.email ? { email: p.email } : {}),
             ...(p.phone ? { phone: p.phone } : {}),
             ...(p.globalRole ? { globalRole: p.globalRole } : {}),
@@ -243,6 +256,7 @@ export class UsersImportService {
           data: {
             fullName: p.fullName,
             position: p.position,
+            departmentId: departmentId ?? null,
             email: p.email,
             phone: p.phone,
             globalRole: p.globalRole ?? 'USER',

@@ -9,6 +9,7 @@ import { ForecastLabel, forecastSort } from '../../ui/ForecastLabel';
 import { int, money, pct } from '../../ui/format';
 import { Lag } from '../../ui/Lag';
 import { useFinanceHidden } from '../../ui/finance';
+import { useAccess } from '../../ui/access';
 
 type SortKey = 'num' | 'name' | 'contractor' | 'fact' | 'plan' | 'lag' | 'portfolio' | 'closed' | 'paid' | 'people' | 'remarks' | 'remarksOpen' | 'forecast';
 type RiskFilter = 'all' | 'lag' | 'crit' | 'ok' | 'done';
@@ -67,6 +68,7 @@ export function SitesTab({
   const [risk, setRisk] = useState<RiskFilter>('all');
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: 'lag', dir: 1 });
   const financeHidden = useFinanceHidden();
+  const canExport = useAccess().has('export');
 
   const rows = useMemo(() => data ?? [], [data]);
   const has = useMemo(
@@ -159,9 +161,11 @@ export function SitesTab({
         <Text size="sm" c="dimmed" ml="auto">
           {shown.length} из {rows.length}
         </Text>
-        <Button variant="default" size="sm" leftSection={<IconDownload size={16} />} onClick={() => exportCsv(code, shown, has)}>
-          В Excel
-        </Button>
+        {canExport && (
+          <Button variant="default" size="sm" leftSection={<IconDownload size={16} />} onClick={() => exportCsv(code, shown, has)}>
+            В Excel
+          </Button>
+        )}
       </Group>
       <Table.ScrollContainer minWidth={900}>
         <Table striped highlightOnHover verticalSpacing="xs" styles={{ td: { whiteSpace: 'nowrap' } }}>

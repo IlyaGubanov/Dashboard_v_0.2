@@ -13,6 +13,7 @@ import { TrackerValue, type TrackerRawValue, type TrackerStage } from '../../ui/
 import { date, int, money, pct } from '../../ui/format';
 import { Lag } from '../../ui/Lag';
 import { useFinanceHidden } from '../../ui/finance';
+import { useAccess } from '../../ui/access';
 import { SiteFiles, SiteRemarks } from './SiteExtras';
 import { ForecastLabel } from '../../ui/ForecastLabel';
 
@@ -82,6 +83,7 @@ function Card({ data: c, code, onOpenRemark }: { data: SiteCard; code: string; o
   const r = c.row;
   const financeHidden = useFinanceHidden();
   const hasHistory = c.history.filter((h) => h.fact != null).length > 1;
+  const showRemarks = useAccess().canSee('remarks');
   return (
     <Stack>
       <Box p="md" style={{ background: 'var(--surface-muted)', borderRadius: 8 }}>
@@ -128,13 +130,15 @@ function Card({ data: c, code, onOpenRemark }: { data: SiteCard; code: string; o
             </Tabs.Tab>
           ))}
           {!!c.contracts.length && <Tabs.Tab value="contracts">Договоры · {c.contracts.length}</Tabs.Tab>}
-          <Tabs.Tab value="remarks">Замечания{r.remarksOpen ? ` · ${r.remarksOpen}` : ''}</Tabs.Tab>
+          {showRemarks && <Tabs.Tab value="remarks">Замечания{r.remarksOpen ? ` · ${r.remarksOpen}` : ''}</Tabs.Tab>}
           <Tabs.Tab value="files">Файлы и фото</Tabs.Tab>
         </Tabs.List>
 
-        <Tabs.Panel value="remarks" pt="md">
-          <SiteRemarks code={code} siteId={r.id} onOpen={onOpenRemark} />
-        </Tabs.Panel>
+        {showRemarks && (
+          <Tabs.Panel value="remarks" pt="md">
+            <SiteRemarks code={code} siteId={r.id} onOpen={onOpenRemark} />
+          </Tabs.Panel>
+        )}
         <Tabs.Panel value="files" pt="md">
           <SiteFiles siteId={r.id} />
         </Tabs.Panel>

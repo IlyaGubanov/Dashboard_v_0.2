@@ -419,6 +419,8 @@ export function toRow(s: SiteCalc): SiteKpiRow {
     overdueItems: s.overdueItems,
     curators: s.site.curators,
     entry: s.site.entry,
+    contractor: s.site.contractor ?? null,
+    subcontractors: s.site.subcontractors ?? [],
     lat: s.site.lat,
     lon: s.site.lon,
     isExample: s.site.isExample,

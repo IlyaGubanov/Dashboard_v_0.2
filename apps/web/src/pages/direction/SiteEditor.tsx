@@ -10,6 +10,7 @@ import {
   Modal,
   MultiSelect,
   NumberInput,
+  Popover,
   Select,
   SimpleGrid,
   Skeleton,
@@ -24,7 +25,7 @@ import {
 import { notifications } from '@mantine/notifications';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { IconArchive, IconArrowBackUp, IconPencil, IconPlus, IconTrash } from '@tabler/icons-react';
-import { ASSIGNMENT_ROLE_LABELS, ASSIGNMENT_ROLES, type ManageRefs, type SiteEdit, type SiteInput, type WorkItemInput } from '@mvs/shared';
+import { ASSIGNMENT_ROLE_LABELS, ASSIGNMENT_ROLES, ORGANIZATION_KIND_LABELS, type ManageRefs, type SiteEdit, type SiteInput, type WorkItemInput } from '@mvs/shared';
 import { api, ApiError, directionQueries } from '../../api';
 import { date, money } from '../../ui/format';
 
@@ -66,6 +67,51 @@ export function SiteEditor({ code, siteId, refs, onClose, onCreated }: { code: s
         </Tabs>
       )}
     </Drawer>
+  );
+}
+
+/** Новый подрядчик прямо из формы: попадает в справочник организаций направления и сразу выбирается. */
+function QuickContractor({ code, kind, onCreated }: { code: string; kind: 'CONTRACTOR' | 'SUBCONTRACTOR'; onCreated: (id: number) => void }) {
+  const qc = useQueryClient();
+  const [opened, setOpened] = useState(false);
+  const [v, setV] = useState({ name: '', inn: '' });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
+  const save = async () => {
+    setBusy(true);
+    try {
+      const r = await api<{ id: number }>(`/directions/${code}/manage/organizations`, { method: 'POST', body: { name: v.name, kind, inn: v.inn } });
+      await Promise.all([qc.invalidateQueries({ queryKey: ['dir', code, 'manage'] }), qc.invalidateQueries({ queryKey: ['contractors'] })]);
+      onCreated(r.id);
+      notifications.show({ color: 'green', message: `${ORGANIZATION_KIND_LABELS[kind]} «${v.name.trim()}» добавлен` });
+      setOpened(false);
+      setV({ name: '', inn: '' });
+    } catch (e) {
+      if (e instanceof ApiError) setErrors(e.fields);
+      else throw e;
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Popover opened={opened} onChange={setOpened} width={300} position="bottom-end" withArrow trapFocus>
+      <Popover.Target>
+        <Tooltip label={`Новый ${ORGANIZATION_KIND_LABELS[kind].toLowerCase()}`}>
+          <ActionIcon variant="default" size={36} aria-label={`Добавить: ${ORGANIZATION_KIND_LABELS[kind].toLowerCase()}`} onClick={() => (setErrors({}), setOpened((o) => !o))}>
+            <IconPlus size={16} />
+          </ActionIcon>
+        </Tooltip>
+      </Popover.Target>
+      <Popover.Dropdown>
+        <Stack gap="xs">
+          <TextInput label="Название" required data-autofocus error={errors.name} value={v.name} onChange={(e) => setV({ ...v, name: e.currentTarget.value })} />
+          <TextInput label="ИНН" error={errors.inn} value={v.inn} onChange={(e) => setV({ ...v, inn: e.currentTarget.value })} />
+          <Button size="xs" loading={busy} onClick={save}>
+            Добавить и выбрать
+          </Button>
+        </Stack>
+      </Popover.Dropdown>
+    </Popover>
   );
 }
 
@@ -157,7 +203,10 @@ function Passport({ code, site, refs, onCreated }: { code: string; site?: SiteEd
           <TextInput type="date" label="Начало работ" value={v.planStart ?? ''} error={errors.planStart} onChange={(e) => set({ planStart: e.currentTarget.value })} />
           <TextInput type="date" label="Окончание" value={v.planEnd ?? ''} error={errors.planEnd} onChange={(e) => set({ planEnd: e.currentTarget.value })} />
         </Group>
-        <Select label="Подрядчик" clearable searchable data={orgs(['CONTRACTOR', 'SUBCONTRACTOR'])} value={v.contractorId ? String(v.contractorId) : null} onChange={(x) => set({ contractorId: x ? Number(x) : null })} />
+        <Group gap={4} align="flex-end" wrap="nowrap">
+          <Select label="Подрядчик" clearable searchable style={{ flex: 1 }} data={orgs(['CONTRACTOR', 'SUBCONTRACTOR'])} value={v.contractorId ? String(v.contractorId) : null} error={errors.contractorId} onChange={(x) => set({ contractorId: x ? Number(x) : null })} />
+          <QuickContractor code={code} kind="CONTRACTOR" onCreated={(id) => set({ contractorId: id })} />
+        </Group>
         <Select label="Проектировщик" clearable searchable data={orgs(['DESIGNER'])} value={v.designerId ? String(v.designerId) : null} onChange={(x) => set({ designerId: x ? Number(x) : null })} />
         <NumberInput label="Лимит / бюджет, ₽" min={0} thousandSeparator=" " decimalSeparator="," value={v.limitAmount ?? ''} onChange={(x) => set({ limitAmount: num(x) })} />
         <Group grow>
@@ -352,14 +401,19 @@ function ItemModal({ code, siteId, item, refs, onClose, onSaved }: { code: strin
         </SimpleGrid>
         <SimpleGrid cols={{ base: 1, sm: 2 }}>
           <Select label="Ответственный" clearable searchable data={refs.users.map((u) => ({ value: String(u.id), label: u.fullName }))} value={v.responsibleId ? String(v.responsibleId) : null} onChange={(x) => set({ responsibleId: x ? Number(x) : null })} />
-          <Select
-            label="Исполнитель"
-            clearable
-            searchable
-            data={refs.organizations.filter((o) => o.kind === 'CONTRACTOR' || o.kind === 'SUBCONTRACTOR').map((o) => ({ value: String(o.id), label: o.name }))}
-            value={v.contractorId ? String(v.contractorId) : null}
-            onChange={(x) => set({ contractorId: x ? Number(x) : null })}
-          />
+          <Group gap={4} align="flex-end" wrap="nowrap">
+            <Select
+              label="Исполнитель"
+              description="если работу ведёт не подрядчик объекта"
+              clearable
+              searchable
+              style={{ flex: 1 }}
+              data={refs.organizations.filter((o) => o.kind === 'CONTRACTOR' || o.kind === 'SUBCONTRACTOR').map((o) => ({ value: String(o.id), label: o.name }))}
+              value={v.contractorId ? String(v.contractorId) : null}
+              onChange={(x) => set({ contractorId: x ? Number(x) : null })}
+            />
+            <QuickContractor code={code} kind="SUBCONTRACTOR" onCreated={(id) => set({ contractorId: id })} />
+          </Group>
         </SimpleGrid>
         <Textarea label="Примечание" autosize minRows={2} value={v.note ?? ''} onChange={(e) => set({ note: e.currentTarget.value })} />
         <Group justify="flex-end">

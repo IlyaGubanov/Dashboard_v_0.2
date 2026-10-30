@@ -7,3 +7,4 @@ export * from './manage';
 export * from './admin';
 export * from './remarks';
 export * from './tasks';
+export * from './contractors';

@@ -15,6 +15,7 @@ import { AdminModule } from './admin/admin.module';
 import { RemarksModule } from './remarks/remarks.module';
 import { AttachmentsModule } from './attachments/attachments.module';
 import { TasksModule } from './tasks/tasks.module';
+import { ContractorsModule } from './contractors/contractors.module';
 import { HealthController } from './health.controller';
 
 @Module({
@@ -33,6 +34,7 @@ import { HealthController } from './health.controller';
     RemarksModule,
     AttachmentsModule,
     TasksModule,
+    ContractorsModule,
   ],
   controllers: [HealthController],
   providers: [

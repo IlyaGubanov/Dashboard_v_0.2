@@ -31,6 +31,8 @@ export interface KItem {
   planEnd: number | null;
   /** вес вида работ */
   weight: number | null;
+  /** подрядчик позиции (субподрядчик), если отличается от подрядчика объекта */
+  contractorId?: number | null;
   isExample: boolean;
   entries: KEntry[];
 }
@@ -65,6 +67,10 @@ export interface KSite {
   reports: KReport[];
   curators: string[];
   entry: string[];
+  /** подрядчик объекта */
+  contractor?: { id: number; name: string } | null;
+  /** подрядчики позиций, кроме подрядчика объекта */
+  subcontractors?: { id: number; name: string }[];
   lat: number | null;
   lon: number | null;
   isExample: boolean;

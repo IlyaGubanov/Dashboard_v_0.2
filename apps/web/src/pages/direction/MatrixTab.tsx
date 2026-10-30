@@ -5,7 +5,8 @@ import type { WorkGrid } from '@mvs/shared';
 import { directionQueries } from '../../api';
 import { RiskBadge } from '../../ui/RiskBadge';
 import { SEQ_STEPS, seq } from '../../ui/seq';
-import { int, pct, pp } from '../../ui/format';
+import { int, pct } from '../../ui/format';
+import { Lag } from '../../ui/Lag';
 
 type Site = WorkGrid['sites'][number];
 type Item = Site['items'][number];
@@ -116,7 +117,11 @@ export function MatrixTab({ code, date, onOpenSite }: { code: string; date?: str
                       <b>{t.name}</b>
                       {c.items.length > 1 && <div>позиций: {c.items.length}</div>}
                       <div>Факт: {pct(c.fact)}</div>
-                      {c.plan != null && <div>План на дату: {pct(c.plan)} ({pp(c.fact - c.plan)})</div>}
+                      {c.plan != null && (
+                        <div>
+                          План на дату: {pct(c.plan)} <Lag v={c.fact - c.plan} size="xs" />
+                        </div>
+                      )}
                       {c.items.map((i) =>
                         i.planQty != null ? (
                           <div key={i.id}>

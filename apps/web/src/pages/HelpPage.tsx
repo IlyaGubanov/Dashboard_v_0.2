@@ -167,7 +167,7 @@ export function HelpPage() {
   // своя роль — первой и раскрытой
   const order = [...SECTIONS].sort((a, b) => Number(mine.includes(b.key)) - Number(mine.includes(a.key)));
   return (
-    <Stack maw={900}>
+    <Stack className="reading-page" maw={900}>
       <div>
         <Title order={2}>Справка</Title>
         <Text c="dimmed" size="sm">

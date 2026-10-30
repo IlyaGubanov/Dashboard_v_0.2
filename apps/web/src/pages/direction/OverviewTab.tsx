@@ -146,7 +146,7 @@ function KpiHeader({ k }: { k: DirectionKpi }) {
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div>
+    <div className="direction-metric">
       <Text fw={700} fz="lg" style={{ whiteSpace: 'nowrap' }}>
         {value}
       </Text>

@@ -69,6 +69,7 @@ export function SettingsTab({ code }: { code: string }) {
         </Tabs.List>
 
         <Tabs.Panel value="works" pt="md">
+          <Table.ScrollContainer minWidth={560}>
           <Table striped highlightOnHover>
             <Table.Thead>
               <Table.Tr>
@@ -89,6 +90,7 @@ export function SettingsTab({ code }: { code: string }) {
               ))}
             </Table.Tbody>
           </Table>
+          </Table.ScrollContainer>
         </Tabs.Panel>
         <Tabs.Panel value="sections" pt="md">
           {d.sections.map((s) => (

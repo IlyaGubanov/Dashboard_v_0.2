@@ -5,14 +5,7 @@
  *              (светлая и тёмная темы — отдельные ступени, не инверсия).
  */
 :root {
-  --status-good: #0ca30c;
-  --status-warning: #fab219;
-  --status-critical: #d03b3b;
-  --status-none: #9aa4b2;
 
-  --series-1: #2a78d6;
-  --series-2: #eb6834;
-  --series-3: #1baf7a;
 
   /* последовательная шкала (величина): одна синяя гамма, светлое — мало, тёмное — много */
   --seq-0: #cde2fb;
@@ -33,17 +26,10 @@
   /* изменённое, но ещё не сохранённое поле */
   --dirty: #fff4cc;
 
-  --track: #eceef2;
-  --plan-mark: #3b3b3b;
-  --surface-muted: #f5f7fa;
 }
 
 [data-mantine-color-scheme='dark'] {
-  --status-none: #6b7480;
 
-  --series-1: #3987e5;
-  --series-2: #d95926;
-  --series-3: #199e70;
 
   /* в тёмной теме величина растёт к светлому: «много» должно сильнее выделяться на тёмном фоне */
   --seq-0: #1e2a3a;
@@ -63,9 +49,6 @@
 
   --dirty: #3d3519;
 
-  --track: #34373d;
-  --plan-mark: #e8e8e8;
-  --surface-muted: #1f2329;
 }
 
 body {
@@ -91,3 +74,134 @@ body {
 .row-link:focus-visible {
   background: var(--surface-muted);
 }
+/* Корпоративная оболочка. Цвета бренда: брендбук, стр. 11–17.
+   Оттенки текста и статусов адаптированы для контраста, бизнес-пороги неизменны. */
+:root {
+  --brand-royal: #002f6c;
+  --brand-sky: #9bcbeb;
+  --canvas: #f1f4f8;
+  --panel: #ffffff;
+  --surface-muted: #edf2f7;
+  --ink: #192c43;
+  --muted: #53647a;
+  --line: #d5dee8;
+  --selected: #edf6fd;
+  --status-good: #44883e;
+  --status-warning: #ae5600;
+  --status-critical: #c8102e;
+  --status-none: #68788d;
+  --series-1: #002f6c;
+  --series-2: #b65a00;
+  --series-3: #00837e;
+  --track: #e5ebf2;
+  --plan-mark: #53647a;
+  --mantine-color-body: var(--canvas);
+  --mantine-color-text: var(--ink);
+  --mantine-color-dimmed: var(--muted);
+  --mantine-color-default-border: var(--line);
+}
+[data-mantine-color-scheme='dark'] {
+  --canvas: #101b2b;
+  --panel: #192639;
+  --surface-muted: #233247;
+  --ink: #e5edf6;
+  --muted: #aebed1;
+  --line: #3a4b62;
+  --selected: #253e58;
+  --status-good: #91ca88;
+  --status-warning: #ffb366;
+  --status-critical: #ff8498;
+  --status-none: #a2b2c6;
+  --series-1: #9bcbeb;
+  --series-2: #ffb366;
+  --series-3: #73ccc7;
+  --track: #304158;
+  --plan-mark: #c2cedd;
+}
+html { scroll-padding-top: 88px; }
+body { background: var(--canvas); color: var(--ink); -webkit-font-smoothing: antialiased; }
+button, a, input, select, textarea { touch-action: manipulation; }
+:focus-visible { outline: 2px solid var(--series-1); outline-offset: 3px; }
+.mantine-AppShell-header { background: var(--panel); border-bottom-color: var(--line); }
+.mantine-AppShell-navbar { background: var(--panel); border-right-color: var(--line); }
+.mantine-AppShell-main { min-width: 0; }
+.workspace { min-width: 0; margin-inline: auto; }
+.workspace > .mantine-Stack-root > .mantine-Group-root:first-child { padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.brand img { flex-shrink: 0; object-fit: contain; }
+.brand-copy { min-width: 0; }
+.brand-name { font-weight: 700; font-size: 16px; color: var(--ink); line-height: 1.4; }
+.brand-caption { color: var(--muted); font-size: 11px; line-height: 1.5; }
+.skip-link { position: fixed; top: -80px; left: 16px; z-index: 2000; padding: 12px; background: var(--panel); color: var(--ink); }
+.skip-link:focus { top: 8px; }
+.mantine-NavLink-root { border-radius: 5px; margin-bottom: 4px; padding: 10px 12px; color: var(--ink); }
+.mantine-NavLink-root[data-active] { background: var(--selected); color: var(--series-1); box-shadow: inset 0 0 0 1px var(--line); }
+.mantine-NavLink-label { font-size: 13px; font-weight: 600; }
+.mantine-NavLink-description { color: var(--muted); font-size: 11px; }
+.mantine-Card-root, .mantine-Paper-root { background: var(--panel); }
+.mantine-Card-root { border-color: var(--line); }
+.mantine-Tabs-list { gap: 3px; border-bottom-color: var(--line); }
+.mantine-Tabs-tab { font-size: 13px; padding: 10px 12px; border-radius: 4px 4px 0 0; }
+.mantine-Tabs-tab[data-active] { background: var(--selected); font-weight: 650; color: var(--series-1); }
+.mantine-Table-table { font-size: 13px; }
+.mantine-Table-th { background: var(--surface-muted); color: var(--muted); font-size: 12px; font-weight: 650; line-height: 1.4; }
+.mantine-Table-td { border-color: var(--line); font-variant-numeric: tabular-nums; }
+.mantine-Table-tr[data-hover]:hover { background: var(--selected); }
+.mantine-Table-scrollContainer { overscroll-behavior-x: contain; }
+.mantine-Input-input { background-color: var(--panel); border-color: var(--line); color: var(--ink); }
+.mantine-Input-input::placeholder { color: var(--muted); opacity: 1; }
+.mantine-InputWrapper-label { font-size: 13px; font-weight: 600; margin-bottom: 5px; }
+.mantine-InputWrapper-description { color: var(--muted); }
+.mantine-Modal-header, .mantine-Drawer-header { border-bottom: 1px solid var(--line); background: var(--panel); }
+.mantine-Modal-content, .mantine-Drawer-content { background: var(--panel); overscroll-behavior: contain; }
+.mantine-Drawer-body, .mantine-Modal-body { padding-top: 18px; }
+.mantine-Accordion-control:hover { background: var(--surface-muted); }
+.mantine-Accordion-item { background: var(--panel); border-color: var(--line); }
+.mantine-SegmentedControl-root { background: var(--surface-muted); max-width: 100%; }
+.mantine-SegmentedControl-label { color: var(--muted); }
+.mantine-SegmentedControl-label[data-active] { color: var(--ink); }
+.mantine-SegmentedControl-indicator { background: var(--panel); }
+.kpi-strip { gap: 0; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--panel); }
+.kpi-strip .mantine-Card-root { border: 0; border-radius: 0; border-right: 1px solid var(--line); padding: 16px 18px; }
+.kpi-value { font-size: clamp(20px, 1.45vw, 28px); font-weight: 700; letter-spacing: -.035em; line-height: 1.3; }
+.kpi-alert .kpi-value { color: var(--status-warning); }
+.kpi-critical .kpi-value { color: var(--status-critical); }
+.direction-card .mantine-Stack-root { height: 100%; }
+.direction-card { padding: 18px; }
+.direction-card .card-footer { margin-top: auto; padding-top: 8px; border-top: 1px solid var(--line); }
+.direction-metric { padding: 10px 12px; border-left: 2px solid var(--line); background: var(--surface-muted); min-width: 0; }
+.matrix-table tbody tr:hover td { outline: 1px solid var(--series-1); outline-offset: -1px; }
+.matrix-table td { font-variant-numeric: tabular-nums; }
+.auth-panel { border-top: 3px solid var(--brand-royal); }
+.auth-panel .brand { flex-direction: column; text-align: center; margin-bottom: 12px; }
+.auth-panel .brand img { width: 72px; height: 72px; }
+.auth-panel .brand-name { font-size: 18px; }
+.reading-page { max-width: 1180px; }
+@media (min-width: 2400px) { .workspace { max-width: 2960px; } }
+@media (max-width: 767px) {
+  .brand { gap: 4px; }
+  .brand img { width: 32px; height: 32px; }
+  .brand-name { font-size: 11px; }
+  .brand-caption { font-size: 9px; max-width: 160px; }
+  .header-content { padding-inline: 8px; gap: 4px; }
+  .header-actions { gap: 4px; }
+  .header-actions .mantine-ActionIcon-root { width: 30px; min-width: 30px; }
+  .header-actions .mantine-Avatar-root { width: 28px; height: 28px; }
+  .kpi-strip .mantine-Card-root { padding: 12px; border-bottom: 1px solid var(--line); }
+  .direction-metric { padding: 8px; }
+  .direction-card { padding: 14px; }
+  .mantine-Title-root { overflow-wrap: anywhere; }
+  .mantine-SegmentedControl-label { padding-inline: 6px; }
+  .mantine-Drawer-body, .mantine-Modal-body { padding-inline: 12px; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; } }
+:root:root[data-mantine-color-scheme] {
+  --mantine-color-body: var(--canvas);
+  --mantine-color-text: var(--ink);
+  --mantine-color-dimmed: var(--muted);
+  --mantine-color-default-border: var(--line);
+}
+.mantine-Table-th { white-space: nowrap; }
+.matrix-table thead { background: var(--panel) !important; }
+.ol-control button { background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 4px; }
+.ol-control button:hover { background: var(--selected); }

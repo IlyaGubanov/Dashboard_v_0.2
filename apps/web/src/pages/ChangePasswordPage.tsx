@@ -6,6 +6,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { changePasswordSchema, type ChangePasswordInput } from '@mvs/shared';
 import { api, ApiError, meQuery } from '../api';
 import { zodValidate } from '../ui/zodValidate';
+import { Brand } from '../ui/Brand';
 
 type Values = ChangePasswordInput & { repeat: string };
 
@@ -37,9 +38,10 @@ export function ChangePasswordPage() {
 
   return (
     <Center mih="100vh" p="md" bg="var(--surface-muted)">
-      <Paper withBorder shadow="sm" p="xl" w="100%" maw={420}>
+      <Paper className="auth-panel" withBorder shadow="sm" p="xl" w="100%" maw={420}>
         <form onSubmit={form.onSubmit(submit)}>
           <Stack>
+            <Brand />
             <Title order={3}>Смена пароля</Title>
             {me?.mustChangePassword && (
               <Alert variant="light" color="blue">

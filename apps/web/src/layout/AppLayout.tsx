@@ -21,6 +21,7 @@ import { GLOBAL_ROLE_LABELS } from '@mvs/shared';
 import { api, directionsQuery, meQuery } from '../api';
 import { DirectionIcon } from '../ui/DirectionIcon';
 import { TasksBell } from './MyTasks';
+import { Brand } from '../ui/Brand';
 
 export function AppLayout() {
   const [opened, { toggle, close }] = useDisclosure();
@@ -39,19 +40,15 @@ export function AppLayout() {
   }
 
   return (
-    <AppShell header={{ height: 56 }} navbar={{ width: 260, breakpoint: 'sm', collapsed: { mobile: !opened } }} padding="md">
+    <AppShell header={{ height: 68 }} navbar={{ width: 244, breakpoint: 'sm', collapsed: { mobile: !opened } }} padding={{ base: 12, sm: 20, xl: 24 }}>
+      <a className="skip-link" href="#main-content">Перейти к содержимому</a>
       <AppShell.Header>
-        <Group h="100%" px="md" justify="space-between" wrap="nowrap">
+        <Group className="header-content" h="100%" px="md" justify="space-between" wrap="nowrap">
           <Group gap="sm" wrap="nowrap">
             <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" aria-label="Меню" />
-            <Text fw={700} size="lg">
-              МВС СТ
-            </Text>
-            <Text c="dimmed" size="sm" visibleFrom="sm">
-              производственный дашборд
-            </Text>
+            <Brand />
           </Group>
-          <Group gap="xs" wrap="nowrap">
+          <Group className="header-actions" gap="xs" wrap="nowrap">
             <TasksBell />
             <Tooltip label={scheme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}>
               <ActionIcon
@@ -149,8 +146,8 @@ export function AppLayout() {
         </AppShell.Section>
       </AppShell.Navbar>
 
-      <AppShell.Main>
-        <Outlet />
+      <AppShell.Main id="main-content" tabIndex={-1}>
+        <div className="workspace"><Outlet /></div>
       </AppShell.Main>
     </AppShell>
   );

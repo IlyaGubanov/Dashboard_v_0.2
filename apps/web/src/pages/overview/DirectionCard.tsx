@@ -27,7 +27,7 @@ export function DirectionCard({ d }: { d: OverviewDirection }) {
     <Card
       withBorder
       padding="lg"
-      className="card-link"
+      className="card-link direction-card"
       renderRoot={(props) => <Link to="/d/$code" params={{ code: d.code }} {...props} />}
     >
       <Stack gap="sm">
@@ -143,7 +143,7 @@ export function DirectionCard({ d }: { d: OverviewDirection }) {
           </Text>
         ))}
 
-        <Text size="xs" c="dimmed">
+        <Text className="card-footer" size="xs" c="dimmed">
           Куратор: {d.curators.length ? d.curators.map((c) => c.fullName).join(', ') : 'не назначен'}
         </Text>
       </Stack>

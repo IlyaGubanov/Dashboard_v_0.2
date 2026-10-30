@@ -98,14 +98,14 @@ export function SitesTab({ code, date, onOpenSite }: { code: string; date?: stri
     <Card withBorder padding={0}>
       <Group p="md" gap="sm" wrap="wrap">
         <TextInput
-          placeholder="Объект или куратор"
+          aria-label="Объект или куратор" placeholder="Объект или куратор"
           leftSection={<IconSearch size={16} />}
           value={q}
           onChange={(e) => setQ(e.currentTarget.value)}
           w={260}
         />
         {has.sections.length > 1 && (
-          <Select placeholder="Все разделы" clearable data={has.sections} value={section} onChange={setSection} w={220} />
+          <Select aria-label="Все разделы" placeholder="Все разделы" clearable data={has.sections} value={section} onChange={setSection} w={220} />
         )}
         {has.plan && (
           <SegmentedControl size="sm" value={risk} onChange={(v) => setRisk(v as RiskFilter)} data={RISK_FILTERS.map(({ value, label }) => ({ value, label }))} />
@@ -139,7 +139,7 @@ export function SitesTab({ code, date, onOpenSite }: { code: string; date?: stri
           </Table.Thead>
           <Table.Tbody>
             {shown.map((r) => (
-              <Table.Tr key={r.id} style={{ cursor: 'pointer' }} onClick={() => onOpenSite(r.id)}>
+              <Table.Tr key={r.id} style={{ cursor: 'pointer' }} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') onOpenSite(r.id); }} onClick={() => onOpenSite(r.id)}>
                 <Table.Td ta="right">{r.num ?? ''}</Table.Td>
                 <Table.Td style={{ whiteSpace: 'normal', minWidth: 260 }}>
                   <Text size="sm" fw={500} lineClamp={2}>

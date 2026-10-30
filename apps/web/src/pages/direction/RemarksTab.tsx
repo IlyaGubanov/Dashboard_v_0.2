@@ -96,9 +96,9 @@ export function RemarksTab({ code, onOpen, initial }: { code: string; onOpen: (i
       </Group>
       <Group gap="sm" grow preventGrowOverflow={false}>
         <TextInput leftSection={<IconSearch size={16} />} placeholder="Номер, текст, объект, исполнитель" value={q} onChange={(e) => setQ(e.currentTarget.value)} miw={220} />
-        <Select placeholder="Объект" searchable clearable data={sites.map(([id, name]) => ({ value: String(id), label: name }))} value={site} onChange={setSite} miw={200} />
-        <Select placeholder="Важность" clearable data={REMARK_SEVERITIES.map((s) => ({ value: s, label: REMARK_SEVERITY_LABELS[s] }))} value={sev} onChange={setSev} miw={150} />
-        <Select placeholder="Категория" clearable data={cats} value={cat} onChange={setCat} miw={180} />
+        <Select aria-label="Объект" placeholder="Объект" searchable clearable data={sites.map(([id, name]) => ({ value: String(id), label: name }))} value={site} onChange={setSite} miw={200} />
+        <Select aria-label="Важность" placeholder="Важность" clearable data={REMARK_SEVERITIES.map((s) => ({ value: s, label: REMARK_SEVERITY_LABELS[s] }))} value={sev} onChange={setSev} miw={150} />
+        <Select aria-label="Категория" placeholder="Категория" clearable data={cats} value={cat} onChange={setCat} miw={180} />
       </Group>
 
       <Card withBorder padding={0}>
@@ -116,7 +116,7 @@ export function RemarksTab({ code, onOpen, initial }: { code: string; onOpen: (i
             </Table.Thead>
             <Table.Tbody>
               {rows.map((r) => (
-                <Table.Tr key={r.id} style={{ cursor: 'pointer' }} onClick={() => onOpen(r.id)}>
+                <Table.Tr key={r.id} style={{ cursor: 'pointer' }} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') onOpen(r.id); }} onClick={() => onOpen(r.id)}>
                   <Table.Td>
                     <Text fw={600}>{r.num}</Text>
                   </Table.Td>

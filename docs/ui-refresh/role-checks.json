@@ -1,0 +1,53 @@
+[
+  {
+    "login": "admin",
+    "role": "ADMIN",
+    "directions": [
+      "schools",
+      "mkd",
+      "networks",
+      "streets"
+    ],
+    "overview": 200,
+    "users": 200,
+    "entry": 200,
+    "entrySites": 42
+  },
+  {
+    "login": "rukovod",
+    "role": "MANAGEMENT",
+    "directions": [
+      "schools",
+      "mkd",
+      "networks",
+      "streets"
+    ],
+    "overview": 200,
+    "users": 403,
+    "entry": 200,
+    "entrySites": 42
+  },
+  {
+    "login": "kurator",
+    "role": "USER",
+    "directions": [
+      "mkd",
+      "networks"
+    ],
+    "overview": 200,
+    "users": 403,
+    "entry": 200,
+    "entrySites": 42
+  },
+  {
+    "login": "vvod",
+    "role": "USER",
+    "directions": [
+      "mkd"
+    ],
+    "overview": 200,
+    "users": 403,
+    "entry": 200,
+    "entrySites": 42
+  }
+]

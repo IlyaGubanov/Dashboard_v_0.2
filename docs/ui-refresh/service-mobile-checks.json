@@ -1,0 +1,22 @@
+[
+  {
+    "path": "/admin/users",
+    "scroll": 360,
+    "width": 375
+  },
+  {
+    "path": "/admin/directions",
+    "scroll": 360,
+    "width": 375
+  },
+  {
+    "path": "/admin/directions/mkd",
+    "scroll": 360,
+    "width": 375
+  },
+  {
+    "path": "/help",
+    "scroll": 360,
+    "width": 375
+  }
+]

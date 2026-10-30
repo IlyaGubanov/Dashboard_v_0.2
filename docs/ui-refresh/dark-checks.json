@@ -1,0 +1,317 @@
+[
+  {
+    "code": "schools",
+    "tab": "entry",
+    "scheme": "dark",
+    "scroll": 1905,
+    "width": 1920
+  },
+  {
+    "code": "schools",
+    "tab": "overview",
+    "scheme": "dark",
+    "scroll": 1920,
+    "width": 1920
+  },
+  {
+    "code": "schools",
+    "tab": "sites",
+    "scheme": "dark",
+    "scroll": 1920,
+    "width": 1920
+  },
+  {
+    "code": "schools",
+    "tab": "matrix",
+    "scheme": "dark",
+    "scroll": 1920,
+    "width": 1920
+  },
+  {
+    "code": "schools",
+    "tab": "schedule",
+    "scheme": "dark",
+    "scroll": 1920,
+    "width": 1920
+  },
+  {
+    "code": "schools",
+    "tab": "trackers",
+    "scheme": "dark",
+    "scroll": 1905,
+    "width": 1920
+  },
+  {
+    "code": "schools",
+    "tab": "dynamics",
+    "scheme": "dark",
+    "scroll": 1920,
+    "width": 1920
+  },
+  {
+    "code": "schools",
+    "tab": "remarks",
+    "scheme": "dark",
+    "scroll": 1920,
+    "width": 1920
+  },
+  {
+    "code": "schools",
+    "tab": "people",
+    "scheme": "dark",
+    "scroll": 1920,
+    "width": 1920
+  },
+  {
+    "code": "schools",
+    "tab": "manage",
+    "scheme": "dark",
+    "scroll": 1920,
+    "width": 1920
+  },
+  {
+    "code": "schools",
+    "tab": "journal",
+    "scheme": "dark",
+    "scroll": 1920,
+    "width": 1920
+  },
+  {
+    "code": "schools",
+    "tab": "settings",
+    "scheme": "dark",
+    "scroll": 1905,
+    "width": 1920
+  },
+  {
+    "code": "mkd",
+    "tab": "entry",
+    "scheme": "dark",
+    "scroll": 1905,
+    "width": 1920
+  },
+  {
+    "code": "mkd",
+    "tab": "overview",
+    "scheme": "dark",
+    "scroll": 1905,
+    "width": 1920
+  },
+  {
+    "code": "mkd",
+    "tab": "sites",
+    "scheme": "dark",
+    "scroll": 1905,
+    "width": 1920
+  },
+  {
+    "code": "mkd",
+    "tab": "matrix",
+    "scheme": "dark",
+    "scroll": 1920,
+    "width": 1920
+  },
+  {
+    "code": "mkd",
+    "tab": "schedule",
+    "scheme": "dark",
+    "scroll": 1905,
+    "width": 1920
+  },
+  {
+    "code": "mkd",
+    "tab": "dynamics",
+    "scheme": "dark",
+    "scroll": 1920,
+    "width": 1920
+  },
+  {
+    "code": "mkd",
+    "tab": "remarks",
+    "scheme": "dark",
+    "scroll": 1905,
+    "width": 1920
+  },
+  {
+    "code": "mkd",
+    "tab": "people",
+    "scheme": "dark",
+    "scroll": 1920,
+    "width": 1920
+  },
+  {
+    "code": "mkd",
+    "tab": "manage",
+    "scheme": "dark",
+    "scroll": 1905,
+    "width": 1920
+  },
+  {
+    "code": "mkd",
+    "tab": "journal",
+    "scheme": "dark",
+    "scroll": 1920,
+    "width": 1920
+  },
+  {
+    "code": "mkd",
+    "tab": "settings",
+    "scheme": "dark",
+    "scroll": 1905,
+    "width": 1920
+  },
+  {
+    "code": "networks",
+    "tab": "entry",
+    "scheme": "dark",
+    "scroll": 1905,
+    "width": 1920
+  },
+  {
+    "code": "networks",
+    "tab": "overview",
+    "scheme": "dark",
+    "scroll": 1905,
+    "width": 1920
+  },
+  {
+    "code": "networks",
+    "tab": "sites",
+    "scheme": "dark",
+    "scroll": 1905,
+    "width": 1920
+  },
+  {
+    "code": "networks",
+    "tab": "matrix",
+    "scheme": "dark",
+    "scroll": 1920,
+    "width": 1920
+  },
+  {
+    "code": "networks",
+    "tab": "schedule",
+    "scheme": "dark",
+    "scroll": 1905,
+    "width": 1920
+  },
+  {
+    "code": "networks",
+    "tab": "trackers",
+    "scheme": "dark",
+    "scroll": 1905,
+    "width": 1920
+  },
+  {
+    "code": "networks",
+    "tab": "dynamics",
+    "scheme": "dark",
+    "scroll": 1905,
+    "width": 1920
+  },
+  {
+    "code": "networks",
+    "tab": "remarks",
+    "scheme": "dark",
+    "scroll": 1905,
+    "width": 1920
+  },
+  {
+    "code": "networks",
+    "tab": "people",
+    "scheme": "dark",
+    "scroll": 1920,
+    "width": 1920
+  },
+  {
+    "code": "networks",
+    "tab": "manage",
+    "scheme": "dark",
+    "scroll": 1905,
+    "width": 1920
+  },
+  {
+    "code": "networks",
+    "tab": "journal",
+    "scheme": "dark",
+    "scroll": 1920,
+    "width": 1920
+  },
+  {
+    "code": "networks",
+    "tab": "settings",
+    "scheme": "dark",
+    "scroll": 1920,
+    "width": 1920
+  },
+  {
+    "code": "streets",
+    "tab": "overview",
+    "scheme": "dark",
+    "scroll": 1920,
+    "width": 1920
+  },
+  {
+    "code": "streets",
+    "tab": "sites",
+    "scheme": "dark",
+    "scroll": 1905,
+    "width": 1920
+  },
+  {
+    "code": "streets",
+    "tab": "matrix",
+    "scheme": "dark",
+    "scroll": 1920,
+    "width": 1920
+  },
+  {
+    "code": "streets",
+    "tab": "dynamics",
+    "scheme": "dark",
+    "scroll": 1920,
+    "width": 1920
+  },
+  {
+    "code": "streets",
+    "tab": "map",
+    "scheme": "dark",
+    "scroll": 1920,
+    "width": 1920
+  },
+  {
+    "code": "streets",
+    "tab": "remarks",
+    "scheme": "dark",
+    "scroll": 1920,
+    "width": 1920
+  },
+  {
+    "code": "streets",
+    "tab": "people",
+    "scheme": "dark",
+    "scroll": 1920,
+    "width": 1920
+  },
+  {
+    "code": "streets",
+    "tab": "manage",
+    "scheme": "dark",
+    "scroll": 1905,
+    "width": 1920
+  },
+  {
+    "code": "streets",
+    "tab": "journal",
+    "scheme": "dark",
+    "scroll": 1920,
+    "width": 1920
+  },
+  {
+    "code": "streets",
+    "tab": "settings",
+    "scheme": "dark",
+    "scroll": 1905,
+    "width": 1920
+  }
+]

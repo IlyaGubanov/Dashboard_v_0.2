@@ -1,0 +1,272 @@
+[
+  {
+    "code": "schools",
+    "tab": "entry",
+    "scroll": 360,
+    "width": 375
+  },
+  {
+    "code": "schools",
+    "tab": "overview",
+    "scroll": 360,
+    "width": 375
+  },
+  {
+    "code": "schools",
+    "tab": "sites",
+    "scroll": 375,
+    "width": 375
+  },
+  {
+    "code": "schools",
+    "tab": "matrix",
+    "scroll": 360,
+    "width": 375
+  },
+  {
+    "code": "schools",
+    "tab": "schedule",
+    "scroll": 375,
+    "width": 375
+  },
+  {
+    "code": "schools",
+    "tab": "trackers",
+    "scroll": 360,
+    "width": 375
+  },
+  {
+    "code": "schools",
+    "tab": "dynamics",
+    "scroll": 360,
+    "width": 375
+  },
+  {
+    "code": "schools",
+    "tab": "remarks",
+    "scroll": 360,
+    "width": 375
+  },
+  {
+    "code": "schools",
+    "tab": "people",
+    "scroll": 375,
+    "width": 375
+  },
+  {
+    "code": "schools",
+    "tab": "manage",
+    "scroll": 375,
+    "width": 375
+  },
+  {
+    "code": "schools",
+    "tab": "journal",
+    "scroll": 375,
+    "width": 375
+  },
+  {
+    "code": "schools",
+    "tab": "settings",
+    "scroll": 418,
+    "width": 375
+  },
+  {
+    "code": "mkd",
+    "tab": "entry",
+    "scroll": 360,
+    "width": 375
+  },
+  {
+    "code": "mkd",
+    "tab": "overview",
+    "scroll": 360,
+    "width": 375
+  },
+  {
+    "code": "mkd",
+    "tab": "sites",
+    "scroll": 360,
+    "width": 375
+  },
+  {
+    "code": "mkd",
+    "tab": "matrix",
+    "scroll": 360,
+    "width": 375
+  },
+  {
+    "code": "mkd",
+    "tab": "schedule",
+    "scroll": 360,
+    "width": 375
+  },
+  {
+    "code": "mkd",
+    "tab": "dynamics",
+    "scroll": 360,
+    "width": 375
+  },
+  {
+    "code": "mkd",
+    "tab": "remarks",
+    "scroll": 360,
+    "width": 375
+  },
+  {
+    "code": "mkd",
+    "tab": "people",
+    "scroll": 360,
+    "width": 375
+  },
+  {
+    "code": "mkd",
+    "tab": "manage",
+    "scroll": 360,
+    "width": 375
+  },
+  {
+    "code": "mkd",
+    "tab": "journal",
+    "scroll": 375,
+    "width": 375
+  },
+  {
+    "code": "mkd",
+    "tab": "settings",
+    "scroll": 448,
+    "width": 375
+  },
+  {
+    "code": "networks",
+    "tab": "entry",
+    "scroll": 360,
+    "width": 375
+  },
+  {
+    "code": "networks",
+    "tab": "overview",
+    "scroll": 360,
+    "width": 375
+  },
+  {
+    "code": "networks",
+    "tab": "sites",
+    "scroll": 360,
+    "width": 375
+  },
+  {
+    "code": "networks",
+    "tab": "matrix",
+    "scroll": 360,
+    "width": 375
+  },
+  {
+    "code": "networks",
+    "tab": "schedule",
+    "scroll": 360,
+    "width": 375
+  },
+  {
+    "code": "networks",
+    "tab": "trackers",
+    "scroll": 360,
+    "width": 375
+  },
+  {
+    "code": "networks",
+    "tab": "dynamics",
+    "scroll": 360,
+    "width": 375
+  },
+  {
+    "code": "networks",
+    "tab": "remarks",
+    "scroll": 360,
+    "width": 375
+  },
+  {
+    "code": "networks",
+    "tab": "people",
+    "scroll": 360,
+    "width": 375
+  },
+  {
+    "code": "networks",
+    "tab": "manage",
+    "scroll": 360,
+    "width": 375
+  },
+  {
+    "code": "networks",
+    "tab": "journal",
+    "scroll": 375,
+    "width": 375
+  },
+  {
+    "code": "networks",
+    "tab": "settings",
+    "scroll": 381,
+    "width": 375
+  },
+  {
+    "code": "streets",
+    "tab": "overview",
+    "scroll": 360,
+    "width": 375
+  },
+  {
+    "code": "streets",
+    "tab": "sites",
+    "scroll": 360,
+    "width": 375
+  },
+  {
+    "code": "streets",
+    "tab": "matrix",
+    "scroll": 360,
+    "width": 375
+  },
+  {
+    "code": "streets",
+    "tab": "dynamics",
+    "scroll": 360,
+    "width": 375
+  },
+  {
+    "code": "streets",
+    "tab": "map",
+    "scroll": 360,
+    "width": 375
+  },
+  {
+    "code": "streets",
+    "tab": "remarks",
+    "scroll": 360,
+    "width": 375
+  },
+  {
+    "code": "streets",
+    "tab": "people",
+    "scroll": 375,
+    "width": 375
+  },
+  {
+    "code": "streets",
+    "tab": "manage",
+    "scroll": 360,
+    "width": 375
+  },
+  {
+    "code": "streets",
+    "tab": "journal",
+    "scroll": 375,
+    "width": 375
+  },
+  {
+    "code": "streets",
+    "tab": "settings",
+    "scroll": 360,
+    "width": 375
+  }
+]

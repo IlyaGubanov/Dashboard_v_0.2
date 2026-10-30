@@ -13,7 +13,8 @@ deploy/certs/*.key
 apps/api/data/
 
 # локальные настройки инструментов разработки
-.claude/
+.claude/*
+!.claude/launch.json
 
 # настройки локального запуска (пароль MySQL)
 local.env

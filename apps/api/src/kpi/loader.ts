@@ -4,7 +4,7 @@ import { parseDate, toMs, type KDirection, type KPeriod, type KpiTileConfig } fr
 
 const num = (v: Prisma.Decimal | number | null | undefined) => (v == null ? null : Number(v));
 
-type Db = Pick<PrismaClient, 'direction' | 'reportingPeriod' | 'site' | 'tracker'>;
+type Db = Pick<PrismaClient, 'direction' | 'reportingPeriod' | 'site' | 'tracker' | 'organization'>;
 
 /** Отчётные точки направления по возрастанию даты. */
 export async function loadPeriods(db: Db, directionId: number): Promise<KPeriod[]> {
@@ -27,6 +27,7 @@ export async function loadDirection(db: Db, directionId: number, periods: KPerio
     orderBy: [{ sort: 'asc' }, { id: 'asc' }],
     include: {
       section: { select: { id: true, name: true } },
+      contractor: { select: { id: true, name: true } },
       status: { select: { code: true, name: true, color: true } },
       contracts: { select: { amount: true, advanceAmount: true } },
       assignments: { include: { user: { select: { fullName: true } } } },
@@ -44,6 +45,8 @@ export async function loadDirection(db: Db, directionId: number, periods: KPerio
     where: { directionId, isActive: true },
     include: { stages: true, items: { include: { rows: { include: { values: true } } } } },
   });
+
+  const orgName = new Map((await db.organization.findMany({ where: { directionId }, select: { id: true, name: true } })).map((o) => [o.id, o.name]));
 
   const settings = (d.settings ?? {}) as KDirection['settings'];
   return {
@@ -97,6 +100,11 @@ export async function loadDirection(db: Db, directionId: number, periods: KPerio
       contracts: s.contracts.map((c) => ({ amount: num(c.amount), advance: num(c.advanceAmount) })),
       curators: s.assignments.filter((a) => a.role === 'CURATOR' || a.role === 'RESPONSIBLE').map((a) => a.user.fullName),
       entry: s.assignments.filter((a) => a.role === 'ENTRY').map((a) => a.user.fullName),
+      contractor: s.contractor,
+      subcontractors: [...new Set(s.workItems.map((w) => w.contractorId).filter((id): id is number => id != null && id !== s.contractorId))].map((id) => ({
+        id,
+        name: orgName.get(id) ?? '—',
+      })),
       lat: num(s.lat),
       lon: num(s.lon),
       isExample: s.isExample,
@@ -130,6 +138,7 @@ export async function loadDirection(db: Db, directionId: number, periods: KPerio
         planStart: toMs(it.planStart),
         planEnd: toMs(it.planEnd),
         weight: weight.get(it.workTypeId) ?? null,
+        contractorId: it.contractorId,
         isExample: it.isExample,
         entries: it.progress
           .map((e) => ({

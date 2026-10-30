@@ -3,6 +3,7 @@ import {
   AppShell,
   Avatar,
   Burger,
+  Button,
   Group,
   Menu,
   NavLink,
@@ -16,12 +17,12 @@ import {
 import { useDisclosure } from '@mantine/hooks';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
-import { IconAdjustments, IconChartBar, IconHelp, IconLogout, IconMoon, IconSun, IconUsers } from '@tabler/icons-react';
+import { IconAdjustments, IconBuildingFactory2, IconChartBar, IconCurrencyRubel, IconEyeOff, IconHelp, IconLogout, IconMoon, IconSun, IconUsers } from '@tabler/icons-react';
 import { GLOBAL_ROLE_LABELS } from '@mvs/shared';
 import { api, directionsQuery, meQuery } from '../api';
 import { DirectionIcon } from '../ui/DirectionIcon';
 import { TasksBell } from './MyTasks';
-import { Brand } from '../ui/Brand';
+import { canHideFinance, setFinanceHidden, useFinanceToggle } from '../ui/finance';
 
 export function AppLayout() {
   const [opened, { toggle, close }] = useDisclosure();
@@ -48,7 +49,8 @@ export function AppLayout() {
             <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" aria-label="Меню" />
             <Brand />
           </Group>
-          <Group className="header-actions" gap="xs" wrap="nowrap">
+          <Group gap="xs" wrap="nowrap">
+            {canHideFinance(me) && <FinanceToggle />}
             <TasksBell />
             <Tooltip label={scheme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}>
               <ActionIcon
@@ -103,6 +105,14 @@ export function AppLayout() {
             active={path === '/'}
             onClick={close}
           />
+          <NavLink
+            component={Link}
+            to="/contractors"
+            label="Подрядчики"
+            leftSection={<IconBuildingFactory2 size={18} />}
+            active={path.startsWith('/contractors')}
+            onClick={close}
+          />
           <Text size="xs" c="dimmed" tt="uppercase" fw={600} px="sm" mt="md" mb={4}>
             Направления
           </Text>
@@ -150,6 +160,31 @@ export function AppLayout() {
         <div className="workspace"><Outlet /></div>
       </AppShell.Main>
     </AppShell>
+  );
+}
+
+/** Одна кнопка: скрыть или показать финансы во всех направлениях. */
+function FinanceToggle() {
+  const hidden = useFinanceToggle();
+  const label = hidden ? 'Финансы скрыты — показать' : 'Скрыть финансовые данные во всех направлениях';
+  const icon = hidden ? <IconEyeOff size={18} /> : <IconCurrencyRubel size={18} />;
+  const props = {
+    variant: hidden ? 'filled' : 'default',
+    color: hidden ? 'orange' : undefined,
+    onClick: () => setFinanceHidden(!hidden),
+    'aria-pressed': hidden,
+  } as const;
+  return (
+    <Tooltip label={label}>
+      <div>
+        <Button {...props} size="sm" leftSection={icon} visibleFrom="md">
+          {hidden ? 'Финансы скрыты' : 'Финансы'}
+        </Button>
+        <ActionIcon {...props} size="lg" hiddenFrom="md" aria-label={label}>
+          {icon}
+        </ActionIcon>
+      </div>
+    </Tooltip>
   );
 }
 

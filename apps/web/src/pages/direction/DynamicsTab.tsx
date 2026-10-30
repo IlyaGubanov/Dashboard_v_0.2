@@ -6,6 +6,8 @@ import { directionQueries } from '../../api';
 import { EChart, type ChartColors } from '../../ui/EChart';
 import { factPlanChart, seriesChart } from '../../ui/charts';
 import { date, int, money, pct, pp } from '../../ui/format';
+import { Lag } from '../../ui/Lag';
+import { useFinanceHidden } from '../../ui/finance';
 
 /** Динамика направления: готовность против плана, ресурсы, деньги — по отчётным точкам до даты среза. */
 export function DynamicsTab({ code, date: asOf }: { code: string; date?: string }) {
@@ -38,7 +40,8 @@ export function DynamicsTab({ code, date: asOf }: { code: string; date?: string 
 }
 
 function Charts({ pts, factPts }: { pts: DynamicsPoint[]; factPts: DynamicsPoint[] }) {
-  const has = (k: keyof DynamicsPoint) => pts.some((p) => p[k] != null);
+  const financeHidden = useFinanceHidden();
+  const has = (k: keyof DynamicsPoint) => !(financeHidden && (k === 'closed' || k === 'paid')) && pts.some((p) => p[k] != null);
   const fp = useCallback((c: ChartColors) => factPlanChart(factPts, c), [factPts]);
   const people = useCallback((c: ChartColors) => seriesChart(pts, c, [{ name: 'Людей', key: 'people', color: c.series[0] }], 'count'), [pts]);
   const tech = useCallback((c: ChartColors) => seriesChart(pts, c, [{ name: 'Техники', key: 'tech', color: c.series[1] }], 'count'), [pts]);
@@ -98,7 +101,8 @@ function Charts({ pts, factPts }: { pts: DynamicsPoint[]; factPts: DynamicsPoint
 }
 
 function PointsTable({ pts }: { pts: DynamicsPoint[] }) {
-  const has = (k: keyof DynamicsPoint) => pts.some((p) => p[k] != null);
+  const financeHidden = useFinanceHidden();
+  const has = (k: keyof DynamicsPoint) => !(financeHidden && (k === 'closed' || k === 'paid')) && pts.some((p) => p[k] != null);
   return (
     <Card withBorder padding={0}>
       <Table.ScrollContainer minWidth={700}>
@@ -122,7 +126,7 @@ function PointsTable({ pts }: { pts: DynamicsPoint[] }) {
                 <Table.Td>{date(p.date)}</Table.Td>
                 <Table.Td ta="right">{pct(p.fact)}</Table.Td>
                 {has('plan') && <Table.Td ta="right">{pct(p.plan)}</Table.Td>}
-                {has('plan') && <Table.Td ta="right">{p.fact != null && p.plan != null ? pp(p.fact - p.plan) : '—'}</Table.Td>}
+                {has('plan') && <Table.Td ta="right">{p.fact != null && p.plan != null ? <Lag v={p.fact - p.plan} /> : '—'}</Table.Td>}
                 {has('people') && <Table.Td ta="right">{int(p.people)}</Table.Td>}
                 {has('tech') && <Table.Td ta="right">{int(p.tech)}</Table.Td>}
                 {has('closed') && <Table.Td ta="right">{money(p.closed)}</Table.Td>}

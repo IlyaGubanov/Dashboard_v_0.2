@@ -7,7 +7,9 @@ import type { OverviewDirection } from '@mvs/shared';
 import { overviewQuery } from '../api';
 import { MyTasksCard } from '../layout/MyTasks';
 import { RiskBadge } from '../ui/RiskBadge';
-import { int, money, pct, pp } from '../ui/format';
+import { int, money, pct } from '../ui/format';
+import { Lag } from '../ui/Lag';
+import { useFinanceHidden } from '../ui/finance';
 import { asOfLabel, DirectionCard } from './overview/DirectionCard';
 import { AttentionList } from './overview/AttentionList';
 import { MoneyChart } from './overview/MoneyChart';
@@ -23,6 +25,7 @@ export function OverviewPage() {
   const { data, isLoading, error, refetch, isFetching, dataUpdatedAt } = useQuery(overviewQuery);
   const [view, setView] = useState<'cards' | 'table'>('cards');
   const dirs = data?.directions ?? [];
+  const financeHidden = useFinanceHidden();
 
   return (
     <Stack gap="md">
@@ -76,7 +79,7 @@ export function OverviewPage() {
             </Grid.Col>
             <Grid.Col span={{ base: 12, lg: 5 }}>
               <Stack>
-                <MoneyChart directions={dirs} />
+                {!financeHidden && <MoneyChart directions={dirs} />}
                 {dirs.map((d) => (d.kpi.remarks?.length ? <RemarksList key={d.code} d={d} /> : null))}
               </Stack>
             </Grid.Col>
@@ -92,16 +95,17 @@ export function OverviewPage() {
 /** Итоговая строка по всем направлениям. */
 function Totals({ dirs }: { dirs: OverviewDirection[] }) {
   const k = dirs.map((d) => d.kpi);
+  const financeHidden = useFinanceHidden();
   const tiles = [
     { label: 'Объектов в работе', value: int(sum(k.map((x) => x.sites))) },
     { label: 'Отстают от графика', value: int(sum(k.map((x) => x.lagging))) },
     { label: 'Из них критично', value: int(sum(k.map((x) => x.critical))) },
     { label: 'Людей на объектах', value: int(sum(k.map((x) => x.people))) },
     { label: 'Техники', value: int(sum(k.map((x) => x.tech))) },
-    { label: 'Стоимость работ', value: money(sum(k.map((x) => x.money?.portfolio))) },
-  ];
+    { label: 'Стоимость работ', value: money(sum(k.map((x) => x.money?.portfolio))), money: true },
+  ].filter((t) => !(financeHidden && t.money));
   return (
-    <SimpleGrid className="kpi-strip" cols={{ base: 2, sm: 3, lg: 6 }}>
+    <SimpleGrid cols={{ base: 2, sm: 3, lg: tiles.length }}>
       {tiles.map((t) => (
         <Card key={t.label} className={t.label === 'Из них критично' ? 'kpi-critical' : t.label === 'Отстают от графика' ? 'kpi-alert' : undefined} withBorder padding="md">
           <Text size="xs" c="dimmed">
@@ -118,6 +122,7 @@ function Totals({ dirs }: { dirs: OverviewDirection[] }) {
 
 /** То же, что карточки, — таблицей (для сравнения и для экранного диктора). */
 function DirectionsTable({ dirs }: { dirs: OverviewDirection[] }) {
+  const financeHidden = useFinanceHidden();
   return (
     <Card withBorder padding={0}>
       <Table.ScrollContainer minWidth={1000}>
@@ -133,8 +138,8 @@ function DirectionsTable({ dirs }: { dirs: OverviewDirection[] }) {
               <Table.Th ta="right">Объектов</Table.Th>
               <Table.Th ta="right">Отстают / крит.</Table.Th>
               <Table.Th ta="right">Люди / техника</Table.Th>
-              <Table.Th ta="right">Стоимость</Table.Th>
-              <Table.Th ta="right">Оплачено</Table.Th>
+              {!financeHidden && <Table.Th ta="right">Стоимость</Table.Th>}
+              {!financeHidden && <Table.Th ta="right">Оплачено</Table.Th>}
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
@@ -153,15 +158,15 @@ function DirectionsTable({ dirs }: { dirs: OverviewDirection[] }) {
                   </Table.Td>
                   <Table.Td ta="right">{pct(k.fact)}</Table.Td>
                   <Table.Td ta="right">{pct(k.plan)}</Table.Td>
-                  <Table.Td ta="right">{k.plan == null ? '—' : pp(k.fact != null ? k.fact - k.plan : null)}</Table.Td>
+                  <Table.Td ta="right">{k.plan == null ? '—' : <Lag v={k.fact != null ? k.fact - k.plan : null} crit={k.risk === 'crit'} />}</Table.Td>
                   <Table.Td>{k.plan == null ? 'без графика' : <RiskBadge risk={k.risk} size="xs" />}</Table.Td>
                   <Table.Td ta="right">{int(k.sites)}</Table.Td>
                   <Table.Td ta="right">{k.lagging == null ? '—' : `${int(k.lagging)} / ${int(k.critical)}`}</Table.Td>
                   <Table.Td ta="right">
                     {int(k.people)} / {int(k.tech)}
                   </Table.Td>
-                  <Table.Td ta="right">{money(k.money?.portfolio)}</Table.Td>
-                  <Table.Td ta="right">{money(k.money?.paid)}</Table.Td>
+                  {!financeHidden && <Table.Td ta="right">{money(k.money?.portfolio)}</Table.Td>}
+                  {!financeHidden && <Table.Td ta="right">{money(k.money?.paid)}</Table.Td>}
                 </Table.Tr>
               );
             })}

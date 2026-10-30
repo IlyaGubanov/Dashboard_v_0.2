@@ -1,6 +1,7 @@
 import { queryOptions } from '@tanstack/react-query';
 import type {
   AuditPage,
+  ContractorsView,
   EntrySheet,
   ManageRefs,
   SiteEdit,
@@ -125,6 +126,13 @@ export const myTasksQuery = queryOptions({
   queryFn: () => api<MyTasks>('/me/tasks'),
   staleTime: 60_000,
   refetchInterval: 5 * 60_000,
+});
+
+/** Подрядчики по всем доступным направлениям. */
+export const contractorsQuery = queryOptions({
+  queryKey: ['contractors'],
+  queryFn: () => api<ContractorsView>('/contractors'),
+  staleTime: 60_000,
 });
 
 export const usersQuery = queryOptions({

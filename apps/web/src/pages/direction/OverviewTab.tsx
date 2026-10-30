@@ -5,6 +5,8 @@ import { directionQueries } from '../../api';
 import { FactPlanBar } from '../../ui/FactPlanBar';
 import { RiskBadge, riskColor } from '../../ui/RiskBadge';
 import { int, money, pct, pp, tileValue } from '../../ui/format';
+import { Lag } from '../../ui/Lag';
+import { useFinanceHidden } from '../../ui/finance';
 import { asOfLabel } from '../overview/DirectionCard';
 
 const RISK_ORDER: SiteRisk[] = ['crit', 'warn', 'ok', 'done', 'wait', 'na'];
@@ -64,9 +66,9 @@ export function OverviewTab({
                       </Box>
                       <Box style={{ textAlign: 'right', flexShrink: 0 }}>
                         {r.lag != null && (
-                          <Text size="sm" fw={600}>
-                            {pp(r.lag)}
-                          </Text>
+                          <div>
+                            <Lag v={r.lag} crit={r.risk === 'crit'} />
+                          </div>
                         )}
                         <RiskBadge risk={r.risk} size="xs" />
                       </Box>
@@ -84,6 +86,8 @@ export function OverviewTab({
 /** Главные показатели направления на дату среза. */
 function KpiHeader({ k }: { k: DirectionKpi }) {
   const delta = k.prev && k.fact != null && k.prev.fact != null ? k.fact - k.prev.fact : null;
+  const financeHidden = useFinanceHidden();
+  const m = financeHidden ? null : k.money;
   return (
     <Card withBorder padding="lg">
       <Grid gutter="lg" align="center">
@@ -106,7 +110,7 @@ function KpiHeader({ k }: { k: DirectionKpi }) {
             {k.plan != null && (
               <div style={{ textAlign: 'right' }}>
                 <Text>план {pct(k.plan)}</Text>
-                <Text fw={600}>{pp(k.fact != null ? k.fact - k.plan : null)}</Text>
+                <Lag v={k.fact != null ? k.fact - k.plan : null} crit={k.risk === 'crit'} size="md" />
               </div>
             )}
           </Group>
@@ -131,10 +135,10 @@ function KpiHeader({ k }: { k: DirectionKpi }) {
             <Metric label="выполнено" value={int(k.done)} />
             {k.people != null && <Metric label="людей на объектах" value={int(k.people)} />}
             {k.tech != null && <Metric label="техники" value={int(k.tech)} />}
-            {k.money?.portfolio != null && <Metric label={k.money.portfolioLabel.toLowerCase()} value={money(k.money.portfolio)} />}
-            {k.money?.closed != null && <Metric label="закрыто по КС-2" value={money(k.money.closed)} />}
-            {k.money?.paid != null && <Metric label="оплачено" value={money(k.money.paid)} />}
-            {k.kpis.map((t) => (
+            {m?.portfolio != null && <Metric label={m.portfolioLabel.toLowerCase()} value={money(m.portfolio)} />}
+            {m?.closed != null && <Metric label="закрыто по КС-2" value={money(m.closed)} />}
+            {m?.paid != null && <Metric label="оплачено" value={money(m.paid)} />}
+            {k.kpis.filter((t) => !(financeHidden && t.format === 'money')).map((t) => (
               <Metric key={t.key} label={t.label.toLowerCase()} value={tileValue(t)} />
             ))}
           </SimpleGrid>

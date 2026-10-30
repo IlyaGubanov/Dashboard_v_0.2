@@ -149,7 +149,7 @@ export function DirectionPage() {
           <OverviewTab code={code} date={search.date} onOpenSite={openSite} onShowSites={() => set({ tab: 'sites' })} />
         </Tabs.Panel>
         <Tabs.Panel value="sites" pt="md">
-          <SitesTab code={code} date={search.date} onOpenSite={openSite} />
+          <SitesTab code={code} date={search.date} contractor={search.contractor} onContractor={(v) => set({ contractor: v })} onOpenSite={openSite} />
         </Tabs.Panel>
         <Tabs.Panel value="matrix" pt="md">
           <MatrixTab code={code} date={search.date} onOpenSite={openSite} />

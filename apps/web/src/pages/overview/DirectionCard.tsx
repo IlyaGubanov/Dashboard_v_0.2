@@ -7,6 +7,8 @@ import { FactPlanBar } from '../../ui/FactPlanBar';
 import { RiskBadge, riskColor } from '../../ui/RiskBadge';
 import { date, int, pct, pp, tileValue, weekLabel } from '../../ui/format';
 import { ForecastLabel } from '../../ui/ForecastLabel';
+import { Lag } from '../../ui/Lag';
+import { useFinanceHidden } from '../../ui/finance';
 
 export function asOfLabel(k: DirectionKpi) {
   if (!k.asOf) return 'нет данных';
@@ -22,6 +24,8 @@ export function DirectionCard({ d }: { d: OverviewDirection }) {
   const k = d.kpi;
   const delta = k.prev && k.fact != null && k.prev.fact != null ? k.fact - k.prev.fact : null;
   const barColor = k.plan == null ? 'var(--series-1)' : riskColor(k.risk);
+  const financeHidden = useFinanceHidden();
+  const tiles = financeHidden ? k.kpis.filter((t) => t.format !== 'money') : k.kpis;
 
   return (
     <Card
@@ -76,9 +80,7 @@ export function DirectionCard({ d }: { d: OverviewDirection }) {
             {k.plan != null && (
               <div style={{ textAlign: 'right' }}>
                 <Text size="sm">план {pct(k.plan)}</Text>
-                <Text size="sm" fw={600}>
-                  {pp(k.fact != null ? k.fact - k.plan : null)}
-                </Text>
+                <Lag v={k.fact != null ? k.fact - k.plan : null} crit={k.risk === 'crit'} fw={600} />
               </div>
             )}
           </Group>
@@ -118,12 +120,12 @@ export function DirectionCard({ d }: { d: OverviewDirection }) {
           </Group>
         )}
 
-        {!!k.kpis.length && (
+        {!!tiles.length && (
           <>
             <Divider />
             {/* до трёх плиток — в ряд; четыре — 2×2; пять-шесть — по три */}
-            <SimpleGrid cols={k.kpis.length <= 3 ? k.kpis.length : k.kpis.length === 4 ? 2 : 3} spacing="xs">
-              {k.kpis.map((t) => (
+            <SimpleGrid cols={tiles.length <= 3 ? tiles.length : tiles.length === 4 ? 2 : 3} spacing="xs">
+              {tiles.map((t) => (
                 <div key={t.key}>
                   <Text size="xs" c="dimmed" lineClamp={2} lh={1.25} mih={30}>
                     {t.label}

@@ -5,7 +5,8 @@ import { IconChevronDown, IconChevronRight } from '@tabler/icons-react';
 import type { SiteRisk } from '@mvs/shared';
 import { directionQueries } from '../../api';
 import { RiskBadge, riskColor } from '../../ui/RiskBadge';
-import { date, pct, pp } from '../../ui/format';
+import { date, pct } from '../../ui/format';
+import { Lag } from '../../ui/Lag';
 
 interface Row {
   key: string;
@@ -128,7 +129,7 @@ export function ScheduleTab({ code, date: asOf, onOpenSite }: { code: string; da
         <div>Выполнено: {pct(r.fact)}</div>
         {r.plan != null && (
           <div>
-            План на дату: {pct(r.plan)} ({pp(r.fact - r.plan)})
+            План на дату: {pct(r.plan)} <Lag v={r.fact - r.plan} size="xs" />
           </div>
         )}
         {r.overdue && <div>Срок прошёл, работа не выполнена</div>}

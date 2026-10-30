@@ -4,6 +4,7 @@ import { useNavigate } from '@tanstack/react-router';
 import type { OverviewDirection } from '@mvs/shared';
 import { RiskBadge } from '../../ui/RiskBadge';
 import { pct, pp } from '../../ui/format';
+import { Lag } from '../../ui/Lag';
 
 /** «Наибольшее отставание от графика» по всем направлениям сразу, с фильтром по направлению. */
 export function AttentionList({ directions }: { directions: OverviewDirection[] }) {
@@ -70,9 +71,7 @@ export function AttentionList({ directions }: { directions: OverviewDirection[] 
                 </Box>
               </Box>
               <Box w={96} style={{ textAlign: 'right' }}>
-                <Text size="sm" fw={600}>
-                  {pp(r.d)}
-                </Text>
+                <Lag v={r.d} crit={r.crit} />
                 <RiskBadge risk={r.crit ? 'crit' : 'warn'} size="xs" />
               </Box>
             </Group>

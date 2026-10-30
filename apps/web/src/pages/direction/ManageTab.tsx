@@ -121,7 +121,7 @@ function useRefSave(code: string) {
   return async (path: string, method: 'POST' | 'PATCH', body: unknown, setErrors: (e: Record<string, string>) => void) => {
     try {
       await api(`/directions/${code}/manage/${path}`, { method, body });
-      await qc.invalidateQueries({ queryKey: ['dir', code] });
+      await Promise.all([qc.invalidateQueries({ queryKey: ['dir', code] }), qc.invalidateQueries({ queryKey: ['contractors'] })]);
       notifications.show({ color: 'green', message: 'Сохранено' });
       return true;
     } catch (e) {

@@ -8,6 +8,7 @@ import { useSyncExternalStore } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { Me } from '@mvs/shared';
 import { meQuery } from '../api';
+import { hasFeature } from './access';
 
 const KEY = 'mvs.financeHidden';
 const subs = new Set<() => void>();
@@ -45,14 +46,18 @@ export function setFinanceHidden(v: boolean) {
   subs.forEach((f) => f());
 }
 
-/** Кому доступен переключатель: администратор, руководство, куратор хотя бы одного направления. */
-export const canHideFinance = (me: Me | undefined) => !!me && (me.globalRole !== 'USER' || me.directions.some((d) => d.role === 'CURATOR'));
+/**
+ * Кому доступен переключатель: администратор, руководство, куратор хотя бы одного направления —
+ * если финансы не отключены в карточке сотрудника (тогда они скрыты всегда, сервер их и не отдаёт).
+ */
+export const canHideFinance = (me: Me | undefined) =>
+  !!me && hasFeature(me, 'finance') && (me.globalRole !== 'USER' || me.directions.some((d) => d.role === 'CURATOR'));
 
-/** Финансы скрыты (учитывается, только если переключатель доступен пользователю). */
+/** Финансы скрыты: переключателем (если он доступен пользователю) или в карточке сотрудника. */
 export function useFinanceHidden() {
   const v = useSyncExternalStore(subscribe, () => hidden);
   const { data: me } = useQuery(meQuery);
-  return v && canHideFinance(me);
+  return !hasFeature(me, 'finance') || (v && canHideFinance(me));
 }
 
 /** Сырое значение переключателя — для самой кнопки. */

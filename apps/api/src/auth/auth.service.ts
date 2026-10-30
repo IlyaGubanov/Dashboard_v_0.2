@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { createHash, randomBytes } from 'node:crypto';
 import { compare, hash, hashSync } from 'bcryptjs';
-import type { Me } from '@mvs/shared';
+import { parseRestrictions, type AccessRestrictions, type Me } from '@mvs/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import type { AuthUser } from '../common/request';
@@ -18,6 +18,10 @@ const MAX_FAILED_LOGINS = 5;
 const LOCK_MS = 15 * 60_000;
 
 export const hashPassword = (password: string) => hash(password, BCRYPT_COST);
+/** Ограничения из карточки сотрудника; администратору не применяются. */
+export const restrictionsOf = (u: { globalRole: string; hiddenSections: unknown; deniedFeatures: unknown }): AccessRestrictions =>
+  u.globalRole === 'ADMIN' ? { hiddenSections: [], deniedFeatures: [] } : parseRestrictions(u.hiddenSections, u.deniedFeatures);
+
 const sha256 = (s: string) => createHash('sha256').update(s).digest('hex');
 const lockedMessage = (until: Date) =>
   `Слишком много неудачных попыток. Вход заблокирован до ${until.toLocaleTimeString('ru-RU', {
@@ -106,6 +110,7 @@ export class AuthService {
       globalRole: u.globalRole,
       mustChangePassword: u.mustChangePassword,
       sessionId: s.id,
+      ...restrictionsOf(u),
     };
   }
 
@@ -126,6 +131,7 @@ export class AuthService {
       position: u.position,
       globalRole: u.globalRole,
       mustChangePassword: u.mustChangePassword,
+      ...restrictionsOf(u),
       directions: u.memberships.map((m) => ({
         directionId: m.directionId,
         code: m.direction.code,

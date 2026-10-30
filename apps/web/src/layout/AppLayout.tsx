@@ -24,6 +24,7 @@ import { DirectionIcon } from '../ui/DirectionIcon';
 import { TasksBell } from './MyTasks';
 import { Brand } from '../ui/Brand';
 import { canHideFinance, setFinanceHidden, useFinanceToggle } from '../ui/finance';
+import { canSee } from '../ui/access';
 
 export function AppLayout() {
   const [opened, { toggle, close }] = useDisclosure();
@@ -98,22 +99,26 @@ export function AppLayout() {
 
       <AppShell.Navbar p="xs">
         <AppShell.Section grow component={ScrollArea}>
-          <NavLink
-            component={Link}
-            to="/"
-            label="Производственная сводка"
-            leftSection={<IconChartBar size={18} />}
-            active={path === '/'}
-            onClick={close}
-          />
-          <NavLink
-            component={Link}
-            to="/contractors"
-            label="Подрядчики"
-            leftSection={<IconBuildingFactory2 size={18} />}
-            active={path.startsWith('/contractors')}
-            onClick={close}
-          />
+          {canSee(me, 'overview') && (
+            <NavLink
+              component={Link}
+              to="/"
+              label="Производственная сводка"
+              leftSection={<IconChartBar size={18} />}
+              active={path === '/'}
+              onClick={close}
+            />
+          )}
+          {canSee(me, 'contractors') && (
+            <NavLink
+              component={Link}
+              to="/contractors"
+              label="Подрядчики"
+              leftSection={<IconBuildingFactory2 size={18} />}
+              active={path.startsWith('/contractors')}
+              onClick={close}
+            />
+          )}
           <Text size="xs" c="dimmed" tt="uppercase" fw={600} px="sm" mt="md" mb={4}>
             Направления
           </Text>

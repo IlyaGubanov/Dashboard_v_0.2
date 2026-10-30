@@ -1,5 +1,6 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import type { MemberRole } from '@prisma/client';
+import { APP_SECTION_LABELS, FEATURE_LABELS, type AppSection, type Feature } from '@mvs/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import type { AuthUser } from '../common/request';
 
@@ -11,6 +12,8 @@ import type { AuthUser } from '../common/request';
  *   EDITOR      — ввод факта: по всему направлению (scope ALL), по выбранным лотам/разделам (SECTIONS)
  *                 или только по назначенным объектам (SITES, site_assignment ENTRY/CURATOR);
  *   VIEWER      — просмотр направления.
+ * Поверх ролей — ограничения из карточки сотрудника: скрытые разделы и отключённые возможности
+ * (финансы, создание замечаний, выгрузка, журнал). Они только сужают права и не действуют на администратора.
  */
 @Injectable()
 export class AccessService {
@@ -86,6 +89,24 @@ export class AccessService {
       select: { siteId: true },
     });
     return { role: m.role, all: false, ids: new Set(a.map((x) => x.siteId)) };
+  }
+
+  /** Раздел не скрыт у сотрудника. */
+  canSee(user: AuthUser, section: AppSection): boolean {
+    return !user.hiddenSections.includes(section);
+  }
+
+  /** Возможность не отключена у сотрудника. */
+  has(user: AuthUser, feature: Feature): boolean {
+    return !user.deniedFeatures.includes(feature);
+  }
+
+  assertSection(user: AuthUser, section: AppSection) {
+    if (!this.canSee(user, section)) throw new ForbiddenException(`Раздел «${APP_SECTION_LABELS[section]}» вам недоступен`);
+  }
+
+  assertFeature(user: AuthUser, feature: Feature) {
+    if (!this.has(user, feature)) throw new ForbiddenException(`Возможность «${FEATURE_LABELS[feature].label}» вам отключена`);
   }
 
   async assertViewDirection(user: AuthUser, directionId: number) {

@@ -4,6 +4,7 @@ import { getRouteApi } from '@tanstack/react-router';
 import { IconCalendar, IconPencil } from '@tabler/icons-react';
 import { directionQueries, directionsQuery, meQuery } from '../api';
 import { DirectionIcon } from '../ui/DirectionIcon';
+import { canSee, hasFeature } from '../ui/access';
 import { date as fmtDate, weekLabel } from '../ui/format';
 import type { DirectionSearch, DirectionTab } from './direction/search';
 import { OverviewTab } from './direction/OverviewTab';
@@ -27,6 +28,7 @@ const route = getRouteApi('/app/d/$code');
 /**
  * Страница направления. Набор вкладок зависит от данных: «График работ» — если есть плановые сроки,
  * «Надстройки» — если они заведены, «Карта» — если у объектов есть координаты.
+ * Вкладки, скрытые в карточке сотрудника, не показываются (их данные сервер и не отдаёт).
  */
 export function DirectionPage() {
   const { code } = route.useParams();
@@ -36,9 +38,10 @@ export function DirectionPage() {
   const { data: periods = [] } = useQuery(directionQueries.periods(code));
   const { data: kpi } = useQuery(directionQueries.kpi(code, search.date));
   const { data: sites } = useQuery(directionQueries.sites(code, search.date));
-  const { data: trackers } = useQuery(directionQueries.trackers(code));
   const { data: me } = useQuery(meQuery);
-  const { data: remarks } = useQuery(directionQueries.remarks(code));
+  const see = (t: DirectionTab) => t === 'overview' || t === 'entry' || t === 'manage' || (t === 'journal' ? hasFeature(me, 'audit') : canSee(me, t));
+  const { data: trackers } = useQuery({ ...directionQueries.trackers(code), enabled: !!me && see('trackers') });
+  const { data: remarks } = useQuery({ ...directionQueries.remarks(code), enabled: !!me && see('remarks') });
   const activeRemarks = remarks?.rows.filter((r) => r.status === 'OPEN' || r.status === 'IN_PROGRESS').length ?? 0;
   const overdueRemarks = remarks?.rows.filter((r) => r.overdue).length ?? 0;
   const d = dirs?.find((x) => x.code === code);
@@ -64,6 +67,7 @@ export function DirectionPage() {
     journal: true,
     settings: true,
   };
+  for (const t of Object.keys(available) as DirectionTab[]) available[t] &&= see(t);
   const tab = search.tab && available[search.tab] ? search.tab : 'overview';
 
   if (dirs && !d) return <Alert color="red">Направление не найдено или нет доступа</Alert>;
@@ -122,19 +126,19 @@ export function DirectionPage() {
             </Tabs.Tab>
           )}
           <Tabs.Tab value="overview">Обзор</Tabs.Tab>
-          <Tabs.Tab value="sites">Объекты</Tabs.Tab>
-          <Tabs.Tab value="matrix">Матрица</Tabs.Tab>
+          {available.sites && <Tabs.Tab value="sites">Объекты</Tabs.Tab>}
+          {available.matrix && <Tabs.Tab value="matrix">Матрица</Tabs.Tab>}
           {available.schedule && <Tabs.Tab value="schedule">График работ</Tabs.Tab>}
           {available.trackers && <Tabs.Tab value="trackers">Надстройки</Tabs.Tab>}
-          <Tabs.Tab value="dynamics">Динамика</Tabs.Tab>
+          {available.dynamics && <Tabs.Tab value="dynamics">Динамика</Tabs.Tab>}
           {available.map && <Tabs.Tab value="map">Карта</Tabs.Tab>}
-          <Tabs.Tab value="remarks" rightSection={activeRemarks ? <Badge size="sm" variant="light" color={overdueRemarks ? "red" : "gray"}>{activeRemarks}</Badge> : undefined}>
+          {available.remarks && <Tabs.Tab value="remarks" rightSection={activeRemarks ? <Badge size="sm" variant="light" color={overdueRemarks ? "red" : "gray"}>{activeRemarks}</Badge> : undefined}>
             Замечания
-          </Tabs.Tab>
-          <Tabs.Tab value="people">Ответственные</Tabs.Tab>
+          </Tabs.Tab>}
+          {available.people && <Tabs.Tab value="people">Ответственные</Tabs.Tab>}
           {available.manage && <Tabs.Tab value="manage">Управление</Tabs.Tab>}
-          <Tabs.Tab value="journal">Журнал</Tabs.Tab>
-          <Tabs.Tab value="settings">Устройство</Tabs.Tab>
+          {available.journal && <Tabs.Tab value="journal">Журнал</Tabs.Tab>}
+          {available.settings && <Tabs.Tab value="settings">Устройство</Tabs.Tab>}
         </Tabs.List>
         <Tabs.Panel value="manage" pt="md">
           <ManageTab code={code} editId={search.edit} onEdit={(id) => set({ edit: id })} />

@@ -42,7 +42,8 @@ export class TasksService {
       items.push(...(await this.entryTasks(user, m.direction, m.role)));
       if (m.role === 'CURATOR') items.push(...(await this.curatorTasks(m.direction)));
     }
-    items.push(...(await this.remarkTasks(user, members.map((m) => ({ d: m.direction, role: m.role })))));
+    // замечания скрыты у сотрудника — и задачи по ним не показываем
+    if (!user.hiddenSections.includes('remarks')) items.push(...(await this.remarkTasks(user, members.map((m) => ({ d: m.direction, role: m.role })))));
     const order = { critical: 0, warning: 1, info: 2 };
     items.sort((a, b) => order[a.level] - order[b.level] || a.direction.shortName.localeCompare(b.direction.shortName, 'ru'));
     return { items, badge: items.filter((i) => i.level !== 'info').length };

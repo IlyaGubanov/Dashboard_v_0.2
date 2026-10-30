@@ -15,7 +15,7 @@ export function SiteRemarks({ code, siteId, onOpen }: { code: string; siteId: nu
   const [creating, setCreating] = useState(false);
   if (!data) return <Skeleton h={160} />;
   const rows = data.rows.filter((r) => r.site.id === siteId).sort((a, b) => Number(REMARK_CLOSED.includes(a.status)) - Number(REMARK_CLOSED.includes(b.status)) || b.num - a.num);
-  const canCreate = data.sites.some((s) => s.id === siteId);
+  const canCreate = data.canCreate && data.sites.some((s) => s.id === siteId);
   return (
     <Stack gap="xs">
       {canCreate && (

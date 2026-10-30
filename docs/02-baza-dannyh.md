@@ -8,7 +8,7 @@ MySQL 8.0+, InnoDB, utf8mb4. 29 таблиц, имена — snake_case.
 
 | Группа | Таблицы | Зачем |
 |---|---|---|
-| Доступ | `user`, `user_session`, `direction_member`, `direction_member_section`, `site_assignment` | учётные записи (в т.ч. сотрудники без входа), сессии, роль в направлении, лоты ответственного, ответственные на объекте |
+| Доступ | `user`, `department`, `user_session`, `direction_member`, `direction_member_section`, `site_assignment` | учётные записи (в т.ч. сотрудники без входа; подразделение, скрытые разделы `hidden_sections` и отключённые возможности `denied_features` — см. [12](12-sotrudniki-i-dostup.md)), справочник подразделений, сессии, роль в направлении, лоты ответственного, ответственные на объекте |
 | Направление | `direction`, `section`, `work_group`, `work_type`, `status_def`, `field_def` | направление и всё, что его отличает: период, формула, пороги, разделы, виды работ, статусы, доп. поля |
 | Объекты | `site`, `work_item`, `contract`, `organization` | объекты, позиции работ, договоры, подрядчики (справочник свой у каждого направления) |
 | Факт | `reporting_period`, `progress_entry`, `site_report`, `remark` | отчётные точки, факт по позиции на точку, ресурсы и деньги объекта, замечания |

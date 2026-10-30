@@ -8,7 +8,7 @@ import {
   userUpdateSchema,
   type MembershipData,
   type UserCreateData,
-  type UserUpdateInput,
+  type UserUpdateData,
 } from '@mvs/shared';
 import { ZodPipe } from '../common/zod.pipe';
 import { clientIp, type AuthRequest, type AuthUser } from '../common/request';
@@ -52,7 +52,7 @@ export class UsersController {
   update(
     @CurrentUser() actor: AuthUser,
     @Param('id', ParseIntPipe) id: number,
-    @Body(new ZodPipe(userUpdateSchema)) body: UserUpdateInput,
+    @Body(new ZodPipe(userUpdateSchema)) body: UserUpdateData,
     @Req() req: AuthRequest,
   ) {
     return this.users.update(actor, id, body, clientIp(req));

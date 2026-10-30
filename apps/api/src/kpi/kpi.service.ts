@@ -8,6 +8,7 @@ import type { AuthUser } from '../common/request';
 import { directionKpi, dynamics, hasFactAt, mainProgram, type DirectionResult } from './engine';
 import { loadDirection, loadPeriods } from './loader';
 import { isoDate, parseDate, type KPeriod } from './model';
+import { cardNoFinance, kpiNoFinance, pointNoFinance, rowNoFinance } from './finance';
 
 /** Сколько живёт рассчитанный срез. Изменения данных сбрасывают кэш направления сразу (invalidate). */
 const CACHE_MS = 60_000;
@@ -29,6 +30,7 @@ export class KpiService {
   }
 
   async overview(user: AuthUser): Promise<Overview> {
+    this.access.assertSection(user, 'overview');
     const dirs = await this.prisma.direction.findMany({
       where: { isActive: true, ...(user.globalRole === 'USER' ? { members: { some: { userId: user.id } } } : {}) },
       orderBy: [{ sort: 'asc' }, { name: 'asc' }],
@@ -45,7 +47,7 @@ export class KpiService {
         color: d.color,
         isReadonly: d.isReadonly,
         curators: d.members.map((m) => m.user),
-        kpi: (await this.result(d.id, undefined, thresholds)).kpi,
+        kpi: this.forUser(user, (await this.result(d.id, undefined, thresholds)).kpi),
       })),
     );
     return { thresholds, directions };
@@ -53,12 +55,19 @@ export class KpiService {
 
   async kpi(user: AuthUser, code: string, date?: string): Promise<DirectionKpi> {
     const id = await this.directionId(user, code);
-    return (await this.result(id, date, await this.thresholds())).kpi;
+    return this.forUser(user, (await this.result(id, date, await this.thresholds())).kpi);
+  }
+
+  /** Показатели с учётом ограничений сотрудника: без денег и без списка замечаний, если они ему скрыты. */
+  private forUser(user: AuthUser, k: DirectionKpi): DirectionKpi {
+    const r = this.access.has(user, 'finance') ? k : kpiNoFinance(k);
+    return this.access.canSee(user, 'remarks') ? r : { ...r, remarks: undefined };
   }
 
   async sites(user: AuthUser, code: string, date?: string): Promise<SiteKpiRow[]> {
     const id = await this.directionId(user, code);
-    return (await this.result(id, date, await this.thresholds())).rows;
+    const rows = (await this.result(id, date, await this.thresholds())).rows;
+    return this.access.has(user, 'finance') ? rows : rows.map(rowNoFinance);
   }
 
   async periods(user: AuthUser, code: string): Promise<PeriodItem[]> {
@@ -125,22 +134,28 @@ export class KpiService {
   }
 
   async dynamics(user: AuthUser, code: string, date?: string): Promise<DynamicsPoint[]> {
+    this.access.assertSection(user, 'dynamics');
     const id = await this.directionId(user, code);
     const f = await this.full(id, date);
-    return dynamics(f.dir, f.own);
+    const points = dynamics(f.dir, f.own);
+    return this.access.has(user, 'finance') ? points : points.map(pointNoFinance);
   }
 
   async grid(user: AuthUser, code: string, date?: string): Promise<WorkGrid> {
+    // одни данные на две вкладки: «Матрица» и «График работ»
+    if (!this.access.canSee(user, 'matrix')) this.access.assertSection(user, 'schedule');
     const id = await this.directionId(user, code);
     const f = await this.full(id, date);
     return workGrid(this.prisma, f.dir, f.period);
   }
 
   async trackers(user: AuthUser, code: string): Promise<TrackersView> {
+    this.access.assertSection(user, 'trackers');
     return trackersView(this.prisma, await this.directionId(user, code));
   }
 
   async people(user: AuthUser, code: string): Promise<PeopleView> {
+    this.access.assertSection(user, 'people');
     const id = await this.directionId(user, code);
     return peopleView(this.prisma, id, (await this.full(id, undefined)).own);
   }
@@ -153,7 +168,7 @@ export class KpiService {
     const card = await buildSiteCard(this.prisma, f.dir, ks, f.period, f.own);
     card.canEdit = !f.dir.isReadonly && (await this.access.canEditSite(user, siteId));
     card.canManage = await this.access.canManageDirection(user, id);
-    return card;
+    return this.access.has(user, 'finance') ? card : cardNoFinance(card);
   }
 
   /** Срез на отчётную точку (последнюю не позже date) + предыдущая точка для динамики. */

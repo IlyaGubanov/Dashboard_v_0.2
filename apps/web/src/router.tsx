@@ -1,6 +1,8 @@
 import { QueryClient } from '@tanstack/react-query';
 import { createRootRouteWithContext, createRoute, createRouter, Outlet, redirect } from '@tanstack/react-router';
-import { ApiError, meQuery } from './api';
+import { Alert } from '@mantine/core';
+import { ApiError, directionsQuery, meQuery } from './api';
+import { canSee } from './ui/access';
 import { AppLayout } from './layout/AppLayout';
 import { LoginPage } from './pages/LoginPage';
 import { ChangePasswordPage } from './pages/ChangePasswordPage';
@@ -67,7 +69,23 @@ const appRoute = createRoute({
   component: AppLayout,
 });
 
-const overviewRoute = createRoute({ getParentRoute: () => appRoute, path: '/', component: OverviewPage });
+/** Главная — сводка; если она скрыта у сотрудника, открывается первое доступное направление. */
+const overviewRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/',
+  beforeLoad: async ({ context }) => {
+    if (canSee(context.me, 'overview')) return;
+    const dirs = await context.queryClient.ensureQueryData(directionsQuery);
+    if (dirs[0]) throw redirect({ to: '/d/$code', params: { code: dirs[0].code }, search: {} });
+  },
+  component: HomePage,
+});
+
+function HomePage() {
+  const me = queryClient.getQueryData(meQuery.queryKey);
+  if (canSee(me, 'overview')) return <OverviewPage />;
+  return <Alert color="gray">Доступных разделов пока нет. Обратитесь к администратору.</Alert>;
+}
 
 const directionRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -86,7 +104,14 @@ const usersRoute = createRoute({ getParentRoute: () => appRoute, path: '/admin/u
 const adminDirectionsRoute = createRoute({ getParentRoute: () => appRoute, path: '/admin/directions', beforeLoad: adminOnly, component: AdminDirectionsPage });
 const directionEditorRoute = createRoute({ getParentRoute: () => appRoute, path: '/admin/directions/$code', beforeLoad: adminOnly, component: DirectionEditorPage });
 
-const contractorsRoute = createRoute({ getParentRoute: () => appRoute, path: '/contractors', component: ContractorsPage });
+const contractorsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/contractors',
+  beforeLoad: ({ context }) => {
+    if (!canSee(context.me, 'contractors')) throw redirect({ to: '/' });
+  },
+  component: ContractorsPage,
+});
 
 const helpRoute = createRoute({ getParentRoute: () => appRoute, path: '/help', component: HelpPage });
 

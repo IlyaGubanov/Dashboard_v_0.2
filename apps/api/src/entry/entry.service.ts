@@ -15,6 +15,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { AccessService } from '../auth/access.service';
 import { KpiService } from '../kpi/kpi.service';
+import { sheetNoFinance } from '../kpi/finance';
 import type { AuthUser } from '../common/request';
 
 const num = (v: Prisma.Decimal | number | null | undefined) => (v == null ? null : Number(v));
@@ -84,7 +85,13 @@ export class EntryService {
     return null;
   }
 
+  /** Лист ввода; без доступа к финансам — без денежных колонок. */
   async sheet(user: AuthUser, code: string, periodId: number): Promise<EntrySheet> {
+    const s = await this.buildSheet(user, code, periodId);
+    return this.access.has(user, 'finance') ? s : sheetNoFinance(s);
+  }
+
+  private async buildSheet(user: AuthUser, code: string, periodId: number): Promise<EntrySheet> {
     const d = await this.direction(user, code);
     const p = await this.period(d.id, periodId);
     const ed = await this.access.editableSites(user, d.id);
@@ -212,6 +219,10 @@ export class EntryService {
     if (!this.statusAllows(ed.role, p.status)) throw new ForbiddenException(this.reasonClosed(ed.role, p.status, false) ?? 'Нет прав');
     const canSite = (siteId: number) => ed.all || ed.ids.has(siteId);
     const status = new Map(d.statusDefs.map((s) => [s.code, s.id]));
+    // без доступа к финансам денежные значения не принимаются — остаются прежними
+    if (!this.access.has(user, 'finance')) {
+      body = { items: body.items.map(({ ks: _k, paid: _p, ...i }) => i), reports: body.reports.map(({ ks: _k, paid: _p, ...r }) => r) };
+    }
     const dateLabel = day(p.date)!.split('-').reverse().join('.');
 
     const itemIds = body.items.map((i) => i.workItemId);
@@ -426,6 +437,7 @@ export class EntryService {
     code: string,
     q: { userId?: number; siteId?: number; from?: string; to?: string; skip?: number; take?: number },
   ): Promise<AuditPage> {
+    this.access.assertFeature(user, 'audit');
     const d = await this.direction(user, code);
     const where: Prisma.AuditLogWhereInput = {
       directionId: d.id,

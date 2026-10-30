@@ -34,17 +34,19 @@ function readColors(): ChartColors {
 /** Общие настройки: подсказка по оси, тонкие линии, приглушённая сетка, без анимации прыжков. */
 export function baseOption(c: ChartColors): EChartsOption {
   return {
-    animationDuration: 300,
-    textStyle: { fontFamily: 'Inter, "Segoe UI", Roboto, Arial, sans-serif', color: c.text },
-    grid: { left: 8, right: 16, top: 36, bottom: 8, containLabel: true },
+    animation: false,
+    textStyle: { fontFamily: 'Montserrat, "Segoe UI", Arial, sans-serif', color: c.text, fontSize: 12 },
+    grid: { left: 12, right: 20, top: 42, bottom: 12, containLabel: true },
     tooltip: {
       trigger: 'axis',
+      confine: true,
+      padding: [10, 14],
       backgroundColor: c.surface,
       borderColor: c.grid,
       textStyle: { color: c.text, fontSize: 12 },
       axisPointer: { type: 'line', lineStyle: { color: c.muted } },
     },
-    legend: { top: 0, left: 0, icon: 'roundRect', itemWidth: 12, itemHeight: 12, textStyle: { color: c.text, fontSize: 12 } },
+    legend: { top: 0, left: 0, itemGap: 20, icon: 'roundRect', itemWidth: 16, itemHeight: 4, textStyle: { color: c.text, fontSize: 12 } },
   };
 }
 
@@ -88,7 +90,7 @@ export function EChart({ option, height = 280, ariaLabel }: { option: (c: ChartC
 
   return (
     <Box pos="relative" h={height} role="img" aria-label={ariaLabel}>
-      <div ref={ref} style={{ width: '100%', height: '100%' }} />
+      <div ref={ref} style={{ width: '100%', height: '100%', touchAction: 'pan-y' }} />
       {!ready && <Loader size="sm" pos="absolute" top="45%" left="50%" />}
     </Box>
   );

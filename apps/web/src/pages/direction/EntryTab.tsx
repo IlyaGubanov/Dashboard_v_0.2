@@ -192,7 +192,7 @@ export function EntryTab({ code, periodKind }: { code: string; periodKind: strin
             ]}
           />
         )}
-        <TextInput placeholder="Объект или работа" leftSection={<IconSearch size={16} />} value={q} onChange={(e) => setQ(e.currentTarget.value)} w={240} />
+        <TextInput aria-label="Объект или работа" placeholder="Объект или работа" leftSection={<IconSearch size={16} />} value={q} onChange={(e) => setQ(e.currentTarget.value)} w={240} />
         <Switch label="Только не внесённые" checked={notUpdated} onChange={(e) => setNotUpdated(e.currentTarget.checked)} />
         {isFetching && (
           <Text size="xs" c="dimmed">

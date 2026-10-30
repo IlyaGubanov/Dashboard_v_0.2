@@ -50,7 +50,7 @@ export function MatrixTab({ code, date, onOpenSite }: { code: string; date?: str
   return (
     <Card withBorder padding={0}>
       <Group p="md" gap="md" wrap="wrap">
-        {sections.length > 1 && <Select placeholder="Все разделы" clearable data={sections} value={section} onChange={setSection} w={220} />}
+        {sections.length > 1 && <Select aria-label="Все разделы" placeholder="Все разделы" clearable data={sections} value={section} onChange={setSection} w={220} />}
         {data.planDate && <Switch label="Только отстающие объекты" checked={lagOnly} onChange={(e) => setLagOnly(e.currentTarget.checked)} />}
         <Group gap={6} ml="auto" wrap="nowrap" aria-label="Шкала выполнения: от 0 до 100 процентов">
           <Text size="xs" c="dimmed">
@@ -70,7 +70,7 @@ export function MatrixTab({ code, date, onOpenSite }: { code: string; date?: str
       </Group>
 
       <Box style={{ overflow: 'auto', maxHeight: '70vh' }}>
-        <table style={{ borderCollapse: 'separate', borderSpacing: 2, fontSize: 12 }}>
+        <table className="matrix-table" style={{ borderCollapse: 'separate', borderSpacing: 2, fontSize: 12 }}>
           <thead style={{ position: 'sticky', top: 0, zIndex: 2, background: 'var(--mantine-color-body)' }}>
             {hasGroups && (
               <tr>
@@ -97,7 +97,7 @@ export function MatrixTab({ code, date, onOpenSite }: { code: string; date?: str
           </thead>
           <tbody>
             {sites.map((s) => (
-              <tr key={s.id} onClick={() => onOpenSite(s.id)} style={{ cursor: 'pointer' }}>
+              <tr key={s.id} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') onOpenSite(s.id); }} onClick={() => onOpenSite(s.id)} style={{ cursor: 'pointer' }}>
                 <td style={{ ...stickyCol, padding: '4px 6px' }}>
                   <Text size="xs" fw={500} lineClamp={1} maw={260}>
                     {s.name}

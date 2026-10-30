@@ -192,7 +192,7 @@ function Kv({ k, v }: { k: string; v: React.ReactNode }) {
       <Text size="xs" c="dimmed">
         {k}
       </Text>
-      <Text size="sm" fw={500}>
+      <Text component="div" size="sm" fw={500}>
         {v}
       </Text>
     </div>
@@ -233,7 +233,7 @@ function Items({ c }: { c: SiteCard }) {
           {c.items.map((i) => (
             <Table.Tr key={i.id} style={{ opacity: i.excluded ? 0.5 : 1 }}>
               <Table.Td style={{ whiteSpace: 'normal', minWidth: 200 }}>
-                <Text size="sm" fw={500}>
+                <Text component="div" size="sm" fw={500}>
                   {i.name}
                   {i.isExample && (
                     <Badge ml={6} size="xs" variant="outline" color="gray">

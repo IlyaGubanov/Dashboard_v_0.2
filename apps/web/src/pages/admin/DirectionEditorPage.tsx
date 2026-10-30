@@ -95,7 +95,7 @@ export function DirectionEditorPage() {
   if (error) return <Alert color="red">{(error as Error).message}</Alert>;
   if (!d) return <Skeleton h={400} />;
   return (
-    <Stack>
+    <Stack className="reading-page">
       <Anchor component={Link} to="/admin/directions" size="sm">
         ← Все направления
       </Anchor>
@@ -451,8 +451,8 @@ function TrackerForm({ d, t, isNew, onCreated }: { d: DirectionDef; t: TrackerRo
         {v.stages.map((s, i) => (
           <Stack key={i} gap={4}>
             <Group wrap="nowrap" align="flex-start">
-              <TextInput w={120} size="xs" placeholder="код" value={s.code} onChange={(e) => setStage(i, { code: e.currentTarget.value })} error={errors[`stages.${i}.code`]} />
-              <TextInput style={{ flex: 1 }} size="xs" placeholder="Название" value={s.name} onChange={(e) => setStage(i, { name: e.currentTarget.value })} />
+              <TextInput w={120} size="xs" aria-label="код" placeholder="код" value={s.code} onChange={(e) => setStage(i, { code: e.currentTarget.value })} error={errors[`stages.${i}.code`]} />
+              <TextInput style={{ flex: 1 }} size="xs" aria-label="Название" placeholder="Название" value={s.name} onChange={(e) => setStage(i, { name: e.currentTarget.value })} />
               <Select w={200} size="xs" allowDeselect={false} data={TRACKER_VALUE_TYPES.map((x) => ({ value: x, label: TRACKER_VALUE_LABELS[x] }))} value={s.valueType} onChange={(x) => setStage(i, { valueType: x! })} />
               <Checkbox size="xs" mt={6} label="в готовности" checked={s.inProgress} onChange={(e) => setStage(i, { inProgress: e.currentTarget.checked })} />
               <RowTools i={i} n={v.stages.length} onMove={(dd) => setV({ ...v, stages: move(v.stages, i, dd) })} onRemove={() => setV({ ...v, stages: v.stages.filter((_, j) => j !== i) })} removeHint="Удалить (нельзя, если есть значения)" />
@@ -491,10 +491,10 @@ function TrackerForm({ d, t, isNew, onCreated }: { d: DirectionDef; t: TrackerRo
                       <TextInput size="xs" value={it.name} onChange={(e) => setItem(i, { name: e.currentTarget.value })} />
                     </Table.Td>
                     <Table.Td w={200}>
-                      <TextInput size="xs" placeholder="категория" value={it.category ?? ''} onChange={(e) => setItem(i, { category: e.currentTarget.value || null })} />
+                      <TextInput size="xs" aria-label="категория" placeholder="категория" value={it.category ?? ''} onChange={(e) => setItem(i, { category: e.currentTarget.value || null })} />
                     </Table.Td>
                     <Table.Td w={90}>
-                      <TextInput size="xs" placeholder="ед." value={it.unit ?? ''} onChange={(e) => setItem(i, { unit: e.currentTarget.value || null })} />
+                      <TextInput size="xs" aria-label="ед." placeholder="ед." value={it.unit ?? ''} onChange={(e) => setItem(i, { unit: e.currentTarget.value || null })} />
                     </Table.Td>
                     <Table.Td w={90}>
                       <RowTools i={i} n={v.items.length} onMove={(dd) => setV({ ...v, items: move(v.items, i, dd) })} onRemove={() => setItem(i, { isArchived: true })} removeHint="В архив (значения сохранятся)" />

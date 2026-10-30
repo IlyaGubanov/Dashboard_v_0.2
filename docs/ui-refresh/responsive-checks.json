@@ -1,0 +1,167 @@
+[
+  {
+    "path": "/",
+    "width": 1366,
+    "height": 768,
+    "scroll": 1351
+  },
+  {
+    "path": "/d/schools",
+    "width": 1366,
+    "height": 768,
+    "scroll": 1351
+  },
+  {
+    "path": "/d/mkd",
+    "width": 1366,
+    "height": 768,
+    "scroll": 1351
+  },
+  {
+    "path": "/d/networks",
+    "width": 1366,
+    "height": 768,
+    "scroll": 1351
+  },
+  {
+    "path": "/d/streets",
+    "width": 1366,
+    "height": 768,
+    "scroll": 1351
+  },
+  {
+    "path": "/",
+    "width": 1920,
+    "height": 1080,
+    "scroll": 1905
+  },
+  {
+    "path": "/d/schools",
+    "width": 1920,
+    "height": 1080,
+    "scroll": 1920
+  },
+  {
+    "path": "/d/mkd",
+    "width": 1920,
+    "height": 1080,
+    "scroll": 1905
+  },
+  {
+    "path": "/d/networks",
+    "width": 1920,
+    "height": 1080,
+    "scroll": 1905
+  },
+  {
+    "path": "/d/streets",
+    "width": 1920,
+    "height": 1080,
+    "scroll": 1920
+  },
+  {
+    "path": "/",
+    "width": 2560,
+    "height": 1440,
+    "scroll": 2545
+  },
+  {
+    "path": "/d/schools",
+    "width": 2560,
+    "height": 1440,
+    "scroll": 2560
+  },
+  {
+    "path": "/d/mkd",
+    "width": 2560,
+    "height": 1440,
+    "scroll": 2560
+  },
+  {
+    "path": "/d/networks",
+    "width": 2560,
+    "height": 1440,
+    "scroll": 2560
+  },
+  {
+    "path": "/d/streets",
+    "width": 2560,
+    "height": 1440,
+    "scroll": 2560
+  },
+  {
+    "path": "/",
+    "width": 3440,
+    "height": 1440,
+    "scroll": 3425
+  },
+  {
+    "path": "/d/schools",
+    "width": 3440,
+    "height": 1440,
+    "scroll": 3440
+  },
+  {
+    "path": "/d/mkd",
+    "width": 3440,
+    "height": 1440,
+    "scroll": 3440
+  },
+  {
+    "path": "/d/networks",
+    "width": 3440,
+    "height": 1440,
+    "scroll": 3440
+  },
+  {
+    "path": "/d/streets",
+    "width": 3440,
+    "height": 1440,
+    "scroll": 3440
+  },
+  {
+    "path": "/",
+    "width": 375,
+    "height": 812,
+    "scroll": 360
+  },
+  {
+    "path": "/d/schools",
+    "width": 375,
+    "height": 812,
+    "scroll": 360
+  },
+  {
+    "path": "/d/mkd",
+    "width": 375,
+    "height": 812,
+    "scroll": 360
+  },
+  {
+    "path": "/d/networks",
+    "width": 375,
+    "height": 812,
+    "scroll": 360
+  },
+  {
+    "path": "/d/streets",
+    "width": 375,
+    "height": 812,
+    "scroll": 360
+  },
+  {
+    "path": "schools/settings",
+    "scroll": 360,
+    "width": 375
+  },
+  {
+    "path": "mkd/settings",
+    "scroll": 360,
+    "width": 375
+  },
+  {
+    "path": "networks/settings",
+    "scroll": 360,
+    "width": 375
+  }
+]

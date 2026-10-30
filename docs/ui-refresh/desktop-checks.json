@@ -1,0 +1,317 @@
+[
+  {
+    "code": "schools",
+    "tab": "entry",
+    "scroll": 1905,
+    "width": 1920,
+    "error": false
+  },
+  {
+    "code": "schools",
+    "tab": "overview",
+    "scroll": 1920,
+    "width": 1920,
+    "error": false
+  },
+  {
+    "code": "schools",
+    "tab": "sites",
+    "scroll": 1920,
+    "width": 1920,
+    "error": false
+  },
+  {
+    "code": "schools",
+    "tab": "matrix",
+    "scroll": 1920,
+    "width": 1920,
+    "error": false
+  },
+  {
+    "code": "schools",
+    "tab": "schedule",
+    "scroll": 1920,
+    "width": 1920,
+    "error": false
+  },
+  {
+    "code": "schools",
+    "tab": "trackers",
+    "scroll": 1905,
+    "width": 1920,
+    "error": false
+  },
+  {
+    "code": "schools",
+    "tab": "dynamics",
+    "scroll": 1920,
+    "width": 1920,
+    "error": false
+  },
+  {
+    "code": "schools",
+    "tab": "remarks",
+    "scroll": 1920,
+    "width": 1920,
+    "error": false
+  },
+  {
+    "code": "schools",
+    "tab": "people",
+    "scroll": 1920,
+    "width": 1920,
+    "error": false
+  },
+  {
+    "code": "schools",
+    "tab": "manage",
+    "scroll": 1920,
+    "width": 1920,
+    "error": false
+  },
+  {
+    "code": "schools",
+    "tab": "journal",
+    "scroll": 1920,
+    "width": 1920,
+    "error": false
+  },
+  {
+    "code": "schools",
+    "tab": "settings",
+    "scroll": 1905,
+    "width": 1920,
+    "error": false
+  },
+  {
+    "code": "mkd",
+    "tab": "entry",
+    "scroll": 1905,
+    "width": 1920,
+    "error": false
+  },
+  {
+    "code": "mkd",
+    "tab": "overview",
+    "scroll": 1905,
+    "width": 1920,
+    "error": false
+  },
+  {
+    "code": "mkd",
+    "tab": "sites",
+    "scroll": 1905,
+    "width": 1920,
+    "error": false
+  },
+  {
+    "code": "mkd",
+    "tab": "matrix",
+    "scroll": 1920,
+    "width": 1920,
+    "error": false
+  },
+  {
+    "code": "mkd",
+    "tab": "schedule",
+    "scroll": 1905,
+    "width": 1920,
+    "error": false
+  },
+  {
+    "code": "mkd",
+    "tab": "dynamics",
+    "scroll": 1920,
+    "width": 1920,
+    "error": false
+  },
+  {
+    "code": "mkd",
+    "tab": "remarks",
+    "scroll": 1905,
+    "width": 1920,
+    "error": false
+  },
+  {
+    "code": "mkd",
+    "tab": "people",
+    "scroll": 1920,
+    "width": 1920,
+    "error": false
+  },
+  {
+    "code": "mkd",
+    "tab": "manage",
+    "scroll": 1905,
+    "width": 1920,
+    "error": false
+  },
+  {
+    "code": "mkd",
+    "tab": "journal",
+    "scroll": 1920,
+    "width": 1920,
+    "error": false
+  },
+  {
+    "code": "mkd",
+    "tab": "settings",
+    "scroll": 1905,
+    "width": 1920,
+    "error": false
+  },
+  {
+    "code": "networks",
+    "tab": "entry",
+    "scroll": 1905,
+    "width": 1920,
+    "error": false
+  },
+  {
+    "code": "networks",
+    "tab": "overview",
+    "scroll": 1905,
+    "width": 1920,
+    "error": false
+  },
+  {
+    "code": "networks",
+    "tab": "sites",
+    "scroll": 1905,
+    "width": 1920,
+    "error": false
+  },
+  {
+    "code": "networks",
+    "tab": "matrix",
+    "scroll": 1920,
+    "width": 1920,
+    "error": false
+  },
+  {
+    "code": "networks",
+    "tab": "schedule",
+    "scroll": 1905,
+    "width": 1920,
+    "error": false
+  },
+  {
+    "code": "networks",
+    "tab": "trackers",
+    "scroll": 1905,
+    "width": 1920,
+    "error": false
+  },
+  {
+    "code": "networks",
+    "tab": "dynamics",
+    "scroll": 1905,
+    "width": 1920,
+    "error": false
+  },
+  {
+    "code": "networks",
+    "tab": "remarks",
+    "scroll": 1905,
+    "width": 1920,
+    "error": false
+  },
+  {
+    "code": "networks",
+    "tab": "people",
+    "scroll": 1920,
+    "width": 1920,
+    "error": false
+  },
+  {
+    "code": "networks",
+    "tab": "manage",
+    "scroll": 1905,
+    "width": 1920,
+    "error": false
+  },
+  {
+    "code": "networks",
+    "tab": "journal",
+    "scroll": 1920,
+    "width": 1920,
+    "error": false
+  },
+  {
+    "code": "networks",
+    "tab": "settings",
+    "scroll": 1920,
+    "width": 1920,
+    "error": false
+  },
+  {
+    "code": "streets",
+    "tab": "overview",
+    "scroll": 1920,
+    "width": 1920,
+    "error": false
+  },
+  {
+    "code": "streets",
+    "tab": "sites",
+    "scroll": 1905,
+    "width": 1920,
+    "error": false
+  },
+  {
+    "code": "streets",
+    "tab": "matrix",
+    "scroll": 1920,
+    "width": 1920,
+    "error": false
+  },
+  {
+    "code": "streets",
+    "tab": "dynamics",
+    "scroll": 1920,
+    "width": 1920,
+    "error": false
+  },
+  {
+    "code": "streets",
+    "tab": "map",
+    "scroll": 1920,
+    "width": 1920,
+    "error": false
+  },
+  {
+    "code": "streets",
+    "tab": "remarks",
+    "scroll": 1920,
+    "width": 1920,
+    "error": false
+  },
+  {
+    "code": "streets",
+    "tab": "people",
+    "scroll": 1920,
+    "width": 1920,
+    "error": false
+  },
+  {
+    "code": "streets",
+    "tab": "manage",
+    "scroll": 1905,
+    "width": 1920,
+    "error": false
+  },
+  {
+    "code": "streets",
+    "tab": "journal",
+    "scroll": 1920,
+    "width": 1920,
+    "error": false
+  },
+  {
+    "code": "streets",
+    "tab": "settings",
+    "scroll": 1905,
+    "width": 1920,
+    "error": false
+  }
+]

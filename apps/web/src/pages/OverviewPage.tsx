@@ -28,7 +28,7 @@ export function OverviewPage() {
   const financeHidden = useFinanceHidden();
 
   return (
-    <Stack gap="lg">
+    <Stack gap="md">
       <Group justify="space-between" align="flex-end">
         <div>
           <Title order={2}>Производственная сводка</Title>
@@ -107,11 +107,11 @@ function Totals({ dirs }: { dirs: OverviewDirection[] }) {
   return (
     <SimpleGrid cols={{ base: 2, sm: 3, lg: tiles.length }}>
       {tiles.map((t) => (
-        <Card key={t.label} withBorder padding="md">
+        <Card key={t.label} className={t.label === 'Из них критично' ? 'kpi-critical' : t.label === 'Отстают от графика' ? 'kpi-alert' : undefined} withBorder padding="md">
           <Text size="xs" c="dimmed">
             {t.label}
           </Text>
-          <Text fz={{ base: 18, sm: 22 }} fw={700} style={{ whiteSpace: 'nowrap' }}>
+          <Text className="kpi-value" style={{ whiteSpace: 'nowrap' }}>
             {t.value}
           </Text>
         </Card>

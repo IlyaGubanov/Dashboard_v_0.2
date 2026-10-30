@@ -87,7 +87,7 @@ export function UsersPage() {
       </Group>
 
       <TextInput
-        placeholder="Поиск по ФИО, логину, должности"
+        aria-label="Поиск по ФИО, логину, должности" placeholder="Поиск по ФИО, логину, должности"
         leftSection={<IconSearch size={16} />}
         value={q}
         onChange={(e) => setQ(e.currentTarget.value)}
@@ -278,7 +278,7 @@ function RolesModal({ user, onClose }: { user: UserListItem; onClose: () => void
                 </Text>
                 <Select
                   w={230}
-                  placeholder="Нет доступа"
+                  aria-label="Нет доступа" placeholder="Нет доступа"
                   clearable
                   data={MEMBER_ROLES.map((m) => ({ value: m, label: MEMBER_ROLE_LABELS[m] }))}
                   value={r.role || null}
@@ -297,7 +297,7 @@ function RolesModal({ user, onClose }: { user: UserListItem; onClose: () => void
               {r.role === 'EDITOR' && r.scope === 'SECTIONS' && (
                 <MultiSelect
                   ml={156}
-                  placeholder="Выберите лоты / разделы"
+                  aria-label="Выберите лоты / разделы" placeholder="Выберите лоты / разделы"
                   data={d.sections.map((s) => ({ value: String(s.id), label: s.name }))}
                   value={r.sectionIds}
                   onChange={(v) => set({ sectionIds: v })}

@@ -6,6 +6,7 @@ import { useNavigate, useSearch } from '@tanstack/react-router';
 import { loginSchema, type LoginInput } from '@mvs/shared';
 import { api, ApiError } from '../api';
 import { zodValidate } from '../ui/zodValidate';
+import { Brand } from '../ui/Brand';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -29,15 +30,11 @@ export function LoginPage() {
 
   return (
     <Center mih="100vh" p="md" bg="var(--surface-muted)">
-      <Paper withBorder shadow="sm" p="xl" w="100%" maw={380}>
+      <Paper className="auth-panel" withBorder shadow="sm" p="xl" w="100%" maw={420}>
         <form onSubmit={form.onSubmit(submit)}>
           <Stack>
-            <div>
-              <Title order={2}>МВС СТ</Title>
-              <Text c="dimmed" size="sm">
-                Вход в производственный дашборд
-              </Text>
-            </div>
+            <Brand />
+            <Title order={2} ta="center" fz="lg">Вход в систему</Title>
             {error && (
               <Alert color="red" variant="light">
                 {error}

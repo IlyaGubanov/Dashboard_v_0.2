@@ -76,7 +76,7 @@ function Sites({ refs, onEdit, onCreate }: { refs: ManageRefs; onEdit: (id: numb
   return (
     <Card withBorder padding={0}>
       <Group p="md" gap="sm">
-        <TextInput placeholder="Поиск" leftSection={<IconSearch size={16} />} value={q} onChange={(e) => setQ(e.currentTarget.value)} w={260} />
+        <TextInput aria-label="Поиск" placeholder="Поиск" leftSection={<IconSearch size={16} />} value={q} onChange={(e) => setQ(e.currentTarget.value)} w={260} />
         <Checkbox label="Показать архив" checked={archived} onChange={(e) => setArchived(e.currentTarget.checked)} />
         <Button ml="auto" leftSection={<IconPlus size={16} />} onClick={onCreate}>
           Новый объект

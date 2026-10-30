@@ -136,7 +136,7 @@ export function SitesTab({
           w={260}
         />
         {has.sections.length > 1 && (
-          <Select placeholder="Все разделы" clearable data={has.sections} value={section} onChange={setSection} w={220} />
+          <Select aria-label="Все разделы" placeholder="Все разделы" clearable data={has.sections} value={section} onChange={setSection} w={220} />
         )}
         {has.contractors.length > 0 && (
           <Select
@@ -186,7 +186,7 @@ export function SitesTab({
           </Table.Thead>
           <Table.Tbody>
             {shown.map((r) => (
-              <Table.Tr key={r.id} style={{ cursor: 'pointer' }} onClick={() => onOpenSite(r.id)}>
+              <Table.Tr key={r.id} style={{ cursor: 'pointer' }} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') onOpenSite(r.id); }} onClick={() => onOpenSite(r.id)}>
                 <Table.Td ta="right">{r.num ?? ''}</Table.Td>
                 <Table.Td style={{ whiteSpace: 'normal', minWidth: 260 }}>
                   <Text size="sm" fw={500} lineClamp={2}>

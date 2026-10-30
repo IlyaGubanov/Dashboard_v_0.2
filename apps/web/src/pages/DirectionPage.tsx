@@ -104,8 +104,18 @@ export function DirectionPage() {
         </Group>
       </Group>
 
+      {/* На телефоне тот же набор разрешённых вкладок доступен без многострочной панели. */}
+      <Select hiddenFrom="sm" label="Раздел направления" value={tab} allowDeselect={false}
+        onChange={(v) => set({ tab: (v as DirectionTab) ?? 'overview' })}
+        data={([
+          ['entry', 'Ввод данных'], ['overview', 'Обзор'], ['sites', 'Объекты'], ['matrix', 'Матрица'],
+          ['schedule', 'График работ'], ['trackers', 'Надстройки'], ['dynamics', 'Динамика'], ['map', 'Карта'],
+          ['remarks', `Замечания${activeRemarks ? ` · ${activeRemarks}` : ''}`], ['people', 'Ответственные'],
+          ['manage', 'Управление'], ['journal', 'Журнал'], ['settings', 'Устройство'],
+        ] as [DirectionTab, string][]).filter(([value]) => available[value]).map(([value, label]) => ({ value, label }))} />
+
       <Tabs value={tab} onChange={(v) => set({ tab: (v as DirectionTab) ?? 'overview' })} keepMounted={false}>
-        <Tabs.List>
+        <Tabs.List visibleFrom="sm">
           {available.entry && (
             <Tabs.Tab value="entry" leftSection={<IconPencil size={16} />} fw={600}>
               Ввод данных

@@ -86,7 +86,7 @@ export function AdminDirectionsPage() {
                     <Group gap="sm" wrap="nowrap">
                       <DirectionIcon icon={r.icon} color={r.color} />
                       <div>
-                        <Text fw={500}>
+                        <Text component="div" fw={500}>
                           <Link to="/admin/directions/$code" params={{ code: r.code }} onClick={(e) => e.stopPropagation()}>
                             {r.shortName}
                           </Link>

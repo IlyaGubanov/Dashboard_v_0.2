@@ -459,7 +459,7 @@ function People({ code, site, refs }: { code: string; site: SiteEdit; refs: Mana
       </Text>
       {rows.map((r, i) => (
         <Group key={i} wrap="nowrap">
-          <Select style={{ flex: 1 }} searchable placeholder="Сотрудник" data={users} value={r.userId ? String(r.userId) : null} onChange={(x) => setRows(rows.map((y, j) => (j === i ? { ...y, userId: Number(x) } : y)))} />
+          <Select style={{ flex: 1 }} searchable aria-label="Сотрудник" placeholder="Сотрудник" data={users} value={r.userId ? String(r.userId) : null} onChange={(x) => setRows(rows.map((y, j) => (j === i ? { ...y, userId: Number(x) } : y)))} />
           <Select w={240} data={ASSIGNMENT_ROLES.map((x) => ({ value: x, label: ASSIGNMENT_ROLE_LABELS[x] }))} value={r.role} allowDeselect={false} onChange={(x) => setRows(rows.map((y, j) => (j === i ? { ...y, role: x as typeof r.role } : y)))} />
           <ActionIcon variant="subtle" color="red" aria-label="Убрать" onClick={() => setRows(rows.filter((_, j) => j !== i))}>
             <IconTrash size={16} />

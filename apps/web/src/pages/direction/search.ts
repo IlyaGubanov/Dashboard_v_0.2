@@ -1,5 +1,5 @@
 /** Параметры адреса страницы направления: вкладка, дата среза, открытый объект. */
-export const DIRECTION_TABS = ['overview', 'sites', 'matrix', 'schedule', 'trackers', 'people', 'dynamics', 'map', 'entry', 'remarks', 'manage', 'journal', 'settings'] as const;
+export const DIRECTION_TABS = ['overview', 'sites', 'matrix', 'schedule', 'trackers', 'people', 'dynamics', 'entry', 'remarks', 'manage', 'journal', 'settings'] as const;
 export type DirectionTab = (typeof DIRECTION_TABS)[number];
 
 export interface DirectionSearch {

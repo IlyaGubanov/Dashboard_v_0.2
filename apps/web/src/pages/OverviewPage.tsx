@@ -105,7 +105,7 @@ function Totals({ dirs }: { dirs: OverviewDirection[] }) {
     { label: 'Стоимость работ', value: money(sum(k.map((x) => x.money?.portfolio))), money: true },
   ].filter((t) => !(financeHidden && t.money));
   return (
-    <SimpleGrid cols={{ base: 2, sm: 3, lg: tiles.length }}>
+    <SimpleGrid className="kpi-strip" cols={{ base: 2, sm: 3, lg: tiles.length }}>
       {tiles.map((t) => (
         <Card key={t.label} className={t.label === 'Из них критично' ? 'kpi-critical' : t.label === 'Отстают от графика' ? 'kpi-alert' : undefined} withBorder padding="md">
           <Text size="xs" c="dimmed">

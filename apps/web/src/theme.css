@@ -185,6 +185,7 @@ button, a, input, select, textarea { touch-action: manipulation; }
   .brand-caption { font-size: 9px; max-width: 160px; }
   .header-content { padding-inline: 8px; gap: 4px; }
   .header-actions { gap: 4px; }
+  .header-brand { gap: 4px; }
   .header-actions .mantine-ActionIcon-root { width: 30px; min-width: 30px; }
   .header-actions .mantine-Avatar-root { width: 28px; height: 28px; }
   .kpi-strip .mantine-Card-root { padding: 12px; border-bottom: 1px solid var(--line); }
@@ -193,6 +194,10 @@ button, a, input, select, textarea { touch-action: manipulation; }
   .mantine-Title-root { overflow-wrap: anywhere; }
   .mantine-SegmentedControl-label { padding-inline: 6px; }
   .mantine-Drawer-body, .mantine-Modal-body { padding-inline: 12px; }
+}
+@media (max-width: 400px) {
+  .header-brand .brand-name { font-size: 10px; }
+  .header-brand .brand-caption { max-width: 140px; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; } }
 :root:root[data-mantine-color-scheme] {

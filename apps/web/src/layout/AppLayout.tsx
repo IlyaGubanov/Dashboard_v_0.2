@@ -22,6 +22,7 @@ import { GLOBAL_ROLE_LABELS } from '@mvs/shared';
 import { api, directionsQuery, meQuery } from '../api';
 import { DirectionIcon } from '../ui/DirectionIcon';
 import { TasksBell } from './MyTasks';
+import { Brand } from '../ui/Brand';
 import { canHideFinance, setFinanceHidden, useFinanceToggle } from '../ui/finance';
 
 export function AppLayout() {
@@ -45,11 +46,11 @@ export function AppLayout() {
       <a className="skip-link" href="#main-content">Перейти к содержимому</a>
       <AppShell.Header>
         <Group className="header-content" h="100%" px="md" justify="space-between" wrap="nowrap">
-          <Group gap="sm" wrap="nowrap">
+          <Group className="header-brand" gap="sm" wrap="nowrap">
             <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" aria-label="Меню" />
             <Brand />
           </Group>
-          <Group gap="xs" wrap="nowrap">
+          <Group className="header-actions" gap="xs" wrap="nowrap">
             {canHideFinance(me) && <FinanceToggle />}
             <TasksBell />
             <Tooltip label={scheme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}>

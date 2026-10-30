@@ -3,11 +3,13 @@ import type { ObjectsMap } from '@mvs/shared';
 import type { AuthUser } from '../common/request';
 import { PrismaService } from '../prisma/prisma.service';
 import { KpiService } from '../kpi/kpi.service';
+import { AccessService } from '../auth/access.service';
 
 @Injectable()
 export class ObjectsMapService {
-  constructor(private readonly prisma: PrismaService, private readonly kpi: KpiService) {}
+  constructor(private readonly prisma: PrismaService, private readonly kpi: KpiService, private readonly access: AccessService) {}
   async list(user: AuthUser): Promise<ObjectsMap> {
+    this.access.assertSection(user, 'map');
     // Тот же доступ к активным направлениям, что у меню и производственной сводки.
     const directions = await this.prisma.direction.findMany({
       where: { isActive: true, ...(user.globalRole === 'USER' ? { members: { some: { userId: user.id } } } : {}) },

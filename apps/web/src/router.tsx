@@ -87,7 +87,10 @@ function HomePage() {
   if (canSee(me, 'overview')) return <OverviewPage />;
   return <Alert color="gray">Доступных разделов пока нет. Обратитесь к администратору.</Alert>;
 }
-const objectsMapRoute = createRoute({ getParentRoute: () => appRoute, path: '/map', component: MapPage, validateSearch: parseMapSearch });
+const objectsMapRoute = createRoute({
+  getParentRoute: () => appRoute, path: '/map', component: MapPage, validateSearch: parseMapSearch,
+  beforeLoad: ({ context }) => { if (!canSee(context.me, 'map')) throw redirect({ to: '/' }); },
+});
 
 const directionRoute = createRoute({
   getParentRoute: () => appRoute,

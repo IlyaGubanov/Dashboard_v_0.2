@@ -8,7 +8,7 @@ import { ObjectsMapService } from './map.service';
 // Запись тестовых фикстур разрешена только в явно указанную локальную тестовую БД.
 const url = process.env.MAP_TEST_DATABASE_URL;
 const db = url ? new PrismaService({ datasourceUrl: url }) : null;
-const admin: AuthUser = { id: -1, login: 'map-test', fullName: 'Map test', globalRole: 'ADMIN', mustChangePassword: false, sessionId: -1 };
+const admin: AuthUser = { id: -1, login: 'map-test', fullName: 'Map test', globalRole: 'ADMIN', mustChangePassword: false, sessionId: -1, hiddenSections: [], deniedFeatures: [] };
 describe.skipIf(!url)('единая карта: интеграция с БД и область доступа', () => {
   const suffix = Date.now().toString(36);
   let ids: number[] = [], users: number[] = [], siteId: number, sectionId: number, workId: number;
@@ -35,7 +35,8 @@ describe.skipIf(!url)('единая карта: интеграция с БД и 
     await db!.site.create({ data: { directionId: ids[1], code: 'private', name: 'Чужой объект' } });
     await db!.site.create({ data: { directionId: ids[2], code: 'inactive', name: 'Выключенное направление' } });
     await db!.directionMember.create({ data: { directionId: ids[0], userId: users[3], role: 'VIEWER' } });
-    kpi = new KpiService(db!, new AccessService(db!)); service = new ObjectsMapService(db!, kpi);
+    const access = new AccessService(db!);
+    kpi = new KpiService(db!, access); service = new ObjectsMapService(db!, kpi, access);
   });
   afterAll(async () => {
     if (!db) return;
@@ -67,6 +68,9 @@ describe.skipIf(!url)('единая карта: интеграция с БД и 
     expect(await service.list({ ...admin, id: users[0], globalRole: 'USER' })).toEqual({ directions: [], sites: [], workTypes: [] });
     const data = await service.list({ ...admin, globalRole: 'MANAGEMENT' });
     expect(data.directions.filter((d) => ids.includes(d.id)).map((d) => d.id)).toEqual(ids.slice(0, 2));
+  });
+  it('сохраняет запрет карты из карточки сотрудника', async () => {
+    await expect(service.list({ ...admin, id: users[3], globalRole: 'USER', hiddenSections: ['map'] })).rejects.toThrow('недоступен');
   });
   it('ресурсы совпадают с исходными KPI, а изменение цвета не скрывается кешем', async () => {
     const period = await db!.reportingPeriod.create({ data: { directionId: ids[0], date: new Date('2026-01-15T00:00:00Z') } });

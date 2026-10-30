@@ -205,3 +205,5 @@ button, a, input, select, textarea { touch-action: manipulation; }
 .matrix-table thead { background: var(--panel) !important; }
 .ol-control button { background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 4px; }
 .ol-control button:hover { background: var(--selected); }
+:root { --brand-on-solid: #ffffff; }
+[data-mantine-color-scheme='dark'] { --brand-on-solid: #101b2b; }

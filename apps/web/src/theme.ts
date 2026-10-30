@@ -1,4 +1,4 @@
-import { createTheme } from '@mantine/core';
+import { createTheme, defaultVariantColorsResolver } from '@mantine/core';
 
 /**
  * Единая тема приложения. Цвета статусов и светофора — в theme.css (CSS-переменные),
@@ -6,6 +6,12 @@ import { createTheme } from '@mantine/core';
  */
 export const theme = createTheme({
   primaryColor: 'blue',
+  autoContrast: true,
+  variantColorResolver: (input) => {
+    const colors = defaultVariantColorsResolver(input);
+    // У фирменной кнопки разные ступени заливки в светлой и тёмной темах.
+    return input.color === 'blue' && input.variant === 'filled' ? { ...colors, color: 'var(--brand-on-solid)' } : colors;
+  },
   colors: {
     blue: ['#edf6fd', '#dde4ed', '#c3ddef', '#9bcbeb', '#72add6', '#407faf', '#002f6c', '#00285c', '#00224f', '#001b40'],
     dark: ['#e5edf6', '#c2cedd', '#a2b2c6', '#73849b', '#42526a', '#304158', '#233247', '#192639', '#132032', '#0e1929'],

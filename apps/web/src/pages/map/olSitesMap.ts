@@ -45,7 +45,8 @@ export function mountSitesMap(target: HTMLElement, o: Options): SitesMapControll
     { directions: [], sections: [], workTypes: [] },
   );
   let hovered: Feature<Point> | null = null;
-  const leave = () => { hovered?.setStyle(undefined); hovered = null; target.style.cursor = ''; o.onHover(null); };
+  const leave = (e?: PointerEvent) => { if (e?.relatedTarget instanceof Element && e.relatedTarget.closest('[data-map-tooltip]')) return;
+    hovered?.setStyle(undefined); hovered = null; target.style.cursor = ''; o.onHover(null); };
   map.on('pointermove', (e) => {
     if (e.dragging) { leave(); return; }
     const feature = map.forEachFeatureAtPixel(e.pixel, (f) => f, { layerFilter: (l) => l === vector, hitTolerance: 4 }) as Feature<Point> | undefined;

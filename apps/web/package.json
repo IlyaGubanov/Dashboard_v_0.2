@@ -20,6 +20,7 @@
     "@tanstack/react-router": "^1.170.46",
     "echarts": "^6.1.0",
     "ol": "^10.11.0",
+    "pannellum": "^2.5.7",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "zod": "^4.6.7"

@@ -3,9 +3,11 @@ import { Accordion, Alert, Badge, Box, Button, Card, Group, Modal, MultiSelect, 
 import { useQuery } from '@tanstack/react-query';
 import { getRouteApi } from '@tanstack/react-router';
 import { IconMapPin, IconRefresh, IconX } from '@tabler/icons-react';
+import { useMediaQuery } from '@mantine/hooks';
 import { filterMapSites, hasMapCoordinates, mapEntityKey, normalizeMapFilters, type MapFilters, type MapSite, type ObjectsMap } from '@mvs/shared';
 import { objectsMapQuery } from '../api';
 import { ObjectsMapCanvas } from './map/ObjectsMapCanvas';
+import { MapSiteInfo } from './map/MapSiteInfo';
 import { SiteDrawer } from './direction/SiteDrawer';
 import { RemarkDrawer } from './direction/RemarkDrawer';
 
@@ -24,6 +26,8 @@ export function MapPage() {
   const query = useQuery(objectsMapQuery), data = query.data ?? EMPTY;
   const search = route.useSearch(), navigate = route.useNavigate();
   const [choices, setChoices] = useState<MapSite[]>([]);
+  const [infoKey, setInfoKey] = useState<string | null>(null);
+  const touch = useMediaQuery('(hover: none)');
   const filters = useMemo(() => normalizeMapFilters(data, search), [data, search]);
   const rows = useMemo(() => filterMapSites(data.sites, filters), [data.sites, filters]);
   const placed = useMemo(() => rows.filter(hasMapCoordinates), [rows]);
@@ -34,9 +38,11 @@ export function MapPage() {
     { value: mapEntityKey(s.directionCode, s.section!.id), label: `${s.section!.name} · ${names.get(s.directionCode)}` }])).values()];
   const workTypes = data.workTypes.filter((w) => active.has(w.directionCode)).map((w) => ({ value: mapEntityKey(w.directionCode, w.id), label: `${w.name} · ${names.get(w.directionCode)}` }));
   const set = (patch: Partial<MapSearch>) => navigate({ search: (s) => ({ ...s, ...patch }) });
-  const changeFilters = (patch: Partial<MapFilters>) => { setChoices([]); set(normalizeMapFilters(data, { ...filters, ...patch })); };
-  const open = (s: MapSite) => { setChoices([]); set({ code: s.directionCode, site: s.id, remark: undefined }); };
-  const select = (sites: MapSite[]) => { if (sites.length === 1) open(sites[0]); else setChoices(sites); };
+  const changeFilters = (patch: Partial<MapFilters>) => { setChoices([]); setInfoKey(null); set(normalizeMapFilters(data, { ...filters, ...patch })); };
+  const open = (s: MapSite) => { setChoices([]); setInfoKey(null); set({ code: s.directionCode, site: s.id, remark: undefined }); };
+  const inspect = (s: MapSite) => { setChoices([]); if(touch)setInfoKey(mapEntityKey(s.directionCode,s.id));else open(s); };
+  const select = (sites: MapSite[]) => { if (sites.length === 1) inspect(sites[0]); else setChoices(sites); };
+  const info = rows.find(s=>mapEntityKey(s.directionCode,s.id)===infoKey);
   const selected = data.sites.find((s) => s.directionCode === search.code && s.id === search.site);
   const drawerCode = data.directions.find((d) => d.code === search.code)?.code;
   const choiceKeys = new Set(rows.map((s) => mapEntityKey(s.directionCode, s.id)));
@@ -80,9 +86,12 @@ export function MapPage() {
       </Card>
     </>}
     <Modal opened={visibleChoices.length > 1} onClose={() => setChoices([])} title="Выберите объект в этой точке" zIndex={400}>
-      <ScrollArea.Autosize mah={420}><Stack gap={4}>{visibleChoices.map((s) => <UnstyledButton key={mapEntityKey(s.directionCode, s.id)} className="row-link" p="sm" onClick={() => open(s)}>
+      <ScrollArea.Autosize mah={420}><Stack gap={4}>{visibleChoices.map((s) => <UnstyledButton key={mapEntityKey(s.directionCode, s.id)} className="row-link" p="sm" onClick={() => inspect(s)}>
         <Text size="sm" fw={500}>{s.name}</Text><Text size="xs" c="dimmed">{names.get(s.directionCode)}{s.section ? ` · ${s.section.name}` : ''}</Text>
       </UnstyledButton>)}</Stack></ScrollArea.Autosize>
+    </Modal>
+    <Modal opened={!!info} onClose={()=>setInfoKey(null)} title="Объект на карте" zIndex={400}>
+      {info && <Stack><MapSiteInfo site={info}/><Button onClick={()=>open(info)}>Открыть карточку объекта</Button></Stack>}
     </Modal>
     <SiteDrawer key={drawerCode ?? ''} code={drawerCode ?? ''} siteId={selected?.id}
       onClose={() => set({ code: undefined, site: undefined, remark: undefined })}

@@ -6,6 +6,7 @@ export * from './kpi';
 export * from './entry';
 export * from './manage';
 export * from './admin';
+export * from './panorama';
 export * from './remarks';
 export * from './tasks';
 export * from './contractors';

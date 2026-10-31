@@ -105,6 +105,9 @@ export interface RemarkRow {
 }
 
 export interface Attachment {
+  materialType?: 'FILE' | 'PANORAMA360';
+  capturedOn?: string | null;
+  description?: string | null;
   id: number;
   fileName: string;
   mimeType: string;

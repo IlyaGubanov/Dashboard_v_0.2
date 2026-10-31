@@ -11,12 +11,14 @@ const db = new PrismaClient();
 const statePath = path.join(__dirname, '../apps/api/data/staffing-qa-state.json');
 const password = 'StaffingTest2026qa42';
 const month = '2097-12';
+// Адрес API можно переопределить, например для проверки на отдельном порту.
+const apiUrl = process.env.API_URL ?? 'http://127.0.0.1:3000/api';
 async function login(login) {
-  const response = await fetch('http://127.0.0.1:3000/api/auth/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ login, password }) });
+  const response = await fetch(`${apiUrl}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ login, password }) });
   assert.equal(response.status, 200);
   const cookie = response.headers.getSetCookie().map(c => c.split(';')[0]).join('; ');
   return async (route, method = 'GET', body) => {
-    const r = await fetch(`http://127.0.0.1:3000/api${route}`, { method, headers: { cookie, 'content-type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) });
+    const r = await fetch(`${apiUrl}${route}`, { method, headers: { cookie, 'content-type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) });
     let value; try { value = await r.json(); } catch { value = null; }
     return { status: r.status, value };
   };

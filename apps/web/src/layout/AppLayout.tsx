@@ -126,6 +126,7 @@ export function AppLayout() {
             />
           )}
           {canSee(me, 'map') && <NavLink component={Link} to="/map" label="Карта" leftSection={<IconMap size={18} />} active={path === '/map'} onClick={close} />}
+          {me?.videoAccess?.view && <NavLink component={Link} to="/video" label="Видеонаблюдение" leftSection={<IconVideo size={18} />} active={path === '/video'} onClick={close} />}
           <Text size="xs" c="dimmed" tt="uppercase" fw={600} px="sm" mt="md" mb={4}>
             Направления
           </Text>

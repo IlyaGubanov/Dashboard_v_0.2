@@ -146,7 +146,7 @@ const videoAdminRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   loginRoute,
   changePasswordRoute,
-  appRoute.addChildren([overviewRoute, objectsMapRoute, directionRoute, usersRoute, adminDirectionsRoute, directionEditorRoute, appearanceRoute, contractorsRoute, helpRoute]),
+  appRoute.addChildren([overviewRoute, objectsMapRoute, directionRoute, usersRoute, adminDirectionsRoute, directionEditorRoute, appearanceRoute, contractorsRoute, helpRoute, videoRoute, videoAdminRoute]),
 ]);
 
 export const router = createRouter({ routeTree, context: { queryClient }, defaultPreload: 'intent' });

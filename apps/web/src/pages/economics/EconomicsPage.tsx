@@ -3,10 +3,11 @@ import { ActionIcon, Alert, Button, Group, Menu, Modal, Skeleton, Stack, Tabs, T
 import { notifications } from '@mantine/notifications';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getRouteApi } from '@tanstack/react-router';
-import { IconChartBar, IconCoins, IconDatabaseImport, IconDots, IconHistory, IconTrash, IconListDetails, IconReceipt, IconRefresh, IconSettings, IconTargetArrow, IconUsers } from '@tabler/icons-react';
+import { IconChartBar, IconCoins, IconReportMoney, IconDatabaseImport, IconDots, IconHistory, IconTrash, IconListDetails, IconReceipt, IconRefresh, IconSettings, IconTargetArrow, IconUsers } from '@tabler/icons-react';
 import { api, economicsQuery } from '../../api';
 import { EconLimits } from './EconLimits';
 import { EconOverview } from './EconOverview';
+import { EconPnL } from './EconPnL';
 import { EconFacts } from './EconFacts';
 import { EconArticles } from './EconArticles';
 import { EconEditorsDialog, EconJournal, EconSettingsDialog } from './EconDialogs';
@@ -87,12 +88,14 @@ export function EconomicsPage() {
       <Tabs value={tab} onChange={(v) => update({ tab: (v as EconTab) ?? undefined })} keepMounted={false}>
         <Tabs.List>
           <Tabs.Tab value="overview" leftSection={<IconChartBar size={16} />}>Обзор</Tabs.Tab>
+          <Tabs.Tab value="pnl" leftSection={<IconReportMoney size={16} />}>Доходы и расходы</Tabs.Tab>
           <Tabs.Tab value="limits" leftSection={<IconTargetArrow size={16} />}>Лимиты</Tabs.Tab>
           <Tabs.Tab value="fact" leftSection={<IconReceipt size={16} />}>Факт за месяц</Tabs.Tab>
           <Tabs.Tab value="articles" leftSection={<IconListDetails size={16} />}>Статьи</Tabs.Tab>
           {data.canAudit && <Tabs.Tab value="journal" leftSection={<IconHistory size={16} />}>Журнал</Tabs.Tab>}
         </Tabs.List>
         <Tabs.Panel value="overview" pt="md"><EconOverview data={data} search={search} update={update} /></Tabs.Panel>
+        <Tabs.Panel value="pnl" pt="md"><EconPnL data={data} search={search} update={update} /></Tabs.Panel>
         <Tabs.Panel value="limits" pt="md"><EconLimits data={data} search={search} update={update} /></Tabs.Panel>
         <Tabs.Panel value="fact" pt="md"><EconFacts data={data} search={search} update={update} /></Tabs.Panel>
         <Tabs.Panel value="articles" pt="md"><EconArticles data={data} /></Tabs.Panel>
@@ -106,7 +109,7 @@ export function EconomicsPage() {
           <Stack gap="sm">
             <Text size="sm">
               {demo === 'load'
-                ? 'Будут созданы центры затрат по направлениям (школы, лоты МКД, коллекторы и водные объекты Сетей, Благоустройство) с лимитами и факт ПЭО за март–сентябрь 2026 года по готовности работ из дашборда. Уже заданные центры затрат и внесённые данные не меняются.'
+                ? 'Будут созданы центры затрат по направлениям (школы, лоты МКД, коллекторы и водные объекты Сетей, Благоустройство) с лимитами, факт ПЭО и КС-2 (где их нет в дашборде) за апрель–октябрь 2026 года по готовности работ из дашборда. Уже заданные центры затрат и внесённые данные не меняются.'
                 : 'Удалятся только центры затрат, лимиты и факт, созданные демо-загрузкой. Данные, внесённые людьми, сохранятся.'}
             </Text>
             {demoError && <Alert color="red">{demoError}</Alert>}

@@ -11,10 +11,12 @@ import { econCoveredSites } from './coverage';
 /** Что создано демо-загрузкой — удаляется только это. */
 const DEMO_KEY = 'economics.demo';
 const SETTINGS_KEY = 'economics.settings';
-/** Демо-месяцы: факт за март–сентябрь 2026, сентябрь открыт, остальные закрыты ПЭО. */
-const MONTHS = ['2026-03', '2026-04', '2026-05', '2026-06', '2026-07', '2026-08', '2026-09'];
+/** Демо-месяцы: факт за апрель–октябрь 2026, октябрь открыт, остальные закрыты ПЭО. */
+const MONTHS = ['2026-04', '2026-05', '2026-06', '2026-07', '2026-08', '2026-09', '2026-10'];
 /** Доля расходов месяца в накопленных (S-кривая освоения). */
 const CURVE = [0.06, 0.1, 0.14, 0.17, 0.18, 0.18, 0.17];
+/** Направления, где КС-2 в дашборде не ведутся — в демо их вносит ПЭО. */
+const MANUAL_KS = ['schools', 'streets'];
 const LABOR_RATE = 850;
 const MACHINE_RATE = 4200;
 const ARTICLES = ['fot', 'materials', 'machinery', 'subcontract', 'waste', 'overhead', 'admin'] as const;
@@ -183,6 +185,12 @@ export class EconomicsDemoService {
                 month,
                 laborHours: new Prisma.Decimal(r2((amounts[0].v / LABOR_RATE) * (1 + 0.04 * jitter(b.id + mi)))),
                 machineHours: new Prisma.Decimal(r2((amounts[2].v / MACHINE_RATE) * (1 + 0.06 * jitter(b.id * 3 + mi)))),
+                // где в дашборде КС-2 нет (Школы, Благоустройство), ПЭО вносит их сам: ~85% выполненного за месяц
+                ksAmount: MANUAL_KS.includes(p.code) ? new Prisma.Decimal(r2(costBase * progress * share * 0.85)) : null,
+                // пример поправки НЗП: в последнем месяце у первого центра Школ часть работ не принята заказчиком
+                ...(p.code === 'schools' && k === 0 && mi === MONTHS.length - 1
+                  ? { nzpOverride: new Prisma.Decimal(r2(costBase * progress * 0.15 * 0.6)), nzpNote: 'Часть выполненных работ не будет принята: замечания заказчика по фасаду' }
+                  : {}),
                 updatedById: user.id,
               },
             });
@@ -206,7 +214,7 @@ export class EconomicsDemoService {
           });
           companyMonths.push(month);
         }
-        // март–август закрыты ПЭО, сентябрь открыт для ввода
+        // апрель–сентябрь закрыты ПЭО, октябрь открыт для ввода
         const months = MONTHS.filter((m) => directTotals.has(m));
         for (const month of months.slice(0, -1)) {
           const cur = await tx.econMonth.findUniqueOrThrow({ where: { month } });

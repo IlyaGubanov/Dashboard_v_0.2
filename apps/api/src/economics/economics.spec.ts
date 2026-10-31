@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { econDefaultMonth, econDeviation, econForecast, econIsOwnOrg, econLimitValue, econNet, econParseNumber, econPlanCost, econScopeKey, econStatus, econBudgetSaveSchema, econMonthSaveSchema } from '@mvs/shared';
+import { econDefaultMonth, econDeviation, econDistribute, econMonthEnd, econNzp, econRevenue, econForecast, econIsOwnOrg, econLimitValue, econNet, econParseNumber, econPlanCost, econScopeKey, econStatus, econBudgetSaveSchema, econMonthSaveSchema } from '@mvs/shared';
 import { econCoveredSites } from './coverage';
 
 describe('экономика: расчёты', () => {
@@ -108,5 +108,34 @@ describe('экономика: план затрат, отклонение, пр�
   it('свои подразделения не считаются субподрядом', () => {
     for (const own of ['СМУ-1 (инженерные системы)', 'СМУ АНО МВС СТ', 'Электромонтажный участок', 'Проектный отдел', 'АНО "МосводостокСтройТрест"', 'РСУ-3']) expect(econIsOwnOrg(own)).toBe(true);
     for (const ext of ['ООО «Глобалинжстрой»', 'Сети Столицы', 'УСТР-М', 'ООО «Стройимпульс»']) expect(econIsOwnOrg(ext)).toBe(false);
+  });
+});
+
+describe('экономика: выручка, НЗП, разнесение', () => {
+  it('НЗП = стоимость × готовность − КС-2; выручка = КС-2 + НЗП', () => {
+    expect(econNzp(10_000_000, 0.4, 3_000_000)).toBe(1_000_000);
+    expect(econNzp(10_000_000, 0.4, null)).toBe(4_000_000);
+    expect(econNzp(10_000_000, 0.2, 3_000_000)).toBe(-1_000_000);
+    expect(econNzp(null, 0.4, 1)).toBeNull();
+    expect(econRevenue(3_000_000, 1_000_000)).toBe(4_000_000);
+    expect(econRevenue(null, null)).toBeNull();
+  });
+
+  it('общие расходы — по доле выручки', () => {
+    expect(econDistribute(1_000_000, 250_000, 1_000_000)).toBe(250_000);
+    expect(econDistribute(1_000_000, -5, 1_000_000)).toBe(0);
+    expect(econDistribute(1_000_000, 10, 0)).toBeNull();
+  });
+
+  it('последний день месяца', () => {
+    expect(econMonthEnd('2026-02')).toBe('2026-02-28');
+    expect(econMonthEnd('2028-02')).toBe('2028-02-29');
+    expect(econMonthEnd('2026-12')).toBe('2026-12-31');
+  });
+
+  it('поправка НЗП требует причину', () => {
+    const row = { budgetId: 1, version: 0, laborHours: null, machineHours: null, note: null, amounts: {}, nzpOverride: 5 };
+    expect(econMonthSaveSchema.safeParse({ rows: [row] }).success).toBe(false);
+    expect(econMonthSaveSchema.safeParse({ rows: [{ ...row, nzpNote: 'не примут фасад' }] }).success).toBe(true);
   });
 });

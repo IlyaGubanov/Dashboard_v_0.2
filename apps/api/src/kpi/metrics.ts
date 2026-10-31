@@ -139,10 +139,10 @@ export const METRICS: Record<string, { title: string; fn: Metric }> = {
 };
 
 export function computeTiles(dir: KDirection, period: KPeriod, P: number, r: CalcResult): KpiTile[] {
-  return (dir.settings.kpis ?? []).flatMap((k) => {
+  return (dir.settings.kpis ?? []).flatMap((k, slot) => {
     const m = METRICS[k.metric];
     if (!m) return [];
     const v = m.fn({ dir, period, P, r, params: k.params ?? {} });
-    return [{ key: k.metric, label: k.label, ...v }];
+    return [{ key: k.metric, slot, label: k.label, ...v }];
   });
 }

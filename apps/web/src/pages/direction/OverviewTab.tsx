@@ -1,13 +1,17 @@
 import { Alert, Badge, Box, Button, Card, Grid, Group, SimpleGrid, Skeleton, Stack, Table, Text, Tooltip, UnstyledButton } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { SITE_RISK_LABELS, type DirectionKpi, type SiteKpiRow, type SiteRisk } from '@mvs/shared';
-import { directionQueries } from '../../api';
+import { directionQueries, directionsQuery } from '../../api';
+import { useAppearance } from '../../ui/appearance';
+import { arrangeTiles } from '../../ui/overviewTiles';
+import { Metric } from '../../ui/Metric';
 import { FactPlanBar } from '../../ui/FactPlanBar';
 import { RiskBadge, riskColor } from '../../ui/RiskBadge';
 import { int, money, pct, pp, tileValue } from '../../ui/format';
 import { Lag } from '../../ui/Lag';
 import { useFinanceHidden } from '../../ui/finance';
 import { asOfLabel } from '../overview/DirectionCard';
+import { NetworkLayingCard } from './NetworkLayingCard';
 
 const RISK_ORDER: SiteRisk[] = ['crit', 'warn', 'ok', 'done', 'wait', 'na'];
 
@@ -32,6 +36,7 @@ export function OverviewTab({
   return (
     <Stack>
       <KpiHeader k={k} />
+      {code === 'networks' && <NetworkLayingCard rows={k.networkLaying} />}
       <Grid gutter="md">
         <Grid.Col span={{ base: 12, lg: 6 }}>
           <Stack>
@@ -88,6 +93,27 @@ function KpiHeader({ k }: { k: DirectionKpi }) {
   const delta = k.prev && k.fact != null && k.prev.fact != null ? k.fact - k.prev.fact : null;
   const financeHidden = useFinanceHidden();
   const m = financeHidden ? null : k.money;
+  const { data: dirs } = useQuery(directionsQuery);
+  const { appearance } = useAppearance();
+  const cols = appearance.tiles.columns;
+  // все возможные плитки; какие показывать, порядок, подписи и цвета — «Плитки обзора» в конструкторе направления
+  const tiles = arrangeTiles(
+    [
+      { key: 'sites', label: k.siteUnit, value: int(k.sites) },
+      ...(k.lagging != null ? [{ key: 'lagging', label: 'отстают от графика', value: int(k.lagging) }] : []),
+      ...(k.critical != null ? [{ key: 'critical', label: 'критично', value: int(k.critical) }] : []),
+      { key: 'done', label: 'выполнено', value: int(k.done) },
+      ...(k.people != null ? [{ key: 'people', label: 'людей на объектах', value: int(k.people) }] : []),
+      ...(k.tech != null ? [{ key: 'tech', label: 'техники', value: int(k.tech) }] : []),
+      ...(m?.portfolio != null ? [{ key: 'portfolio', label: m.portfolioLabel.toLowerCase(), value: money(m.portfolio) }] : []),
+      ...(m?.closed != null ? [{ key: 'closed', label: 'закрыто по КС-2', value: money(m.closed) }] : []),
+      ...(m?.paid != null ? [{ key: 'paid', label: 'оплачено', value: money(m.paid) }] : []),
+      ...k.kpis
+        .filter((t) => !(financeHidden && t.format === 'money'))
+        .map((t, i) => ({ key: `kpi:${t.slot ?? i}`, label: t.label.toLowerCase(), value: tileValue(t) })),
+    ],
+    dirs?.find((d) => d.code === k.code)?.overviewTiles,
+  );
   return (
     <Card withBorder padding="lg">
       <Grid gutter="lg" align="center">
@@ -104,7 +130,7 @@ function KpiHeader({ k }: { k: DirectionKpi }) {
             )}
           </Group>
           <Group justify="space-between" align="flex-end">
-            <Text fz={40} fw={700} lh={1}>
+            <Text fz="calc(40px * var(--text-scale, 1))" fw={700} lh={1}>
               {pct(k.fact)}
             </Text>
             {k.plan != null && (
@@ -128,36 +154,14 @@ function KpiHeader({ k }: { k: DirectionKpi }) {
           </Group>
         </Grid.Col>
         <Grid.Col span={{ base: 12, md: 7 }}>
-          <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="md">
-            <Metric label={k.siteUnit} value={int(k.sites)} />
-            {k.lagging != null && <Metric label="отстают от графика" value={int(k.lagging)} />}
-            {k.critical != null && <Metric label="критично" value={int(k.critical)} />}
-            <Metric label="выполнено" value={int(k.done)} />
-            {k.people != null && <Metric label="людей на объектах" value={int(k.people)} />}
-            {k.tech != null && <Metric label="техники" value={int(k.tech)} />}
-            {m?.portfolio != null && <Metric label={m.portfolioLabel.toLowerCase()} value={money(m.portfolio)} />}
-            {m?.closed != null && <Metric label="закрыто по КС-2" value={money(m.closed)} />}
-            {m?.paid != null && <Metric label="оплачено" value={money(m.paid)} />}
-            {k.kpis.filter((t) => !(financeHidden && t.format === 'money')).map((t) => (
-              <Metric key={t.key} label={t.label.toLowerCase()} value={tileValue(t)} />
+          <SimpleGrid cols={{ base: 2, sm: Math.min(cols, 4), xl: cols }} spacing="md">
+            {tiles.map((t) => (
+              <Metric key={t.key} label={t.label} value={t.value} color={t.color} />
             ))}
           </SimpleGrid>
         </Grid.Col>
       </Grid>
     </Card>
-  );
-}
-
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="direction-metric">
-      <Text fw={700} fz="lg" style={{ whiteSpace: 'nowrap' }}>
-        {value}
-      </Text>
-      <Text size="xs" c="dimmed" lh={1.2}>
-        {label}
-      </Text>
-    </div>
   );
 }
 

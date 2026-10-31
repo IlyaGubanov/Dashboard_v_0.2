@@ -93,7 +93,12 @@ export const econFactRowSchema = z.object({
   machineHours: hours,
   note: text(2000),
   amounts,
-});
+  /** КС-2 за месяц без НДС — вносит ПЭО, если в дашборде КС-2 нет */
+  ksAmount: money.optional(),
+  /** поправка НЗП на конец месяца без НДС (может быть отрицательной: КС-2 опережает выполнение) */
+  nzpOverride: z.number({ error: 'Укажите число' }).finite().min(-1e13).max(1e13).nullable().optional(),
+  nzpNote: text(500),
+}).refine((v) => v.nzpOverride == null || !!v.nzpNote?.trim(), { message: 'Укажите причину поправки НЗП', path: ['nzpNote'] });
 export type EconFactRowInput = z.infer<typeof econFactRowSchema>;
 export const econMonthSaveSchema = z.object({
   rows: z
@@ -210,6 +215,9 @@ export interface EconFactRow {
   machineHours: number | null;
   note: string | null;
   amounts: Record<string, number>;
+  ksAmount: number | null;
+  nzpOverride: number | null;
+  nzpNote: string | null;
   updatedAt: string | null;
   updatedBy: string | null;
 }
@@ -223,6 +231,30 @@ export interface EconMonthView {
   company: Record<string, number>;
   /** оценка часов за месяц по отчётам дашборда о людях и технике на объектах (null — в направлении таких отчётов нет) */
   reportHours: Record<string, { labor: number | null; machine: number | null; days: number }>;
+  /** по центрам затрат: КС-2 из дашборда за месяц и расчётное НЗП на конец месяца (без НДС) — подсказки для ввода */
+  revenue: Record<string, { ksDashMonth: number | null; nzpAuto: number | null; ksSource: EconKsSource }>;
+}
+/** Откуда КС-2 центра затрат: из дашборда или внесены ПЭО. */
+export type EconKsSource = 'dashboard' | 'manual' | null;
+/** Результат центра затрат на конец месяца (нарастающим итогом, без НДС). */
+export interface EconResult {
+  budgetId: number;
+  /** готовность работ факт и по графику на конец месяца (дашборд), 0…1 */
+  progress: number | null;
+  planProgress: number | null;
+  costBase: number | null;
+  ks: number | null;
+  ksSource: EconKsSource;
+  /** НЗП: расчётное и итоговое (с поправкой ПЭО) */
+  nzpAuto: number | null;
+  nzp: number | null;
+  nzpNote: string | null;
+  /** выручка = КС-2 + НЗП */
+  revenue: number | null;
+  /** доля выручки центра в выручке всей производственной программы */
+  revenueShare: number | null;
+  /** общие расходы компании, разнесённые по доле выручки: статья → сумма */
+  distributed: Record<string, number>;
 }
 /** Обзор: факт нарастающим итогом по центрам затрат до выбранного месяца включительно и помесячный ряд за 12 месяцев. */
 export interface EconOverview {
@@ -230,6 +262,12 @@ export interface EconOverview {
   budgets: { budgetId: number; facts: Record<string, number>; laborHours: number | null; machineHours: number | null; months: number }[];
   company: Record<string, number>;
   monthly: { month: string; byArticle: Record<string, number> }[];
+  /** результат по всем доступным центрам затрат на конец месяца */
+  results: EconResult[];
+  /** выручка всей производственной программы (база разнесения общих расходов) */
+  programRevenue: number | null;
+  /** дата среза дашборда, на которую взяты готовность и КС-2 */
+  asOf: string;
 }
 export interface EconEditors {
   users: { id: number; fullName: string; login: string | null }[];
@@ -314,4 +352,26 @@ export function econForecast(limit: number | null, fact: number | null, progress
 /** Свои подразделения (СМУ, РСУ, участки, отделы, сам трест) — их договоры не субподряд. */
 export function econIsOwnOrg(name: string): boolean {
   return /мвс\s*ст|мосводосток|(^|[^а-я])(сму|рсу)([^а-я]|$)|участ|отдел/i.test(name);
+}
+
+/** НЗП на конец месяца: выполнено (стоимость без НДС × готовность) − КС-2 нарастающим итогом. */
+export function econNzp(costBase: number | null, progress: number | null, ks: number | null): number | null {
+  if (costBase == null || progress == null) return null;
+  return round2(costBase * Math.min(1, Math.max(0, progress)) - (ks ?? 0));
+}
+
+/** Выручка = КС-2 + НЗП (null — нет ни того, ни другого). */
+export function econRevenue(ks: number | null, nzp: number | null): number | null {
+  return ks == null && nzp == null ? null : round2((ks ?? 0) + (nzp ?? 0));
+}
+
+/** Разнесение общей суммы пропорционально доле: total × part ÷ base. */
+export function econDistribute(total: number, part: number | null, base: number | null): number | null {
+  return part == null || !base || base <= 0 ? null : round2((total * Math.max(0, part)) / base);
+}
+
+/** Последний день месяца «ГГГГ-ММ» в виде «ГГГГ-ММ-ДД». */
+export function econMonthEnd(month: string): string {
+  const d = new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0));
+  return d.toISOString().slice(0, 10);
 }

@@ -6,7 +6,7 @@ import { ECON_STATUS_LABELS, econDefaultMonth, econIsCompanyKind, econMonthLabel
 import { economicsOverviewQuery } from '../../api';
 import { EChart, baseOption } from '../../ui/EChart';
 import { money, pct } from '../../ui/format';
-import { analyse, total, type BudgetAnalysis, type Measure } from './analysis';
+import { analyse, pnl, sumPnl, total, type BudgetAnalysis, type Measure } from './analysis';
 import { articleShort } from './EconLimits';
 import { BudgetEditor } from './EconBudgetEditor';
 import { STATUS_VAR, articleColor, qty, rub, signedPct } from './format';
@@ -111,6 +111,8 @@ export function EconOverview({ data, search, update }: { data: EconSetup; search
             />
           </SimpleGrid>
 
+          <ResultBlock data={data} list={list} overview={query.data} />
+
           <Paper withBorder p="md" radius="md">
             <Group justify="space-between" align="flex-start" mb="sm" gap="xs">
               <div>
@@ -127,8 +129,8 @@ export function EconOverview({ data, search, update }: { data: EconSetup; search
                       <Text size="xs" c="dimmed">{dirName(x.b.directionId)} · лимит {money(x.direct.limit)}</Text>
                     </div>
                     <Stack gap={2} justify="center">
-                      <BurnBar spent={x.spentPct} progress={x.b.progress} status={x.direct.status} />
-                      <Text size="xs" c="dimmed">израсходовано {pct(x.spentPct, 0)} · готовность {pct(x.b.progress, 0)}</Text>
+                      <BurnBar spent={x.spentPct} progress={x.progress} status={x.direct.status} />
+                      <Text size="xs" c="dimmed">израсходовано {pct(x.spentPct, 0)} · готовность {pct(x.progress, 0)}</Text>
                     </Stack>
                     <Stack gap={0} justify="center" align="flex-end">
                       <StatusMark status={x.direct.status} size="xs" label={x.direct.fact == null ? 'Нет факта' : `${signedPct(x.direct.devPct)} · ${money(x.direct.dev == null ? null : Math.abs(x.direct.dev))}`} />
@@ -254,5 +256,78 @@ function Structure({ data, list: all }: { data: EconSetup; list: BudgetAnalysis[
       </Table>
       {margin < 0 && <StatusMark status="critical" size="xs" label="Лимиты больше стоимости — заложен убыток" />}
     </Stack>
+  );
+}
+
+/** Финансовый результат нарастающим итогом: выручка, маржинальная и операционная прибыль, НЗП, водопад. */
+function ResultBlock({ data, list, overview }: { data: EconSetup; list: BudgetAnalysis[]; overview: EconOverview }) {
+  // только центры затрат, по которым ПЭО вносит факт: выручка без расходов исказила бы прибыль
+  // и с готовностью работ в дашборде: без неё нет плана на выполненный объём
+  const tracked = list.filter((x) => x.months > 0 && x.res?.revenue != null && x.progress != null);
+  const skipped = list.filter((x) => x.months > 0 && !tracked.includes(x));
+  const p = sumPnl(tracked.map((x) => pnl(x, data.articles, overview)));
+  if (p.revenue == null) return null;
+  const share = (v: number | null) => (v == null || !p.revenue ? null : v / p.revenue);
+  const planShare = (v: number | null) => (v == null || !p.revenuePlan ? null : v / p.revenuePlan);
+  const resultStatus = (fact: number | null, plan: number | null): EconStatus => (fact == null || plan == null ? 'none' : econStatus(plan ? (fact - plan) / Math.abs(plan) : null));
+  const companyNames = data.articles.filter((a) => econIsCompanyKind(a.kind));
+  const steps: { name: string; value: number; total?: boolean }[] = [
+    { name: 'Выручка', value: p.revenue, total: true },
+    ...data.articles.filter((a) => !econIsCompanyKind(a.kind)).map((a) => ({ name: a.name, value: -(p.direct.get(a.id)?.fact ?? 0) })).filter((s) => s.value),
+    { name: 'Маржинальная прибыль', value: p.margin ?? 0, total: true },
+    ...companyNames.map((a) => ({ name: a.name, value: -(p.company.get(a.id)?.fact ?? 0) })).filter((s) => s.value),
+    { name: 'Операционная прибыль', value: p.profit ?? 0, total: true },
+  ];
+  return (
+    <Paper withBorder p="md" radius="md">
+      <Text fw={600}>Финансовый результат</Text>
+      <Text size="xs" c="dimmed" mb="sm">Нарастающим итогом, без НДС, по {tracked.length} центрам затрат с фактом ПЭО. Выручка — КС-2 + НЗП; общие расходы компании разнесены по доле выручки. План — на выполненный объём.</Text>
+      <SimpleGrid cols={{ base: 1, xs: 2, md: 4 }} spacing="sm" mb="md">
+        <Tile label="Выручка (КС-2 + НЗП)" value={money(p.revenue)} hint={`по графику работ ${money(p.revenueSchedule)}`} tooltip="КС-2 нарастающим итогом плюс незавершённое производство (выполнено, но не закрыто актами). По графику — стоимость × плановая готовность." />
+        <Tile label="Маржинальная прибыль" value={money(p.margin)} status={resultStatus(p.margin, p.marginPlan)} hint={<StatusMark status={resultStatus(p.margin, p.marginPlan)} size="xs" label={`${pct(share(p.margin))} выручки · план ${pct(planShare(p.marginPlan))}`} />} tooltip="Выручка минус прямые расходы (ФОТ, материалы, техника, субподряд, мусор)." />
+        <Tile label="Операционная прибыль" value={money(p.profit)} status={resultStatus(p.profit, p.profitPlan)} hint={<StatusMark status={resultStatus(p.profit, p.profitPlan)} size="xs" label={`${pct(share(p.profit))} выручки · план ${pct(planShare(p.profitPlan))}`} />} tooltip="Маржинальная прибыль минус общепроизводственные и административные расходы, разнесённые по доле выручки." />
+        <Tile label="НЗП — не закрыто КС-2" value={money(p.nzp)} hint={`${pct(share(p.nzp), 0)} выручки · КС-2 ${money(p.ks)}`} tooltip="Выполнено, но не сдано актами: деньги за эти работы ещё не придут. Растущая доля НЗП — повод ускорить закрытие КС-2." />
+      </SimpleGrid>
+      <EChart
+        height={320}
+        ariaLabel="Водопад: от выручки к операционной прибыли, млн рублей"
+        option={(c) => {
+          let run = 0;
+          const base: (number | null)[] = [];
+          const down: (number | null)[] = [];
+          const totals: { value: number; itemStyle: { color: string } }[] = [];
+          for (const s of steps) {
+            const v = Math.round(s.value / 1e5) / 10;
+            if (s.total) {
+              run = v;
+              base.push(0);
+              totals.push({ value: v, itemStyle: { color: s.name === 'Выручка' ? c.series[0] : v < 0 ? c.critical : c.good } });
+              down.push(null);
+            } else {
+              run += v;
+              base.push(Math.min(run, run - v));
+              totals.push({ value: 0, itemStyle: { color: 'transparent' } });
+              down.push(Math.abs(v));
+            }
+          }
+          const nf = (v: number) => `${v.toLocaleString('ru-RU', { maximumFractionDigits: 1 })} млн ₽`;
+          return {
+            ...baseOption(c),
+            legend: { show: false },
+            grid: { left: 8, right: 12, top: 24, bottom: 8, containLabel: true },
+            tooltip: { ...baseOption(c).tooltip, trigger: 'item', formatter: (prm: unknown) => { const i = (prm as { dataIndex: number }).dataIndex; const s = steps[i]; return `${s.name}<br/><b>${s.total ? '' : '−'}${nf(Math.abs(Math.round(s.value / 1e5) / 10))}</b>`; } },
+            xAxis: { type: 'category', data: steps.map((s) => s.name.replace(/\/.*$/, '').replace(' расходы', '').replace('Вывоз строительного мусора', 'Мусор').replace('Административные', 'Админ.').replace('Общепроизводственные', 'ОПР')), axisLabel: { color: c.muted, interval: 0, rotate: 30 }, axisLine: { lineStyle: { color: c.grid } } },
+            yAxis: { type: 'value', axisLabel: { color: c.muted }, splitLine: { lineStyle: { color: c.grid } } },
+            series: [
+              { type: 'bar', stack: 'w', data: base, itemStyle: { color: 'transparent' }, emphasis: { disabled: true }, tooltip: { show: false } },
+              { type: 'bar', stack: 'w', data: totals, barMaxWidth: 36, label: { show: true, position: 'top', color: c.text, formatter: (q: unknown) => { const i = (q as { dataIndex: number }).dataIndex; return steps[i].total ? `${Math.round(steps[i].value / 1e6).toLocaleString('ru-RU')}` : ''; } } },
+              { type: 'bar', stack: 'w', data: down, barMaxWidth: 36, itemStyle: { color: c.none }, label: { show: true, position: 'bottom', color: c.muted, formatter: (q: unknown) => { const v = (q as { value: number | null }).value; return v ? `−${Math.round(v).toLocaleString('ru-RU')}` : ''; } } },
+            ],
+          };
+        }}
+      />
+      <Text size="xs" c="dimmed">Столбцы итогов — выручка и прибыль (зелёный — прибыль, красный — убыток), серые — расходы, млн ₽.</Text>
+      {skipped.length > 0 && <Text size="xs" c="dimmed">Не вошли — нет готовности работ в дашборде на конец месяца: {skipped.map((x) => `${data.directions.find((d) => d.id === x.b.directionId)?.shortName} · ${x.b.title}`).join(', ')}.</Text>}
+    </Paper>
   );
 }

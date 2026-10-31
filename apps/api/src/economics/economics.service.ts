@@ -29,6 +29,7 @@ import { AuditService } from '../audit/audit.service';
 import { AccessService } from '../auth/access.service';
 import { KpiService } from '../kpi/kpi.service';
 import { econCoveredSites } from './coverage';
+import { computeResults } from './results';
 import type { AuthUser } from '../common/request';
 
 const SETTINGS_KEY = 'economics.settings';
@@ -274,7 +275,7 @@ export class EconomicsService {
       this.prisma.econBudgetMonth.findMany({ where: { month, budget: { direction: { isActive: true, ...dirFilter } } }, include: { facts: true } }),
       this.prisma.econCompanyFact.findMany({ where: { month } }),
     ]);
-    const [editors, reportHours] = await Promise.all([this.userNames([...rows.map((r) => r.updatedById), m?.closedById]), this.reportHours(month, p.directionIds)]);
+    const [editors, reportHours, revenue] = await Promise.all([this.userNames([...rows.map((r) => r.updatedById), m?.closedById]), this.reportHours(month, p.directionIds), this.revenueHints(month, p.directionIds)]);
     return {
       month,
       status: m?.status ?? 'OPEN',
@@ -284,7 +285,24 @@ export class EconomicsService {
       rows: rows.map((r) => factRow(r, editors)),
       company: Object.fromEntries(company.map((c) => [String(c.articleId), Number(c.amount)])),
       reportHours,
+      revenue,
     };
+  }
+
+  /** Подсказки для ввода: КС-2 из дашборда за месяц (разница нарастающих итогов) и расчётное НЗП на конец месяца. */
+  private async revenueHints(month: string, directionIds: number[] | null): Promise<EconMonthView['revenue']> {
+    const vat = (await this.settings()).vatRate;
+    const visible = new Set((await this.prisma.econBudget.findMany({ where: directionIds ? { directionId: { in: directionIds } } : {}, select: { id: true } })).map((b) => b.id));
+    const d = new Date(`${month}-01T00:00:00Z`);
+    const prev = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 1, 1)).toISOString().slice(0, 7);
+    const [cur, before] = await Promise.all([computeResults(this.prisma, this.kpi, month, vat), computeResults(this.prisma, this.kpi, prev, vat)]);
+    const out: EconMonthView['revenue'] = {};
+    for (const r of cur.results.values()) {
+      if (!visible.has(r.budgetId)) continue;
+      const p = before.results.get(r.budgetId)?.ksDash ?? 0;
+      out[r.budgetId] = { ksDashMonth: r.ksDash == null ? null : Math.round((r.ksDash - p) * 100) / 100, nzpAuto: r.nzpAuto, ksSource: r.ksSource };
+    }
+    return out;
   }
 
   /** Объекты, которые покрывает каждый центр затрат доступных направлений. */
@@ -355,7 +373,10 @@ export class EconomicsService {
       const mm = monthly.get(c.month);
       if (mm) add(mm, c.articleId, Number(c.amount));
     }
-    return { month, budgets: [...budgets.values()], company: companyTotal, monthly: months.map((m) => ({ month: m, byArticle: monthly.get(m)! })) };
+    const [settings, visible] = await Promise.all([this.settings(), this.prisma.econBudget.findMany({ where: { isArchived: false, direction: { isActive: true, ...dirFilter } }, select: { id: true } })]);
+    const r = await computeResults(this.prisma, this.kpi, month, settings.vatRate);
+    const results = visible.map((b) => r.results.get(b.id)).filter((x): x is NonNullable<typeof x> => !!x).map(({ ksDash: _k, ...x }) => x);
+    return { month, budgets: [...budgets.values()], company: companyTotal, monthly: months.map((m) => ({ month: m, byArticle: monthly.get(m)! })), results, programRevenue: r.programRevenue, asOf: r.asOf };
   }
 
   private async userNames(ids: (number | null | undefined)[]) {
@@ -406,18 +427,27 @@ export class EconomicsService {
       for (const r of input.rows) {
         const b = budgets.find((x) => x.id === r.budgetId)!;
         const amounts = Object.entries(r.amounts).filter(([, v]) => v != null).map(([k, v]) => ({ articleId: Number(k), amount: dec(v)! }));
-        const fields = { laborHours: dec(r.laborHours), machineHours: dec(r.machineHours), note: r.note || null, updatedById: user.id };
+        const fields = {
+          laborHours: dec(r.laborHours),
+          machineHours: dec(r.machineHours),
+          ksAmount: dec(r.ksAmount ?? null),
+          nzpOverride: dec(r.nzpOverride ?? null),
+          nzpNote: r.nzpOverride == null ? null : r.nzpNote?.trim() || null,
+          note: r.note || null,
+          updatedById: user.id,
+        };
         let row: { id: number };
         let before: MonthRowRecord | null = null;
         if (r.version === 0) {
           if (await tx.econBudgetMonth.findUnique({ where: { budgetId_month: { budgetId: r.budgetId, month } } })) throw conflict(`Факт «${budgetTitle(b)}»`);
-          if (!amounts.length && r.laborHours == null && r.machineHours == null && !r.note) continue;
+          if (!amounts.length && r.laborHours == null && r.machineHours == null && r.ksAmount == null && r.nzpOverride == null && !r.note) continue;
           row = await tx.econBudgetMonth.create({ data: { budgetId: r.budgetId, month, ...fields } });
         } else {
           before = await tx.econBudgetMonth.findUnique({ where: { budgetId_month: { budgetId: r.budgetId, month } }, include: { facts: true } });
           if (!before) throw conflict(`Факт «${budgetTitle(b)}»`);
           const after = { laborHours: num(fields.laborHours), machineHours: num(fields.machineHours), note: fields.note };
           const same = num(before.laborHours) === after.laborHours && num(before.machineHours) === after.machineHours && before.note === after.note &&
+            num(before.ksAmount) === num(fields.ksAmount) && num(before.nzpOverride) === num(fields.nzpOverride) && before.nzpNote === fields.nzpNote &&
             sameAmounts(before.facts.map((f) => [f.articleId, Number(f.amount)]), amounts.map((f) => [f.articleId, Number(f.amount)]));
           if (before.version !== r.version) throw conflict(`Факт «${budgetTitle(b)}»`);
           if (same) continue;
@@ -546,6 +576,9 @@ function factRow(r: MonthRowRecord, users: Map<number, string>): EconFactRow {
     machineHours: num(r.machineHours),
     note: r.note,
     amounts: Object.fromEntries(r.facts.map((f) => [String(f.articleId), Number(f.amount)])),
+    ksAmount: num(r.ksAmount),
+    nzpOverride: num(r.nzpOverride),
+    nzpNote: r.nzpNote,
     updatedAt: r.updatedAt.toISOString(),
     updatedBy: r.updatedById ? (users.get(r.updatedById) ?? null) : null,
   };
@@ -553,7 +586,7 @@ function factRow(r: MonthRowRecord, users: Map<number, string>): EconFactRow {
 
 /** Для журнала: десятичные — числами. */
 const plain = (v: unknown) => JSON.parse(JSON.stringify(v, (_k, x) => (x instanceof Prisma.Decimal ? Number(x) : x)));
-const rowPlain = (r: MonthRowRecord) => ({ laborHours: num(r.laborHours), machineHours: num(r.machineHours), note: r.note, amounts: amountsObj(r.facts) });
+const rowPlain = (r: MonthRowRecord) => ({ laborHours: num(r.laborHours), machineHours: num(r.machineHours), ksAmount: num(r.ksAmount), nzpOverride: num(r.nzpOverride), nzpNote: r.nzpNote, note: r.note, amounts: amountsObj(r.facts) });
 const amountsObj = (list: { articleId: number; amount: Prisma.Decimal }[]) => Object.fromEntries(list.map((x) => [x.articleId, Number(x.amount)]));
 function sameAmounts(a: [number, number][], b: [number, number][]) {
   const key = (l: [number, number][]) => JSON.stringify([...l].sort((x, y) => x[0] - y[0]));

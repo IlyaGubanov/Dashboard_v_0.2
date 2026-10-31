@@ -81,9 +81,13 @@ export class KpiService {
    * Объекты направления на последний срез (как в реестре): стоимость, КС-2 и оплата с НДС, готовность 0…1.
    * Используется «Экономикой». Права проверяет вызывающий.
    */
-  async siteMoney(directionId: number): Promise<Map<number, { portfolio: number | null; closed: number | null; paid: number | null; fact: number | null }>> {
-    const rows = (await this.result(directionId, undefined, await this.thresholds())).rows;
-    return new Map(rows.map((r) => [r.id, { ...r.money, fact: r.fact == null ? null : Math.min(1, Math.max(0, r.fact)) }]));
+  async siteMoney(
+    directionId: number,
+    date?: string,
+  ): Promise<Map<number, { portfolio: number | null; closed: number | null; paid: number | null; fact: number | null; plan: number | null }>> {
+    const rows = (await this.result(directionId, date, await this.thresholds())).rows;
+    const clamp = (v: number | null) => (v == null ? null : Math.min(1, Math.max(0, v)));
+    return new Map(rows.map((r) => [r.id, { ...r.money, fact: clamp(r.fact), plan: clamp(r.plan) }]));
   }
 
   private async directionId(user: AuthUser, code: string) {

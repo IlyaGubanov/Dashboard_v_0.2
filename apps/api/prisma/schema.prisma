@@ -1182,6 +1182,11 @@ model EconBudgetMonth {
   month        String   @db.Char(7)
   laborHours   Decimal? @map("labor_hours") @db.Decimal(14, 2)
   machineHours Decimal? @map("machine_hours") @db.Decimal(14, 2)
+  /// КС-2 за месяц без НДС, внесённые ПЭО (где в дашборде КС-2 нет); если есть хоть одна — выручка центра считается по ним
+  ksAmount     Decimal? @map("ks_amount") @db.Decimal(18, 2)
+  /// поправка ПЭО: НЗП на конец месяца без НДС вместо расчётного (стоимость × готовность − КС-2)
+  nzpOverride  Decimal? @map("nzp_override") @db.Decimal(18, 2)
+  nzpNote      String?  @map("nzp_note") @db.VarChar(500)
   note         String?  @db.VarChar(2000)
   version      Int      @default(1)
   updatedById  Int?     @map("updated_by_id")

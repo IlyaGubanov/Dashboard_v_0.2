@@ -1,0 +1,18 @@
+/* Суммы и заголовки таблиц экономики не переносятся по строкам; первая колонка (название) — переносится. */
+.econ-nowrap th,
+.econ-nowrap td:not(:first-child) {
+  white-space: nowrap;
+}
+
+/* Строка «освоение лимита»: на телефоне — столбиком, шире — три колонки */
+.econ-burn-row {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 48em) {
+  .econ-burn-row {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 2fr) minmax(0, 1fr);
+    align-items: center;
+  }
+}

@@ -77,6 +77,15 @@ export class KpiService {
       .map((p) => ({ id: p.id, date: isoDate(p.date), program: p.program, label: p.label, status: p.status }));
   }
 
+  /**
+   * Объекты направления на последний срез (как в реестре): стоимость, КС-2 и оплата с НДС, готовность 0…1.
+   * Используется «Экономикой». Права проверяет вызывающий.
+   */
+  async siteMoney(directionId: number): Promise<Map<number, { portfolio: number | null; closed: number | null; paid: number | null; fact: number | null }>> {
+    const rows = (await this.result(directionId, undefined, await this.thresholds())).rows;
+    return new Map(rows.map((r) => [r.id, { ...r.money, fact: r.fact == null ? null : Math.min(1, Math.max(0, r.fact)) }]));
+  }
+
   private async directionId(user: AuthUser, code: string) {
     const d = await this.prisma.direction.findUnique({ where: { code }, select: { id: true } });
     if (!d) throw new NotFoundException('Направление не найдено');

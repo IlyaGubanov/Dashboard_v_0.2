@@ -21,6 +21,7 @@ import { AppearanceModule } from './appearance/appearance.module';
 import { HealthController } from './health.controller';
 import { VideoModule } from './video/video.module';
 import { StaffingModule } from './staffing/staffing.module';
+import { EconomicsModule } from './economics/economics.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { StaffingModule } from './staffing/staffing.module';
     AppearanceModule,
     VideoModule,
     StaffingModule,
+    EconomicsModule,
   ],
   controllers: [HealthController],
   providers: [

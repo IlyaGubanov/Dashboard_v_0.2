@@ -1,6 +1,6 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import type { MemberRole } from '@prisma/client';
-import { APP_SECTION_LABELS, FEATURE_LABELS, type AppSection, type Feature } from '@mvs/shared';
+import { APP_SECTION_LABELS, FEATURE_LABELS, type AppSection, type EconPermissions, type Feature } from '@mvs/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import type { AuthUser } from '../common/request';
 import { canUseVideo } from '../video/video-domain';
@@ -50,6 +50,29 @@ export class AccessService {
   async assertStaffing(user: AuthUser, edit = false) {
     const p = await this.staffingPermissions(user);
     if (edit ? !p.canEdit : !p.canView) throw new ForbiddenException('Нет доступа к штатной численности');
+    return p;
+  }
+
+  /**
+   * Экономика: администратор — всё; руководство и ответственные ПЭО видят все направления (ПЭО — вносит);
+   * кураторы — только свои направления. Без возможности «Видеть финансы» раздела нет.
+   * directionIds = null — все направления.
+   */
+  async economicsPermissions(user: AuthUser): Promise<EconPermissions & { directionIds: number[] | null }> {
+    if (user.globalRole === 'ADMIN') return { canView: true, canEdit: true, canAdmin: true, directionIds: null };
+    const none = { canView: false, canEdit: false, canAdmin: false, directionIds: [] };
+    if (!this.canSee(user, 'economics') || !this.has(user, 'finance')) return none;
+    const [editor, curated] = await Promise.all([
+      this.prisma.econEditor.findUnique({ where: { userId: user.id } }),
+      this.prisma.directionMember.findMany({ where: { userId: user.id, role: 'CURATOR', direction: { isActive: true } }, select: { directionId: true } }),
+    ]);
+    if (user.globalRole === 'MANAGEMENT' || editor) return { canView: true, canEdit: !!editor, canAdmin: false, directionIds: null };
+    return curated.length ? { canView: true, canEdit: false, canAdmin: false, directionIds: curated.map((m) => m.directionId) } : none;
+  }
+
+  async assertEconomics(user: AuthUser, edit = false) {
+    const p = await this.economicsPermissions(user);
+    if (edit ? !p.canEdit : !p.canView) throw new ForbiddenException(edit ? 'Вносить данные экономики могут ответственные ПЭО' : 'Нет доступа к разделу «Экономика»');
     return p;
   }
 

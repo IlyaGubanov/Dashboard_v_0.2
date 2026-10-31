@@ -839,6 +839,11 @@ model TrackerValue {
 
 // ============================================================ Файлы, экраны, кэш, журнал
 
+enum AttachmentMaterial {
+  FILE
+  PANORAMA360
+}
+
 model Attachment {
   id           Int      @id @default(autoincrement())
   siteId       Int?     @map("site_id")
@@ -849,6 +854,9 @@ model Attachment {
   mimeType     String   @map("mime_type") @db.VarChar(100)
   size         Int
   storagePath  String   @map("storage_path") @db.VarChar(500)
+  materialType AttachmentMaterial @default(FILE) @map("material_type")
+  capturedOn   DateTime? @map("captured_on") @db.Date
+  description  String? @db.VarChar(1000)
   uploadedById Int?     @map("uploaded_by_id")
   /// убранный файл скрыт, но хранится (удаление = архив)
   isArchived   Boolean  @default(false) @map("is_archived")
@@ -858,6 +866,7 @@ model Attachment {
   uploadedBy User? @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
 
   @@index([entity, entityId])
+  @@index([siteId, materialType, isArchived, capturedOn])
   @@map("attachment")
 }
 

@@ -1,5 +1,6 @@
 /** Read-only данные карты. Персональные сведения имеют ту же область доступа, что и паспорт объекта. */
 export interface MapSite {
+  panorama?: { id: number; capturedOn: string; count: number } | null;
   id: number;
   directionCode: string;
   name: string;

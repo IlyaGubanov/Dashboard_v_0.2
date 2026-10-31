@@ -14,7 +14,8 @@ import { dirname, join, resolve, sep } from 'node:path';
 import { Transform, type Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import type { Attachment as AttachmentRow } from '@prisma/client';
-import { ATTACHMENT_EXT, ATTACHMENT_MAX_MB, type Attachment, type AttachmentEntity } from '@mvs/shared';
+import { ATTACHMENT_EXT, ATTACHMENT_MAX_MB, type Attachment, type AttachmentEntity, type FleetKind } from '@mvs/shared';
+import { store } from '../fleet/fleet-store';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { AccessService } from '../auth/access.service';
@@ -96,6 +97,22 @@ export class AttachmentsService {
 
   /** Объект, к которому относится вложение, и может ли пользователь добавлять файлы. */
   private async target(user: AuthUser, entity: AttachmentEntity, entityId: number) {
+    if (entity.startsWith('fleet_')) {
+      this.access.assertSection(user,'fleet');
+      const d=await this.prisma.direction.findFirst({where:{code:'reb',isActive:true}});
+      if(!d) throw new NotFoundException('Направление РЭБ недоступно');
+      await this.access.assertViewDirection(user,d.id);
+      const kind=(entity==='fleet_liability'?'incidents':entity.slice(6)) as FleetKind;
+      if(!['vehicles','incidents','fines','tolls','requests'].includes(kind)) throw new BadRequestException('Неизвестный тип вложения РЭБ');
+      const row=await store(this.prisma,kind).findFirst({where:{id:entityId,directionId:d.id}});
+      if(!row) throw new NotFoundException('Запись РЭБ не найдена');
+      const manager=await this.access.canManageDirection(user,d.id);
+      if(['fleet_fines','fleet_tolls','fleet_liability'].includes(entity)) this.access.assertFeature(user,'finance');
+      if(entity==='fleet_liability'&&!manager) throw new ForbiddenException('Нужны права куратора РЭБ');
+      const m=await this.access.membership(user,d.id);
+      const editor=m?.role==='EDITOR'&&(m.scope==='ALL'||(typeof row.siteId==='number'&&await this.access.canEditSite(user,row.siteId)));
+      return {siteId:null,directionId:d.id,canUpload:!d.isReadonly&&!row.isArchived&&(manager||editor),label:'запись РЭБ'};
+    }
     if (entity === 'site') {
       const s = await this.prisma.site.findUnique({ where: { id: entityId }, select: { id: true, directionId: true, isArchived: true } });
       if (!s) throw new NotFoundException('Объект не найден');

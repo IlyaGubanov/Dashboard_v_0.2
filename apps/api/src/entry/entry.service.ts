@@ -441,6 +441,8 @@ export class EntryService {
     const d = await this.direction(user, code);
     const where: Prisma.AuditLogWhereInput = {
       directionId: d.id,
+      // РЭБ отдаёт историю через собственные проверки финансов и персональной ответственности.
+      NOT: { entity: { startsWith: 'fleet_' } },
       ...(q.userId ? { userId: q.userId } : {}),
       ...(q.siteId ? { siteId: q.siteId } : {}),
       ...(q.from || q.to ? { at: { ...(q.from ? { gte: parse(q.from) } : {}), ...(q.to ? { lt: new Date(parse(q.to).getTime() + 86_400_000) } : {}) } } : {}),

@@ -18,10 +18,12 @@ import { AttachmentsModule } from './attachments/attachments.module';
 import { TasksModule } from './tasks/tasks.module';
 import { ContractorsModule } from './contractors/contractors.module';
 import { HealthController } from './health.controller';
+import { FleetModule } from './fleet/fleet.module';
 
 @Module({
   imports: [
     ObjectsMapModule,
+    FleetModule,
     // общий лимит запросов; для входа — строже (см. AuthController)
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 600 }]),
     PrismaModule,

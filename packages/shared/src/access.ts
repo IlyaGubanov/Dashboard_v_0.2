@@ -5,7 +5,7 @@ import { z } from 'zod';
  * Скрытие только сужает то, что дают роли: вкладки «Ввод данных» и «Управление» по-прежнему зависят от роли в направлении,
  * «Обзор» направления виден всегда. Администратору скрытие не применяется.
  */
-export const APP_SECTIONS = ['overview', 'contractors', 'sites', 'matrix', 'schedule', 'trackers', 'dynamics', 'map', 'remarks', 'people', 'settings'] as const;
+export const APP_SECTIONS = ['overview', 'contractors', 'sites', 'matrix', 'schedule', 'trackers', 'dynamics', 'map', 'remarks', 'people', 'settings', 'fleet'] as const;
 export type AppSection = (typeof APP_SECTIONS)[number];
 
 export const APP_SECTION_LABELS: Record<AppSection, string> = {
@@ -20,11 +20,12 @@ export const APP_SECTION_LABELS: Record<AppSection, string> = {
   remarks: 'Замечания',
   people: 'Ответственные',
   settings: 'Устройство',
+  fleet: 'РЭБ — техника и эксплуатация',
 };
 
 /** Группы для формы: разделы меню и вкладки направления. */
 export const APP_SECTION_GROUPS: { label: string; sections: AppSection[] }[] = [
-  { label: 'Меню', sections: ['overview', 'contractors', 'map'] },
+  { label: 'Меню', sections: ['overview', 'contractors', 'map', 'fleet'] },
   { label: 'Вкладки направления', sections: ['sites', 'matrix', 'schedule', 'trackers', 'dynamics', 'remarks', 'people', 'settings'] },
 ];
 

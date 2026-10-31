@@ -41,7 +41,7 @@ model User {
   hiddenSections     Json?      @map("hidden_sections")
   /// отключённые возможности (ключи FEATURES): финансы, создание замечаний, выгрузка, журнал изменений
   deniedFeatures     Json?      @map("denied_features")
-  isActive          Boolean    @default(true) @map("is_active")
+  isActive           Boolean    @default(true) @map("is_active")
   isExample          Boolean    @default(false) @map("is_example")
   lastLoginAt        DateTime?  @map("last_login_at")
   /// неудачных попыток входа подряд; после 5 — блокировка на 15 минут (locked_until)
@@ -50,28 +50,56 @@ model User {
   createdAt          DateTime   @default(now()) @map("created_at")
   updatedAt          DateTime   @updatedAt @map("updated_at")
 
-  organization     Organization?     @relation(fields: [organizationId], references: [id], onDelete: SetNull)
-  department       Department?       @relation(fields: [departmentId], references: [id], onDelete: SetNull)
-  sessions        UserSession[]
-  memberships      DirectionMember[]
-  siteAssignments  SiteAssignment[]
-  responsibleItems WorkItem[]        @relation("WorkItemResponsible")
-  enteredProgress  ProgressEntry[]   @relation("ProgressEnteredBy")
-  updatedProgress  ProgressEntry[]   @relation("ProgressUpdatedBy")
-  enteredReports   SiteReport[]      @relation("SiteReportEnteredBy")
-  updatedReports   SiteReport[]      @relation("SiteReportUpdatedBy")
-  sitesCreated     Site[]            @relation("SiteCreatedBy")
-  sitesUpdated     Site[]            @relation("SiteUpdatedBy")
-  periodsOpened    ReportingPeriod[] @relation("PeriodOpenedBy")
-  periodsClosed    ReportingPeriod[] @relation("PeriodClosedBy")
-  remarksAuthored  Remark[]          @relation("RemarkAuthor")
-  remarksAssigned  Remark[]          @relation("RemarkAssignee")
-  remarksResolved  Remark[]          @relation("RemarkResolvedBy")
-  remarkEvents     RemarkEvent[]
-  trackerValues    TrackerValue[]
-  attachments      Attachment[]
-  layouts          DashboardLayout[] @relation("LayoutOwner")
-  auditEntries     AuditLog[]
+  organization               Organization?            @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  department                 Department?              @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  sessions                   UserSession[]
+  memberships                DirectionMember[]
+  siteAssignments            SiteAssignment[]
+  responsibleItems           WorkItem[]               @relation("WorkItemResponsible")
+  enteredProgress            ProgressEntry[]          @relation("ProgressEnteredBy")
+  updatedProgress            ProgressEntry[]          @relation("ProgressUpdatedBy")
+  enteredReports             SiteReport[]             @relation("SiteReportEnteredBy")
+  updatedReports             SiteReport[]             @relation("SiteReportUpdatedBy")
+  sitesCreated               Site[]                   @relation("SiteCreatedBy")
+  sitesUpdated               Site[]                   @relation("SiteUpdatedBy")
+  periodsOpened              ReportingPeriod[]        @relation("PeriodOpenedBy")
+  periodsClosed              ReportingPeriod[]        @relation("PeriodClosedBy")
+  remarksAuthored            Remark[]                 @relation("RemarkAuthor")
+  remarksAssigned            Remark[]                 @relation("RemarkAssignee")
+  remarksResolved            Remark[]                 @relation("RemarkResolvedBy")
+  remarkEvents               RemarkEvent[]
+  trackerValues              TrackerValue[]
+  attachments                Attachment[]
+  layouts                    DashboardLayout[]        @relation("LayoutOwner")
+  auditEntries               AuditLog[]
+  fleetVehicleCreatedById    FleetVehicle[]           @relation("FleetVehicleCreatedById")
+  fleetVehicleUpdatedById    FleetVehicle[]           @relation("FleetVehicleUpdatedById")
+  fleetVehicleEmployeeId     FleetVehicle[]           @relation("FleetVehicleEmployeeId")
+  fleetAssignmentCreatedById FleetAssignment[]        @relation("FleetAssignmentCreatedById")
+  fleetAssignmentUpdatedById FleetAssignment[]        @relation("FleetAssignmentUpdatedById")
+  fleetAssignmentEmployeeId  FleetAssignment[]        @relation("FleetAssignmentEmployeeId")
+  fleetIncidentCreatedById   FleetIncident[]          @relation("FleetIncidentCreatedById")
+  fleetIncidentUpdatedById   FleetIncident[]          @relation("FleetIncidentUpdatedById")
+  fleetIncidentEmployeeId    FleetIncident[]          @relation("FleetIncidentEmployeeId")
+  fleetFineCreatedById       FleetFine[]              @relation("FleetFineCreatedById")
+  fleetFineUpdatedById       FleetFine[]              @relation("FleetFineUpdatedById")
+  fleetFineEmployeeId        FleetFine[]              @relation("FleetFineEmployeeId")
+  fleetTollCreatedById       FleetToll[]              @relation("FleetTollCreatedById")
+  fleetTollUpdatedById       FleetToll[]              @relation("FleetTollUpdatedById")
+  fleetTollEmployeeId        FleetToll[]              @relation("FleetTollEmployeeId")
+  fleetFuelCreatedById       FleetFuel[]              @relation("FleetFuelCreatedById")
+  fleetFuelUpdatedById       FleetFuel[]              @relation("FleetFuelUpdatedById")
+  fleetDowntimeCreatedById   FleetDowntime[]          @relation("FleetDowntimeCreatedById")
+  fleetDowntimeUpdatedById   FleetDowntime[]          @relation("FleetDowntimeUpdatedById")
+  fleetDowntimeEmployeeId    FleetDowntime[]          @relation("FleetDowntimeEmployeeId")
+  fleetRequestCreatedById    FleetRequest[]           @relation("FleetRequestCreatedById")
+  fleetRequestUpdatedById    FleetRequest[]           @relation("FleetRequestUpdatedById")
+  fleetRequestInitiatorId    FleetRequest[]           @relation("FleetRequestInitiatorId")
+  fleetRequestEmployeeId     FleetRequest[]           @relation("FleetRequestEmployeeId")
+  fleetSnapshotCreatedById   FleetSnapshot[]          @relation("FleetSnapshotCreatedById")
+  fleetSnapshotUpdatedById   FleetSnapshot[]          @relation("FleetSnapshotUpdatedById")
+  fleetLiabilities           FleetIncidentLiability[]
+  fleetImports               FleetImportBatch[]
 
   @@index([fullName])
   @@map("user")
@@ -84,7 +112,12 @@ model Department {
   isArchived Boolean  @default(false) @map("is_archived")
   createdAt  DateTime @default(now()) @map("created_at")
 
-  users User[]
+  users                     User[]
+  fleetVehicleDepartmentId  FleetVehicle[]  @relation("FleetVehicleDepartmentId")
+  fleetIncidentDepartmentId FleetIncident[] @relation("FleetIncidentDepartmentId")
+  fleetFineDepartmentId     FleetFine[]     @relation("FleetFineDepartmentId")
+  fleetTollDepartmentId     FleetToll[]     @relation("FleetTollDepartmentId")
+  fleetRequestDepartmentId  FleetRequest[]  @relation("FleetRequestDepartmentId")
 
   @@map("department")
 }
@@ -160,12 +193,13 @@ model Organization {
   isExample   Boolean          @default(false) @map("is_example")
   createdAt   DateTime         @default(now()) @map("created_at")
 
-  direction       Direction  @relation(fields: [directionId], references: [id], onDelete: Cascade)
-  users           User[]
-  sitesContractor Site[]     @relation("SiteContractor")
-  sitesDesigner   Site[]     @relation("SiteDesigner")
-  workItems       WorkItem[]
-  contracts       Contract[]
+  direction           Direction      @relation(fields: [directionId], references: [id], onDelete: Cascade)
+  users               User[]
+  sitesContractor     Site[]         @relation("SiteContractor")
+  sitesDesigner       Site[]         @relation("SiteDesigner")
+  workItems           WorkItem[]
+  contracts           Contract[]
+  fleetVehicleOwnerId FleetVehicle[] @relation("FleetVehicleOwnerId")
 
   @@unique([directionId, name, kind])
   @@map("organization")
@@ -239,19 +273,34 @@ model Direction {
   createdAt      DateTime       @default(now()) @map("created_at")
   updatedAt      DateTime       @updatedAt @map("updated_at")
 
-  members       DirectionMember[]
-  organizations Organization[]
-  sections      Section[]
-  workGroups    WorkGroup[]
-  workTypes     WorkType[]
-  statusDefs    StatusDef[]
-  fieldDefs     FieldDef[]
-  sites         Site[]
-  periods       ReportingPeriod[]
-  trackers      Tracker[]
-  layouts       DashboardLayout[]
-  kpiCache      KpiSnapshot[]
-  remarks       Remark[]
+  members                          DirectionMember[]
+  organizations                    Organization[]
+  sections                         Section[]
+  workGroups                       WorkGroup[]
+  workTypes                        WorkType[]
+  statusDefs                       StatusDef[]
+  fieldDefs                        FieldDef[]
+  sites                            Site[]
+  periods                          ReportingPeriod[]
+  trackers                         Tracker[]
+  layouts                          DashboardLayout[]
+  kpiCache                         KpiSnapshot[]
+  remarks                          Remark[]
+  fleetVehicleDirectionId          FleetVehicle[]     @relation("FleetVehicleDirectionId")
+  fleetAssignmentDirectionId       FleetAssignment[]  @relation("FleetAssignmentDirectionId")
+  fleetAssignmentTargetDirectionId FleetAssignment[]  @relation("FleetAssignmentTargetDirectionId")
+  fleetIncidentDirectionId         FleetIncident[]    @relation("FleetIncidentDirectionId")
+  fleetIncidentTargetDirectionId   FleetIncident[]    @relation("FleetIncidentTargetDirectionId")
+  fleetFineDirectionId             FleetFine[]        @relation("FleetFineDirectionId")
+  fleetFineTargetDirectionId       FleetFine[]        @relation("FleetFineTargetDirectionId")
+  fleetTollDirectionId             FleetToll[]        @relation("FleetTollDirectionId")
+  fleetTollTargetDirectionId       FleetToll[]        @relation("FleetTollTargetDirectionId")
+  fleetFuelDirectionId             FleetFuel[]        @relation("FleetFuelDirectionId")
+  fleetDowntimeDirectionId         FleetDowntime[]    @relation("FleetDowntimeDirectionId")
+  fleetRequestDirectionId          FleetRequest[]     @relation("FleetRequestDirectionId")
+  fleetRequestTargetDirectionId    FleetRequest[]     @relation("FleetRequestTargetDirectionId")
+  fleetSnapshotDirectionId         FleetSnapshot[]    @relation("FleetSnapshotDirectionId")
+  fleetImports                     FleetImportBatch[]
 
   @@map("direction")
 }
@@ -425,20 +474,25 @@ model Site {
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
-  direction   Direction        @relation(fields: [directionId], references: [id], onDelete: Cascade)
-  section     Section?         @relation(fields: [sectionId], references: [id], onDelete: SetNull)
-  status      StatusDef?       @relation(fields: [statusId], references: [id], onDelete: SetNull)
-  contractor  Organization?    @relation("SiteContractor", fields: [contractorId], references: [id], onDelete: SetNull)
-  designer    Organization?    @relation("SiteDesigner", fields: [designerId], references: [id], onDelete: SetNull)
-  createdBy   User?            @relation("SiteCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-  updatedBy   User?            @relation("SiteUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
-  assignments SiteAssignment[]
-  workItems   WorkItem[]
-  contracts   Contract[]
-  reports     SiteReport[]
-  remarks     Remark[]
-  trackerRows TrackerRow[]
-  attachments Attachment[]
+  direction             Direction         @relation(fields: [directionId], references: [id], onDelete: Cascade)
+  section               Section?          @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  status                StatusDef?        @relation(fields: [statusId], references: [id], onDelete: SetNull)
+  contractor            Organization?     @relation("SiteContractor", fields: [contractorId], references: [id], onDelete: SetNull)
+  designer              Organization?     @relation("SiteDesigner", fields: [designerId], references: [id], onDelete: SetNull)
+  createdBy             User?             @relation("SiteCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy             User?             @relation("SiteUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  assignments           SiteAssignment[]
+  workItems             WorkItem[]
+  contracts             Contract[]
+  reports               SiteReport[]
+  remarks               Remark[]
+  trackerRows           TrackerRow[]
+  attachments           Attachment[]
+  fleetAssignmentSiteId FleetAssignment[] @relation("FleetAssignmentSiteId")
+  fleetIncidentSiteId   FleetIncident[]   @relation("FleetIncidentSiteId")
+  fleetFineSiteId       FleetFine[]       @relation("FleetFineSiteId")
+  fleetTollSiteId       FleetToll[]       @relation("FleetTollSiteId")
+  fleetRequestSiteId    FleetRequest[]    @relation("FleetRequestSiteId")
 
   @@unique([directionId, code])
   @@index([directionId, sectionId])
@@ -946,4 +1000,458 @@ model AuditLog {
   @@index([directionId, at])
   @@index([siteId, at])
   @@map("audit_log")
+}
+
+// ============================================================ РЭБ
+
+model FleetVehicle {
+  id              Int       @id @default(autoincrement())
+  directionId     Int
+  version         Int       @default(1)
+  isArchived      Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  createdById     Int?
+  updatedById     Int?
+  importBatchId   Int?
+  sourceKey       String?   @db.Char(64)
+  sourceRaw       Json?
+  note            String?   @db.Text
+  inventoryNumber String?   @db.VarChar(80)
+  plate           String?   @db.VarChar(32)
+  vin             String?   @db.VarChar(80)
+  name            String    @db.VarChar(200)
+  kind            String    @db.VarChar(100)
+  category        String?   @db.VarChar(100)
+  brand           String?   @db.VarChar(100)
+  model           String?   @db.VarChar(100)
+  ownership       String    @default("UNKNOWN") @db.VarChar(20)
+  ownerId         Int?
+  rentStart       DateTime? @db.Date
+  rentEnd         DateTime? @db.Date
+  technicalState  String    @default("UNKNOWN") @db.VarChar(20)
+  usageState      String    @default("UNKNOWN") @db.VarChar(20)
+  employeeId      Int?
+  departmentId    Int?
+
+  direction                Direction         @relation("FleetVehicleDirectionId", fields: [directionId], references: [id], onDelete: Restrict)
+  createdBy                User?             @relation("FleetVehicleCreatedById", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy                User?             @relation("FleetVehicleUpdatedById", fields: [updatedById], references: [id], onDelete: Restrict)
+  importBatch              FleetImportBatch? @relation("FleetVehicleImportBatchId", fields: [importBatchId], references: [id], onDelete: Restrict)
+  owner                    Organization?     @relation("FleetVehicleOwnerId", fields: [ownerId], references: [id], onDelete: Restrict)
+  employee                 User?             @relation("FleetVehicleEmployeeId", fields: [employeeId], references: [id], onDelete: Restrict)
+  department               Department?       @relation("FleetVehicleDepartmentId", fields: [departmentId], references: [id], onDelete: Restrict)
+  fleetAssignmentVehicleId FleetAssignment[] @relation("FleetAssignmentVehicleId")
+  fleetIncidentVehicleId   FleetIncident[]   @relation("FleetIncidentVehicleId")
+  fleetFineVehicleId       FleetFine[]       @relation("FleetFineVehicleId")
+  fleetTollVehicleId       FleetToll[]       @relation("FleetTollVehicleId")
+  fleetDowntimeVehicleId   FleetDowntime[]   @relation("FleetDowntimeVehicleId")
+
+  @@unique([directionId, sourceKey])
+  @@unique([directionId, inventoryNumber])
+  @@unique([directionId, plate])
+  @@unique([directionId, vin])
+  @@index([directionId, isArchived, updatedAt])
+  @@map("fleet_vehicle")
+}
+
+model FleetAssignment {
+  id                Int       @id @default(autoincrement())
+  directionId       Int
+  version           Int       @default(1)
+  isArchived        Boolean   @default(false)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  createdById       Int?
+  updatedById       Int?
+  importBatchId     Int?
+  sourceKey         String?   @db.Char(64)
+  sourceRaw         Json?
+  note              String?   @db.Text
+  vehicleId         Int
+  targetDirectionId Int
+  siteId            Int?
+  employeeId        Int?
+  startDate         DateTime  @db.Date
+  endDate           DateTime? @db.Date
+
+  direction       Direction         @relation("FleetAssignmentDirectionId", fields: [directionId], references: [id], onDelete: Restrict)
+  createdBy       User?             @relation("FleetAssignmentCreatedById", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy       User?             @relation("FleetAssignmentUpdatedById", fields: [updatedById], references: [id], onDelete: Restrict)
+  importBatch     FleetImportBatch? @relation("FleetAssignmentImportBatchId", fields: [importBatchId], references: [id], onDelete: Restrict)
+  vehicle         FleetVehicle      @relation("FleetAssignmentVehicleId", fields: [vehicleId], references: [id], onDelete: Restrict)
+  targetDirection Direction         @relation("FleetAssignmentTargetDirectionId", fields: [targetDirectionId], references: [id], onDelete: Restrict)
+  site            Site?             @relation("FleetAssignmentSiteId", fields: [siteId], references: [id], onDelete: Restrict)
+  employee        User?             @relation("FleetAssignmentEmployeeId", fields: [employeeId], references: [id], onDelete: Restrict)
+  allocations     FleetAllocation[]
+
+  @@unique([directionId, sourceKey])
+  @@index([directionId, isArchived, updatedAt])
+  @@index([vehicleId, startDate, endDate])
+  @@map("fleet_assignment")
+}
+
+model FleetIncident {
+  id                     Int       @id @default(autoincrement())
+  directionId            Int
+  version                Int       @default(1)
+  isArchived             Boolean   @default(false)
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  createdById            Int?
+  updatedById            Int?
+  importBatchId          Int?
+  sourceKey              String?   @db.Char(64)
+  sourceRaw              Json?
+  note                   String?   @db.Text
+  vehicleId              Int?
+  plate                  String?   @db.VarChar(32)
+  targetDirectionId      Int?
+  siteId                 Int?
+  departmentId           Int?
+  employeeId             Int?
+  occurredAt             DateTime
+  incidentType           String    @db.VarChar(200)
+  location               String?   @db.VarChar(500)
+  description            String?   @db.Text
+  cause                  String?   @db.Text
+  registrationMethod     String?   @db.VarChar(200)
+  casualties             Boolean?
+  status                 String    @default("REVIEW") @db.VarChar(20)
+  culpritCategory        String?   @db.VarChar(200)
+  culpritConfirmed       Boolean   @default(false)
+  conditionAfter         String?   @db.VarChar(500)
+  repairRequired         Boolean?
+  expectedReturn         DateTime? @db.Date
+  actualReturn           DateTime? @db.Date
+  delayReason            String?   @db.Text
+  damage                 Decimal?  @db.Decimal(15, 2)
+  repairCost             Decimal?  @db.Decimal(15, 2)
+  insuranceCompensation  Decimal?  @db.Decimal(15, 2)
+  thirdPartyCompensation Decimal?  @db.Decimal(15, 2)
+  recoveredAmount        Decimal?  @db.Decimal(15, 2)
+
+  direction       Direction               @relation("FleetIncidentDirectionId", fields: [directionId], references: [id], onDelete: Restrict)
+  createdBy       User?                   @relation("FleetIncidentCreatedById", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy       User?                   @relation("FleetIncidentUpdatedById", fields: [updatedById], references: [id], onDelete: Restrict)
+  importBatch     FleetImportBatch?       @relation("FleetIncidentImportBatchId", fields: [importBatchId], references: [id], onDelete: Restrict)
+  vehicle         FleetVehicle?           @relation("FleetIncidentVehicleId", fields: [vehicleId], references: [id], onDelete: Restrict)
+  targetDirection Direction?              @relation("FleetIncidentTargetDirectionId", fields: [targetDirectionId], references: [id], onDelete: Restrict)
+  site            Site?                   @relation("FleetIncidentSiteId", fields: [siteId], references: [id], onDelete: Restrict)
+  department      Department?             @relation("FleetIncidentDepartmentId", fields: [departmentId], references: [id], onDelete: Restrict)
+  employee        User?                   @relation("FleetIncidentEmployeeId", fields: [employeeId], references: [id], onDelete: Restrict)
+  liability       FleetIncidentLiability?
+
+  @@unique([directionId, sourceKey])
+  @@index([directionId, isArchived, updatedAt])
+  @@map("fleet_incident")
+}
+
+model FleetFine {
+  id                Int       @id @default(autoincrement())
+  directionId       Int
+  version           Int       @default(1)
+  isArchived        Boolean   @default(false)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  createdById       Int?
+  updatedById       Int?
+  importBatchId     Int?
+  sourceKey         String?   @db.Char(64)
+  sourceRaw         Json?
+  note              String?   @db.Text
+  uin               String?   @db.VarChar(80)
+  violationDate     DateTime? @db.Date
+  violation         String    @db.Text
+  fullAmount        Decimal?  @db.Decimal(15, 2)
+  confirmedDiscount Decimal?  @db.Decimal(15, 2)
+  discountUntil     DateTime? @db.Date
+  dueDate           DateTime? @db.Date
+  submittedDate     DateTime? @db.Date
+  vehicleId         Int?
+  plate             String?   @db.VarChar(32)
+  targetDirectionId Int?
+  siteId            Int?
+  departmentId      Int?
+  employeeId        Int?
+  chargeDate        DateTime? @db.Date
+  detectedDate      DateTime? @db.Date
+  amount            Decimal   @db.Decimal(15, 2)
+  paidAmount        Decimal?  @db.Decimal(15, 2)
+  paidDate          DateTime? @db.Date
+  paymentDocument   String?   @db.VarChar(500)
+  status            String    @default("REVIEW") @db.VarChar(20)
+  sourceStatus      String?   @db.VarChar(200)
+
+  direction       Direction         @relation("FleetFineDirectionId", fields: [directionId], references: [id], onDelete: Restrict)
+  createdBy       User?             @relation("FleetFineCreatedById", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy       User?             @relation("FleetFineUpdatedById", fields: [updatedById], references: [id], onDelete: Restrict)
+  importBatch     FleetImportBatch? @relation("FleetFineImportBatchId", fields: [importBatchId], references: [id], onDelete: Restrict)
+  vehicle         FleetVehicle?     @relation("FleetFineVehicleId", fields: [vehicleId], references: [id], onDelete: Restrict)
+  targetDirection Direction?        @relation("FleetFineTargetDirectionId", fields: [targetDirectionId], references: [id], onDelete: Restrict)
+  site            Site?             @relation("FleetFineSiteId", fields: [siteId], references: [id], onDelete: Restrict)
+  department      Department?       @relation("FleetFineDepartmentId", fields: [departmentId], references: [id], onDelete: Restrict)
+  employee        User?             @relation("FleetFineEmployeeId", fields: [employeeId], references: [id], onDelete: Restrict)
+
+  @@unique([directionId, sourceKey])
+  @@unique([directionId, uin])
+  @@index([directionId, isArchived, updatedAt])
+  @@map("fleet_fine")
+}
+
+model FleetToll {
+  id                Int       @id @default(autoincrement())
+  directionId       Int
+  version           Int       @default(1)
+  isArchived        Boolean   @default(false)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  createdById       Int?
+  updatedById       Int?
+  importBatchId     Int?
+  sourceKey         String?   @db.Char(64)
+  sourceRaw         Json?
+  note              String?   @db.Text
+  chargeIdentifier  String?   @db.VarChar(100)
+  passageDate       DateTime  @db.Date
+  route             String    @db.Text
+  vehicleId         Int?
+  plate             String?   @db.VarChar(32)
+  targetDirectionId Int?
+  siteId            Int?
+  departmentId      Int?
+  employeeId        Int?
+  chargeDate        DateTime? @db.Date
+  detectedDate      DateTime? @db.Date
+  amount            Decimal   @db.Decimal(15, 2)
+  paidAmount        Decimal?  @db.Decimal(15, 2)
+  paidDate          DateTime? @db.Date
+  paymentDocument   String?   @db.VarChar(500)
+  status            String    @default("REVIEW") @db.VarChar(20)
+  sourceStatus      String?   @db.VarChar(200)
+
+  direction       Direction         @relation("FleetTollDirectionId", fields: [directionId], references: [id], onDelete: Restrict)
+  createdBy       User?             @relation("FleetTollCreatedById", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy       User?             @relation("FleetTollUpdatedById", fields: [updatedById], references: [id], onDelete: Restrict)
+  importBatch     FleetImportBatch? @relation("FleetTollImportBatchId", fields: [importBatchId], references: [id], onDelete: Restrict)
+  vehicle         FleetVehicle?     @relation("FleetTollVehicleId", fields: [vehicleId], references: [id], onDelete: Restrict)
+  targetDirection Direction?        @relation("FleetTollTargetDirectionId", fields: [targetDirectionId], references: [id], onDelete: Restrict)
+  site            Site?             @relation("FleetTollSiteId", fields: [siteId], references: [id], onDelete: Restrict)
+  department      Department?       @relation("FleetTollDepartmentId", fields: [departmentId], references: [id], onDelete: Restrict)
+  employee        User?             @relation("FleetTollEmployeeId", fields: [employeeId], references: [id], onDelete: Restrict)
+
+  @@unique([directionId, sourceKey])
+  @@unique([directionId, chargeIdentifier])
+  @@index([directionId, isArchived, updatedAt])
+  @@map("fleet_toll")
+}
+
+model FleetFuel {
+  id              Int      @id @default(autoincrement())
+  directionId     Int
+  version         Int      @default(1)
+  isArchived      Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  createdById     Int?
+  updatedById     Int?
+  importBatchId   Int?
+  sourceKey       String?  @db.Char(64)
+  sourceRaw       Json?
+  note            String?  @db.Text
+  period          String   @db.VarChar(7)
+  fuelType        String   @db.VarChar(80)
+  category        String   @db.VarChar(200)
+  liters          Decimal  @db.Decimal(15, 2)
+  cost            Decimal? @db.Decimal(15, 2)
+  dailyLiters     Decimal? @db.Decimal(15, 2)
+  dailyCost       Decimal? @db.Decimal(15, 2)
+  dailyMethod     String?  @db.Text
+  source          String   @db.VarChar(500)
+  isReportedTotal Boolean  @default(false)
+
+  direction   Direction         @relation("FleetFuelDirectionId", fields: [directionId], references: [id], onDelete: Restrict)
+  createdBy   User?             @relation("FleetFuelCreatedById", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy   User?             @relation("FleetFuelUpdatedById", fields: [updatedById], references: [id], onDelete: Restrict)
+  importBatch FleetImportBatch? @relation("FleetFuelImportBatchId", fields: [importBatchId], references: [id], onDelete: Restrict)
+
+  @@unique([directionId, sourceKey])
+  @@index([directionId, isArchived, updatedAt])
+  @@map("fleet_fuel")
+}
+
+model FleetDowntime {
+  id             Int       @id @default(autoincrement())
+  directionId    Int
+  version        Int       @default(1)
+  isArchived     Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  createdById    Int?
+  updatedById    Int?
+  importBatchId  Int?
+  sourceKey      String?   @db.Char(64)
+  sourceRaw      Json?
+  note           String?   @db.Text
+  vehicleId      Int
+  reason         String    @db.VarChar(20)
+  startDate      DateTime  @db.Date
+  endDate        DateTime? @db.Date
+  expectedReturn DateTime? @db.Date
+  employeeId     Int?
+  comment        String?   @db.Text
+
+  direction   Direction         @relation("FleetDowntimeDirectionId", fields: [directionId], references: [id], onDelete: Restrict)
+  createdBy   User?             @relation("FleetDowntimeCreatedById", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy   User?             @relation("FleetDowntimeUpdatedById", fields: [updatedById], references: [id], onDelete: Restrict)
+  importBatch FleetImportBatch? @relation("FleetDowntimeImportBatchId", fields: [importBatchId], references: [id], onDelete: Restrict)
+  vehicle     FleetVehicle      @relation("FleetDowntimeVehicleId", fields: [vehicleId], references: [id], onDelete: Restrict)
+  employee    User?             @relation("FleetDowntimeEmployeeId", fields: [employeeId], references: [id], onDelete: Restrict)
+
+  @@unique([directionId, sourceKey])
+  @@index([directionId, isArchived, updatedAt])
+  @@index([vehicleId, startDate, endDate])
+  @@map("fleet_downtime")
+}
+
+model FleetRequest {
+  id                Int      @id @default(autoincrement())
+  directionId       Int
+  version           Int      @default(1)
+  isArchived        Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  createdById       Int?
+  updatedById       Int?
+  importBatchId     Int?
+  sourceKey         String?  @db.Char(64)
+  sourceRaw         Json?
+  note              String?  @db.Text
+  requestDate       DateTime @db.Date
+  departmentId      Int?
+  targetDirectionId Int?
+  siteId            Int?
+  kind              String   @db.VarChar(100)
+  quantity          Int
+  workPurpose       String   @db.Text
+  reason            String   @db.Text
+  startDate         DateTime @db.Date
+  endDate           DateTime @db.Date
+  priority          String   @default("NORMAL") @db.VarChar(20)
+  initiatorId       Int?
+  employeeId        Int?
+  status            String   @default("NEW") @db.VarChar(20)
+  decisionReason    String?  @db.Text
+
+  direction       Direction         @relation("FleetRequestDirectionId", fields: [directionId], references: [id], onDelete: Restrict)
+  createdBy       User?             @relation("FleetRequestCreatedById", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy       User?             @relation("FleetRequestUpdatedById", fields: [updatedById], references: [id], onDelete: Restrict)
+  importBatch     FleetImportBatch? @relation("FleetRequestImportBatchId", fields: [importBatchId], references: [id], onDelete: Restrict)
+  department      Department?       @relation("FleetRequestDepartmentId", fields: [departmentId], references: [id], onDelete: Restrict)
+  targetDirection Direction?        @relation("FleetRequestTargetDirectionId", fields: [targetDirectionId], references: [id], onDelete: Restrict)
+  site            Site?             @relation("FleetRequestSiteId", fields: [siteId], references: [id], onDelete: Restrict)
+  initiator       User?             @relation("FleetRequestInitiatorId", fields: [initiatorId], references: [id], onDelete: Restrict)
+  employee        User?             @relation("FleetRequestEmployeeId", fields: [employeeId], references: [id], onDelete: Restrict)
+  allocations     FleetAllocation[]
+
+  @@unique([directionId, sourceKey])
+  @@index([directionId, isArchived, updatedAt])
+  @@map("fleet_request")
+}
+
+model FleetSnapshot {
+  id            Int      @id @default(autoincrement())
+  directionId   Int
+  version       Int      @default(1)
+  isArchived    Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  createdById   Int?
+  updatedById   Int?
+  importBatchId Int?
+  sourceKey     String?  @db.Char(64)
+  sourceRaw     Json?
+  note          String?  @db.Text
+  asOfDate      DateTime @db.Date
+  source        String   @db.VarChar(500)
+  total         Int
+  used          Int?
+  unused        Int?
+  own           Int?
+  rented        Int?
+  repair        Int?
+  reserve       Int?
+  breakdown     Json
+  details       String?  @db.Text
+
+  direction   Direction         @relation("FleetSnapshotDirectionId", fields: [directionId], references: [id], onDelete: Restrict)
+  createdBy   User?             @relation("FleetSnapshotCreatedById", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy   User?             @relation("FleetSnapshotUpdatedById", fields: [updatedById], references: [id], onDelete: Restrict)
+  importBatch FleetImportBatch? @relation("FleetSnapshotImportBatchId", fields: [importBatchId], references: [id], onDelete: Restrict)
+
+  @@unique([directionId, sourceKey])
+  @@index([directionId, isArchived, updatedAt])
+  @@map("fleet_snapshot")
+}
+
+/// Реально выделенные назначения; перестановки сохраняются в общем аудите.
+model FleetAllocation {
+  requestId    Int
+  assignmentId Int
+  request      FleetRequest    @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  assignment   FleetAssignment @relation(fields: [assignmentId], references: [id], onDelete: Restrict)
+
+  @@id([requestId, assignmentId])
+  @@map("fleet_allocation")
+}
+
+/// Подтверждённая ответственность; доступ отдельно от факта ДТП.
+model FleetIncidentLiability {
+  id              Int           @id @default(autoincrement())
+  incidentId      Int           @unique
+  employeeId      Int
+  confirmedAmount Decimal       @db.Decimal(15, 2)
+  recoveredAmount Decimal       @db.Decimal(15, 2)
+  evidence        String        @db.Text
+  note            String?       @db.Text
+  version         Int           @default(1)
+  updatedAt       DateTime      @updatedAt
+  incident        FleetIncident @relation(fields: [incidentId], references: [id], onDelete: Restrict)
+  employee        User          @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+
+  @@map("fleet_incident_liability")
+}
+
+model FleetFuelType {
+  code String @id @db.VarChar(80)
+
+  @@map("fleet_fuel_type")
+}
+
+/// Только завершённые импорты. Предварительный просмотр не пишет в БД.
+model FleetImportBatch {
+  id                           Int               @id @default(autoincrement())
+  directionId                  Int
+  createdById                  Int
+  fileName                     String            @db.VarChar(200)
+  fileHash                     String            @db.Char(64)
+  kind                         String            @db.VarChar(20)
+  mapping                      Json
+  importedRows                 Int
+  skippedRows                  Int
+  createdAt                    DateTime          @default(now())
+  direction                    Direction         @relation(fields: [directionId], references: [id], onDelete: Restrict)
+  createdBy                    User              @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  fleetVehicleImportBatchId    FleetVehicle[]    @relation("FleetVehicleImportBatchId")
+  fleetAssignmentImportBatchId FleetAssignment[] @relation("FleetAssignmentImportBatchId")
+  fleetIncidentImportBatchId   FleetIncident[]   @relation("FleetIncidentImportBatchId")
+  fleetFineImportBatchId       FleetFine[]       @relation("FleetFineImportBatchId")
+  fleetTollImportBatchId       FleetToll[]       @relation("FleetTollImportBatchId")
+  fleetFuelImportBatchId       FleetFuel[]       @relation("FleetFuelImportBatchId")
+  fleetDowntimeImportBatchId   FleetDowntime[]   @relation("FleetDowntimeImportBatchId")
+  fleetRequestImportBatchId    FleetRequest[]    @relation("FleetRequestImportBatchId")
+  fleetSnapshotImportBatchId   FleetSnapshot[]   @relation("FleetSnapshotImportBatchId")
+
+  @@index([directionId, createdAt])
+  @@map("fleet_import_batch")
 }

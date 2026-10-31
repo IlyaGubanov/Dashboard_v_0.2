@@ -5,7 +5,7 @@ import { clientIp, type AuthRequest, type AuthUser } from '../common/request';
 import { CurrentUser } from '../auth/decorators';
 import { AttachmentsService } from './attachments.service';
 
-const ENTITIES: AttachmentEntity[] = ['site', 'remark_event'];
+const ENTITIES: AttachmentEntity[] = ['site', 'remark_event', 'fleet_vehicles', 'fleet_incidents', 'fleet_fines', 'fleet_tolls', 'fleet_requests', 'fleet_liability'];
 function target(entity: string, entityId: string): [AttachmentEntity, number] {
   const id = Number(entityId);
   if (!ENTITIES.includes(entity as AttachmentEntity) || !Number.isInteger(id) || id <= 0) throw new BadRequestException('Неверная ссылка на объект вложения');

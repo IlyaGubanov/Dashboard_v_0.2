@@ -151,4 +151,4 @@ export interface RemarkList {
 export const ATTACHMENT_MAX_MB = 25;
 export const ATTACHMENT_EXT = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv', 'zip', 'rar', '7z', 'dwg'] as const;
 export const ATTACHMENT_ACCEPT = ATTACHMENT_EXT.map((e) => `.${e}`).join(',');
-export type AttachmentEntity = 'site' | 'remark_event';
+export type AttachmentEntity = 'site' | 'remark_event' | 'fleet_vehicles' | 'fleet_incidents' | 'fleet_fines' | 'fleet_tolls' | 'fleet_requests' | 'fleet_liability';

@@ -32,7 +32,8 @@ export class KpiService {
   async overview(user: AuthUser): Promise<Overview> {
     this.access.assertSection(user, 'overview');
     const dirs = await this.prisma.direction.findMany({
-      where: { isActive: true, ...(user.globalRole === 'USER' ? { members: { some: { userId: user.id } } } : {}) },
+      // РЭБ имеет собственные показатели; технику нельзя считать строительными объектами и готовностью работ.
+      where: { isActive: true, code: { not: 'reb' }, ...(user.globalRole === 'USER' ? { members: { some: { userId: user.id } } } : {}) },
       orderBy: [{ sort: 'asc' }, { name: 'asc' }],
       include: { members: { where: { role: 'CURATOR' }, include: { user: { select: { id: true, fullName: true } } } } },
     });

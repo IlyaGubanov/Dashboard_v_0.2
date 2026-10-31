@@ -19,6 +19,7 @@ import { TasksModule } from './tasks/tasks.module';
 import { ContractorsModule } from './contractors/contractors.module';
 import { AppearanceModule } from './appearance/appearance.module';
 import { HealthController } from './health.controller';
+import { StaffingModule } from './staffing/staffing.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { HealthController } from './health.controller';
     TasksModule,
     ContractorsModule,
     AppearanceModule,
+    StaffingModule,
   ],
   controllers: [HealthController],
   providers: [

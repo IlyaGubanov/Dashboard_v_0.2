@@ -11,3 +11,4 @@ export * from './tasks';
 export * from './contractors';
 export * from './appearance';
 export * from './map';
+export * from './staffing';

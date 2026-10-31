@@ -13,3 +13,5 @@ export * from './appearance';
 export * from './map';
 export * from './ckkb';
 export * from './report-summary';
+export * from './video';
+export * from './staffing';

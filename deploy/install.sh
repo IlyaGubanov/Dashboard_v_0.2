@@ -87,6 +87,7 @@ install_backup_cron() {
 }
 
 create_env
+bash deploy/video-secrets.sh
 [[ "${1:-}" == "--env-only" ]] && exit 0
 
 install_docker

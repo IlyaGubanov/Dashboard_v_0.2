@@ -98,7 +98,7 @@ docker compose logs -f caddy     # для TLS_MODE=auto дождитесь «cer
 |---|---|---|
 | Резервная копия | `sudo bash deploy/backup.sh` | база + фото и документы в `/var/backups/mvs`, хранится 14 дней; по расписанию — каждую ночь в 02:30 (ставит `install.sh`). Каталог и срок — `BACKUP_DIR`, `KEEP_DAYS` |
 | Восстановление | `sudo bash deploy/restore.sh db-….sql.gz [files-….tar.gz]` | спросит подтверждение и сначала сохранит текущее состояние |
-| Обновление | `sudo bash deploy/update.sh` | копия → `git pull` → пересборка → проверка; миграции базы применяются при старте |
+| Обновление | `sudo bash deploy/update.sh` | копия → `git pull` → пересборка (сервер, интерфейс и видеосервер по очереди) → проверка; миграции базы применяются при старте. Пока идёт сборка, работает прежняя версия |
 | Журналы | `docker compose logs --tail=200 api` | у каждого контейнера не больше 5 × 10 МБ |
 | Состояние | `docker compose ps` | у `db` и `api` должно быть `healthy` |
 | Место на диске | `df -h /var/lib/docker /var/backups` | фото копятся в томе `files_data` |

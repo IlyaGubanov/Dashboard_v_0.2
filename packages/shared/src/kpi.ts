@@ -303,6 +303,11 @@ export interface WorkGrid {
       plan: number | null;
       excluded: boolean;
       overdue: boolean;
+      /** Состояние позиции по графику и порогам направления. */
+      risk?: SiteRisk;
+      /** План для оценки: у Сетей берётся график объекта. */
+      riskPlan?: number | null;
+      hasFact?: boolean;
       status: string | null;
       factQty: number | null;
       planQty: number | null;

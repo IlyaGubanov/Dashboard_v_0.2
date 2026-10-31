@@ -11,6 +11,6 @@ COPY apps/web apps/web
 RUN npm run build -w @mvs/shared && npm run build -w @mvs/web
 
 FROM nginx:1.27-alpine
-COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf
+COPY apps/web/nginx.conf /etc/nginx/templates/default.conf.template
 COPY --from=build /app/apps/web/dist /usr/share/nginx/html
 EXPOSE 80

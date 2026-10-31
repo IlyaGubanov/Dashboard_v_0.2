@@ -20,13 +20,14 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
 import { IconAdjustments, IconBuildingFactory2, IconMap, IconChartBar, IconCurrencyRubel, IconEyeOff, IconHelp, IconLogout, IconMoon, IconPalette, IconSun, IconUsers } from '@tabler/icons-react';
 import { GLOBAL_ROLE_LABELS } from '@mvs/shared';
-import { api, directionsQuery, meQuery } from '../api';
+import { api, directionsQuery, meQuery, staffingAccessQuery } from '../api';
 import { DirectionIcon } from '../ui/DirectionIcon';
 import { TasksBell } from './MyTasks';
 import { Brand } from '../ui/Brand';
 import { useAppearance } from '../ui/appearance';
 import { canHideFinance, setFinanceHidden, useFinanceToggle } from '../ui/finance';
 import { canSee } from '../ui/access';
+import { IconVideo } from '@tabler/icons-react';
 
 export function AppLayout() {
   const [opened, { toggle, close }] = useDisclosure();
@@ -35,6 +36,7 @@ export function AppLayout() {
   const { appearance, draft, setDraft } = useAppearance();
   const navCaption = appearance.nav.caption;
   const { data: directions = [] } = useQuery(directionsQuery);
+  const { data: staffingAccess } = useQuery(staffingAccessQuery);
   const path = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -125,6 +127,8 @@ export function AppLayout() {
             />
           )}
           {canSee(me, 'map') && <NavLink component={Link} to="/map" label="Карта" leftSection={<IconMap size={18} />} active={path === '/map'} onClick={close} />}
+          {me?.videoAccess?.view && <NavLink component={Link} to="/video" label="Видеонаблюдение" leftSection={<IconVideo size={18} />} active={path === '/video'} onClick={close} />}
+          {staffingAccess?.canView && <NavLink component={Link} to="/staffing" label="Штатная численность" leftSection={<IconUsers size={18} />} active={path.startsWith('/staffing')} onClick={close} />}
           <Text size="xs" c="dimmed" tt="uppercase" fw={600} px="sm" mt="md" mb={4}>
             Направления
           </Text>
@@ -170,6 +174,7 @@ export function AppLayout() {
               />
             </>
           )}
+          {me?.videoAccess?.manage && <NavLink component={Link} to="/admin/video" label="Настройки видеонаблюдения" leftSection={<IconVideo size={18} />} active={path === '/admin/video'} onClick={close} />}
         </AppShell.Section>
         <AppShell.Section>
           <NavLink component={Link} to="/help" label="Справка" leftSection={<IconHelp size={18} />} active={path === '/help'} onClick={close} />

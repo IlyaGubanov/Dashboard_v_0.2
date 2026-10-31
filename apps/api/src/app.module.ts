@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ObjectsMapModule } from './map/map.module';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { PrismaModule } from './prisma/prisma.module';
@@ -22,6 +23,7 @@ import { StaffingModule } from './staffing/staffing.module';
 
 @Module({
   imports: [
+    ObjectsMapModule,
     // общий лимит запросов; для входа — строже (см. AuthController)
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 600 }]),
     PrismaModule,

@@ -9,6 +9,14 @@ x-logging: &logging
     max-file: "5"
 
 services:
+  # Isolated maintenance helper; never inherits the running API's fixed network address.
+  files-helper:
+    profiles: [maintenance]
+    image: alpine:3.22
+    network_mode: none
+    entrypoint: sh
+    volumes:
+      - files_data:/data/files
   db:
     logging: *logging
     image: mysql:8.4
@@ -54,7 +62,18 @@ services:
       DEMO_DATA: ${DEMO_DATA:-true}
       # фото и документы (вложения) — в отдельном томе, его тоже нужно копировать в резервную копию
       FILES_DIR: /data/files
+      VIDEO_ENCRYPTION_KEY: ${VIDEO_ENCRYPTION_KEY:-}
+      VIDEO_SERVICE_TOKEN: ${VIDEO_SERVICE_TOKEN:-}
+      VIDEO_CDN_TOKEN: ${VIDEO_CDN_TOKEN:-}
+      VIDEO_ALLOWED_NETWORKS: ${VIDEO_ALLOWED_NETWORKS:-}
+      VIDEO_ALLOWED_DNS_SUFFIXES: ${VIDEO_ALLOWED_DNS_SUFFIXES:-}
+      VIDEO_ALLOWED_PORTS: ${VIDEO_ALLOWED_PORTS:-554}
       TZ: Europe/Moscow
+    networks:
+      default: {}
+      video_control:
+        ipv4_address: ${VIDEO_CONTROL_API_IP:-172.31.250.2}
+        aliases: [video-api]
     volumes:
       - files_data:/data/files
     healthcheck:
@@ -74,9 +93,37 @@ services:
       context: .
       dockerfile: apps/web/Dockerfile
     restart: unless-stopped
+    environment:
+      VIDEO_CDN_TOKEN: ${VIDEO_CDN_TOKEN:?Настройте VIDEO_CDN_TOKEN}
+      NGINX_ENVSUBST_FILTER: ^VIDEO_CDN_TOKEN$
     # наружу не публикуется: запросы приходят только через caddy
     depends_on:
       - api
+      - mediamtx
+
+  mediamtx:
+    logging: *logging
+    build:
+      context: .
+      dockerfile: deploy/mediamtx/Dockerfile
+    restart: unless-stopped
+    cap_drop: [ALL]
+    cap_add: [NET_ADMIN, SETUID, SETGID]
+    security_opt: [no-new-privileges:true]
+    read_only: true
+    tmpfs: [/tmp]
+    environment:
+      MTX_HLSCDNSECRET: ${VIDEO_CDN_TOKEN:?Настройте VIDEO_CDN_TOKEN}
+      VIDEO_ALLOWED_NETWORKS: ${VIDEO_ALLOWED_NETWORKS:-}
+      VIDEO_ALLOWED_PORTS: ${VIDEO_ALLOWED_PORTS:-554}
+      VIDEO_CONTROL_API_IP: ${VIDEO_CONTROL_API_IP:-172.31.250.2}
+    networks:
+      default: {}
+      video_control: {}
+    volumes:
+      - ./deploy/mediamtx/mediamtx.yml:/etc/mediamtx/mediamtx.yml:ro
+    depends_on: [api]
+    # HLS и Control API доступны только внутри Docker. Порты наружу не публикуются.
 
   caddy:
     logging: *logging
@@ -104,3 +151,10 @@ volumes:
   files_data:
   caddy_data:
   caddy_config:
+
+networks:
+  video_control:
+    internal: true
+    ipam:
+      config:
+        - subnet: ${VIDEO_CONTROL_SUBNET:-172.31.250.0/29}

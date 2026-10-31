@@ -27,6 +27,7 @@ import { Brand } from '../ui/Brand';
 import { useAppearance } from '../ui/appearance';
 import { canHideFinance, setFinanceHidden, useFinanceToggle } from '../ui/finance';
 import { canSee } from '../ui/access';
+import { IconVideo } from '@tabler/icons-react';
 
 export function AppLayout() {
   const [opened, { toggle, close }] = useDisclosure();
@@ -170,6 +171,7 @@ export function AppLayout() {
               />
             </>
           )}
+          {me?.videoAccess?.manage && <NavLink component={Link} to="/admin/video" label="Настройки видеонаблюдения" leftSection={<IconVideo size={18} />} active={path === '/admin/video'} onClick={close} />}
         </AppShell.Section>
         <AppShell.Section>
           <NavLink component={Link} to="/help" label="Справка" leftSection={<IconHelp size={18} />} active={path === '/help'} onClick={close} />

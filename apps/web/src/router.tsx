@@ -16,6 +16,8 @@ import { DirectionEditorPage } from './pages/admin/DirectionEditorPage';
 import { AppearancePage } from './pages/admin/AppearancePage';
 import { HelpPage } from './pages/HelpPage';
 import { ContractorsPage } from './pages/ContractorsPage';
+import { VideoPage } from './video/VideoPage';
+import { VideoAdminPage } from './video/VideoAdminPage';
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -121,6 +123,25 @@ const contractorsRoute = createRoute({
 });
 
 const helpRoute = createRoute({ getParentRoute: () => appRoute, path: '/help', component: HelpPage });
+
+const videoSearch = (s: Record<string, unknown>) => ({
+  q: typeof s.q === 'string' ? s.q.slice(0, 200) : undefined,
+  direction: typeof s.direction === 'string' ? s.direction : undefined,
+  site: Number.isSafeInteger(Number(s.site)) && Number(s.site) > 0 ? Number(s.site) : undefined,
+});
+const videoRoute = createRoute({
+  getParentRoute: () => appRoute, path: '/video', validateSearch: videoSearch, component: VideoPage,
+  beforeLoad: ({ context }) => { if (!context.me.videoAccess?.view) throw redirect({ to: '/' }); },
+});
+const videoAdminRoute = createRoute({
+  getParentRoute: () => appRoute, path: '/admin/video', component: VideoAdminPage,
+  validateSearch: (s: Record<string, unknown>) => ({ ...videoSearch(s),
+    tab: s.tab === 'cameras' ? 'cameras' as const : 'recorders' as const,
+    archive: s.archive === 'archived' ? 'archived' as const : s.archive === 'all' ? 'all' as const : 'active' as const,
+    recorder: Number.isSafeInteger(Number(s.recorder)) && Number(s.recorder) > 0 ? Number(s.recorder) : undefined,
+  }),
+  beforeLoad: ({ context }) => { if (!context.me.videoAccess?.manage) throw redirect({ to: '/' }); },
+});
 
 const routeTree = rootRoute.addChildren([
   loginRoute,

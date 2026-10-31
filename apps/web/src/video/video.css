@@ -1,0 +1,12 @@
+.video-camera:fullscreen {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--mantine-color-body);
+}
+.video-camera:fullscreen .video-frame {
+  aspect-ratio: auto !important;
+  flex: 1;
+  min-height: 0;
+}

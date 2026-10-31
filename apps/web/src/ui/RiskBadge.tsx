@@ -24,4 +24,10 @@ export function RiskBadge({ risk, size = 'sm', label }: { risk: RiskLevel | Site
   );
 }
 
+/** Компактный знак матрицы; название состояния доступно в ячейке и подсказке. */
+export function RiskIcon({ risk, size = 14 }: { risk: SiteRisk; size?: number }) {
+  const v = VIEW[risk];
+  return <v.Icon size={size} color={v.color} stroke={2.2} aria-hidden style={{ flexShrink: 0 }} />;
+}
+
 export const riskColor = (risk: RiskLevel | SiteRisk) => VIEW[risk].color;

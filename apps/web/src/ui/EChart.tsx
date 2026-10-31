@@ -6,6 +6,11 @@ import { useAppearance } from './appearance';
 /** Цвета графика из темы (theme.css + Mantine) — меняются вместе со светлой/тёмной темой. */
 export interface ChartColors {
   series: [string, string, string];
+  /** разноцветная палитра долей --cat-1…10 и цвет подписи поверх каждого цвета */
+  cat: string[];
+  catInk: string[];
+  /** нейтральный цвет «нет данных / прочее» (--status-none) */
+  none: string;
   good: string;
   warning: string;
   critical: string;
@@ -25,6 +30,9 @@ function readColors(el: HTMLElement | null): ChartColors {
   return {
     fontSize: Math.round(12 * scale),
     series: [v('--series-1'), v('--series-2'), v('--series-3')],
+    cat: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(i => v(`--cat-${i}`)),
+    catInk: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(i => v(`--cat-ink-${i}`)),
+    none: v('--status-none'),
     good: v('--status-good'),
     warning: v('--status-warning'),
     critical: v('--status-critical'),
@@ -62,9 +70,11 @@ const loadEcharts = () => (echartsModule ??= import('echarts'));
  * График ECharts. Библиотека загружается при первом показе (не утяжеляет вход в приложение).
  * option строится из цветов темы и пересобирается при смене темы.
  */
-export function EChart({ option, height = 280, ariaLabel }: { option: (c: ChartColors) => EChartsOption; height?: number; ariaLabel: string }) {
+export function EChart({ option, height = 280, ariaLabel, onClick }: { option: (c: ChartColors) => EChartsOption; height?: number; ariaLabel: string; onClick?: (p: { name: string; dataIndex: number }) => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const chart = useRef<EChartsType | null>(null);
+  const click = useRef(onClick);
+  click.current = onClick;
   const scheme = useComputedColorScheme('light');
   // цвета меняются и при правке оформления администратором
   const { appearance } = useAppearance();
@@ -76,6 +86,7 @@ export function EChart({ option, height = 280, ariaLabel }: { option: (c: ChartC
     loadEcharts().then((echarts) => {
       if (disposed || !ref.current) return;
       chart.current = echarts.init(ref.current, undefined, { renderer: 'svg' });
+      chart.current.on('click', p => click.current?.({ name: p.name, dataIndex: p.dataIndex }));
       ro = new ResizeObserver(() => chart.current?.resize());
       ro.observe(ref.current);
       setReady(true);

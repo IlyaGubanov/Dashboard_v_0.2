@@ -4,7 +4,8 @@ import { IconClockExclamation, IconPencil } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import { TrackerEditor } from './TrackerEditor';
 import type { SiteCard, SiteCardField, SiteCardTracker } from '@mvs/shared';
-import { directionQueries } from '../../api';
+import { directionQueries, meQuery } from '../../api';
+import { SiteCameras, videoQuery } from '../../video/VideoPage';
 import { EChart, type ChartColors } from '../../ui/EChart';
 import { FactPlanBar } from '../../ui/FactPlanBar';
 import { RiskBadge, riskColor } from '../../ui/RiskBadge';
@@ -81,6 +82,10 @@ export function SiteDrawer({
 }
 
 function Card({ data: c, code, onOpenRemark }: { data: SiteCard; code: string; onOpenRemark: (id: number) => void }) {
+  const { data: me } = useQuery(meQuery);
+  const { data: video } = useQuery({ ...videoQuery, enabled: !!me?.videoAccess?.view });
+  const cameraCount = video?.cameras.filter(camera => camera.siteId === c.row.id).length ?? 0;
+  const videoAllowed = video?.sites.some(site => site.id === c.row.id) ?? false;
   const r = c.row;
   const financeHidden = useFinanceHidden();
   const hasHistory = c.history.filter((h) => h.fact != null).length > 1;
@@ -133,6 +138,7 @@ function Card({ data: c, code, onOpenRemark }: { data: SiteCard; code: string; o
           {!!c.contracts.length && <Tabs.Tab value="contracts">Договоры · {c.contracts.length}</Tabs.Tab>}
           {showRemarks && <Tabs.Tab value="remarks">Замечания{r.remarksOpen ? ` · ${r.remarksOpen}` : ''}</Tabs.Tab>}
           <Tabs.Tab value="files">Файлы и фото</Tabs.Tab>
+          {videoAllowed && <Tabs.Tab value="cameras">Камеры · {cameraCount}</Tabs.Tab>}
         </Tabs.List>
 
         {showRemarks && (
@@ -143,6 +149,7 @@ function Card({ data: c, code, onOpenRemark }: { data: SiteCard; code: string; o
         <Tabs.Panel value="files" pt="md">
           <SiteFiles siteId={r.id} />
         </Tabs.Panel>
+        <Tabs.Panel value="cameras" pt="md">{videoAllowed && <SiteCameras siteId={c.row.id} />}</Tabs.Panel>
 
         <Tabs.Panel value="items" pt="md">
           <Items c={c} />

@@ -21,11 +21,12 @@ read -r -p "Продолжить? Введите ДА: " ok
 echo "Копия текущего состояния перед восстановлением…"
 BACKUP_DIR=${BACKUP_DIR:-/var/backups/mvs}/before-restore KEEP_DAYS=90 bash deploy/backup.sh
 
-docker compose stop api
+docker compose stop web mediamtx api
 gzip -dc "$DB" | docker compose exec -T db sh -c 'exec mysql -u root -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE"'
 if [[ -n "$FILES" ]]; then
-  docker compose run --rm --no-deps -T -v "$(cd "$(dirname "$FILES")" && pwd)":/backup --entrypoint sh api \
+  docker compose run --rm --no-deps -T -v "$(cd "$(dirname "$FILES")" && pwd)":/backup files-helper \
     -c "find /data/files -mindepth 1 -delete && tar xzf /backup/$(basename "$FILES") -C /data/files"
 fi
-docker compose start api
+docker compose up -d --no-build api mediamtx web
+echo "Видеонаблюдение: проверьте VIDEO_ENCRYPTION_KEY из secrets-*.env той же резервной копии. Без совпадающего ключа пароли регистраторов не расшифруются."
 echo "Готово. Входы пользователей сохранились из копии; при необходимости попросите войти заново."

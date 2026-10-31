@@ -1,0 +1,36 @@
+# Pinned to bluenviron/mediamtx v1.21.3. Only API populates cam-* paths.
+logLevel: warn
+logDestinations: [stdout]
+dumpPackets: false
+readTimeout: 15s
+writeTimeout: 15s
+api: true
+apiAddress: :9997
+metrics: false
+pprof: false
+playback: false
+rtsp: false
+rtmp: false
+webrtc: false
+srt: false
+moq: false
+authMethod: http
+authHTTPAddress: http://video-api:3000/api/video/internal/mediamtx-auth
+authHTTPExclude: []
+hls: true
+hlsAddress: :8888
+hlsAlwaysRemux: false
+hlsVariant: fmp4
+hlsSegmentCount: 7
+hlsSegmentDuration: 2s
+hlsMuxerCloseAfter: 10s
+hlsDirectory: ''
+hlsAllowOrigins: []
+# MTX_HLSCDNSECRET comes from VIDEO_CDN_TOKEN, never stored here.
+pathDefaults:
+  sourceOnDemand: true
+  sourceOnDemandStartTimeout: 12s
+  sourceOnDemandCloseAfter: 5s
+  rtspTransport: tcp
+  record: false
+paths: {}

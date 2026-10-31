@@ -16,7 +16,8 @@
     "db:generate": "npm run db:generate -w @mvs/api",
     "db:migrate": "npm run db:migrate -w @mvs/api",
     "db:seed": "npm run db:seed -w @mvs/api",
-    "typecheck": "npm run typecheck --workspaces --if-present"
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test:video:e2e": "playwright test --config apps/web/playwright.video.config.ts"
   },
   "allowScripts": {
     "prisma@6.19.3": true,
@@ -24,5 +25,8 @@
     "@prisma/client@6.19.3": true,
     "esbuild@0.27.7": true,
     "esbuild@0.28.2": true
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1"
   }
 }

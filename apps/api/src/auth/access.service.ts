@@ -3,6 +3,7 @@ import type { MemberRole } from '@prisma/client';
 import { APP_SECTION_LABELS, FEATURE_LABELS, type AppSection, type Feature } from '@mvs/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import type { AuthUser } from '../common/request';
+import { canUseVideo } from '../video/video-domain';
 
 /**
  * Правила доступа к данным направлений.
@@ -18,6 +19,39 @@ import type { AuthUser } from '../common/request';
 @Injectable()
 export class AccessService {
   constructor(private readonly prisma: PrismaService) {}
+
+  /** Video grants are positive per-site grants, independent of production-entry scope. */
+  async videoSiteIds(user: AuthUser, action: 'view' | 'manage'): Promise<number[]> {
+    if (user.globalRole === 'ADMIN') return (await this.prisma.site.findMany({ where: { isArchived: false }, select: { id: true } })).map(s => s.id);
+    if (!this.has(user, 'videoView') || (action === 'manage' && !this.has(user, 'videoManage'))) return [];
+    const [grants, memberships] = await Promise.all([
+      this.prisma.videoGrant.findMany({ where: { userId: user.id, site: { isArchived: false } }, include: { site: { select: { directionId: true } } } }),
+      this.prisma.directionMember.findMany({ where: { userId: user.id }, select: { directionId: true, role: true } }),
+    ]);
+    const roles = new Map(memberships.map(m => [m.directionId, m.role]));
+    return grants.filter(g => canUseVideo(user.globalRole, roles.get(g.site.directionId) ?? null, true, g.canManage, action)).map(g => g.siteId);
+  }
+
+  async assertVideo(user: AuthUser, siteId: number, action: 'view' | 'manage') {
+    if (!(await this.videoSiteIds(user, action)).includes(siteId)) throw new ForbiddenException('Нет доступа к видеонаблюдению этого объекта');
+  }
+
+  /** Кадровые данные: руководство читает, назначенные отдельно ответственные редактируют. */
+  async staffingPermissions(user: AuthUser) {
+    if (user.globalRole === 'ADMIN') return { canView: true, canEdit: true, canManageEditors: true };
+    if (!this.canSee(user, 'staffing')) return { canView: false, canEdit: false, canManageEditors: false };
+    const [editor, curator] = await Promise.all([
+      this.prisma.staffingEditor.findUnique({ where: { userId: user.id } }),
+      this.prisma.directionMember.findFirst({ where: { userId: user.id, role: 'CURATOR', direction: { isActive: true } }, select: { id: true } }),
+    ]);
+    return { canView: user.globalRole === 'MANAGEMENT' || !!editor || !!curator, canEdit: !!editor, canManageEditors: !!curator };
+  }
+
+  async assertStaffing(user: AuthUser, edit = false) {
+    const p = await this.staffingPermissions(user);
+    if (edit ? !p.canEdit : !p.canView) throw new ForbiddenException('Нет доступа к штатной численности');
+    return p;
+  }
 
   async membership(user: AuthUser, directionId: number) {
     return this.prisma.directionMember.findUnique({

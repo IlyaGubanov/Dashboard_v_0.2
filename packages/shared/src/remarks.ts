@@ -113,6 +113,7 @@ export interface Attachment {
   uploadedBy: string | null;
   createdAt: string;
   canArchive: boolean;
+  visibility?: 'GENERAL' | 'FINANCE' | 'LIABILITY';
 }
 
 export interface RemarkEvent {

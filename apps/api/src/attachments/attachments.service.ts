@@ -84,6 +84,7 @@ export function toAttachment(f: AttachmentRow & { uploadedBy?: { fullName: strin
     uploadedBy: f.uploadedBy?.fullName ?? null,
     createdAt: f.createdAt.toISOString(),
     canArchive,
+    visibility: f.visibility as 'GENERAL'|'FINANCE'|'LIABILITY',
   };
 }
 
@@ -134,16 +135,19 @@ export class AttachmentsService {
     const t = await this.target(user, entity, entityId);
     const manager = await this.access.canManageDirection(user, t.directionId);
     const files = await this.prisma.attachment.findMany({
-      where: { entity, entityId, isArchived: false },
+      where: { entity, entityId, isArchived: false, ...(entity.startsWith('fleet_')?{visibility:{in:['GENERAL',...(this.access.has(user,'finance')?['FINANCE']:[]),...(manager&&this.access.has(user,'finance')?['LIABILITY']:[])]}}:{}) },
       include: { uploadedBy: { select: { fullName: true } } },
       orderBy: { id: 'asc' },
     });
     return { files: files.map((f) => toAttachment(f, manager || f.uploadedById === user.id)), canUpload: t.canUpload };
   }
 
-  async upload(user: AuthUser, entity: AttachmentEntity, entityId: number, rawName: string, body: Readable, ip: string | null): Promise<Attachment> {
+  async upload(user: AuthUser, entity: AttachmentEntity, entityId: number, rawName: string, body: Readable, ip: string | null, visibility?:'GENERAL'|'FINANCE'|'LIABILITY'): Promise<Attachment> {
     const t = await this.target(user, entity, entityId);
     if (!t.canUpload) throw new ForbiddenException('Нет прав добавлять файлы сюда');
+    const scope=entity==='fleet_liability'?'LIABILITY':entity==='fleet_fines'||entity==='fleet_tolls'?'FINANCE':visibility??(entity.startsWith('fleet_')?'FINANCE':'GENERAL');
+    if(scope!=='GENERAL') this.access.assertFeature(user,'finance');
+    if(scope==='LIABILITY') await this.access.assertManageDirection(user,t.directionId);
     const fileName = rawName.replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').trim().slice(0, 200);
     const ext = extOf(fileName);
     if (!fileName || !(ATTACHMENT_EXT as readonly string[]).includes(ext)) {
@@ -174,10 +178,10 @@ export class AttachmentsService {
     }
 
     const row = await this.prisma.attachment.create({
-      data: { siteId: t.siteId, entity, entityId, fileName, mimeType: MIME[ext], size, storagePath: rel.replace(/\\/g, '/'), uploadedById: user.id },
+      data: { siteId: t.siteId, entity, entityId, visibility:scope, fileName, mimeType: MIME[ext], size, storagePath: rel.replace(/\\/g, '/'), uploadedById: user.id },
       include: { uploadedBy: { select: { fullName: true } } },
     });
-    await this.audit.write({ userId: user.id, action: 'CREATE', entity: 'attachment', entityId: row.id, directionId: t.directionId, siteId: t.siteId, ip, comment: `файл «${fileName}» (${t.label})`, after: { file: fileName } });
+    await this.audit.write({ userId: user.id, action: 'CREATE', entity: entity.startsWith('fleet_')?'fleet_attachment':'attachment', entityId: row.id, directionId: t.directionId, siteId: t.siteId, ip, comment: `файл «${fileName}» (${t.label})`, after: { file: fileName, visibility:scope, targetEntity:entity, targetId:entityId } });
     return toAttachment(row, true);
   }
 
@@ -200,6 +204,7 @@ export class AttachmentsService {
     const f = await this.prisma.attachment.findUnique({ where: { id } });
     if (!f) throw new NotFoundException('Файл не найден');
     await this.target(user, f.entity as AttachmentEntity, f.entityId);
+    await this.checkVisibility(user,f);
     const full = resolve(FILES_DIR, f.storagePath);
     if (!full.startsWith(FILES_DIR + sep)) throw new NotFoundException('Файл не найден');
     const st = await stat(full).catch(() => null);
@@ -224,10 +229,19 @@ export class AttachmentsService {
     const f = await this.prisma.attachment.findUnique({ where: { id } });
     if (!f || f.isArchived) throw new NotFoundException('Файл не найден');
     const t = await this.target(user, f.entity as AttachmentEntity, f.entityId);
+    await this.checkVisibility(user,f);
     const manager = await this.access.canManageDirection(user, t.directionId);
     if (!manager && f.uploadedById !== user.id) throw new ForbiddenException('Убрать файл может тот, кто его добавил, или куратор');
     await this.prisma.attachment.update({ where: { id }, data: { isArchived: true } });
-    await this.audit.write({ userId: user.id, action: 'DELETE', entity: 'attachment', entityId: id, directionId: t.directionId, siteId: t.siteId, ip, comment: `файл «${f.fileName}» убран в архив (${t.label})`, before: { file: f.fileName } });
+    await this.audit.write({ userId: user.id, action: 'DELETE', entity: f.entity.startsWith('fleet_')?'fleet_attachment':'attachment', entityId: id, directionId: t.directionId, siteId: t.siteId, ip, comment: `файл «${f.fileName}» убран в архив (${t.label})`, before: { file: f.fileName, visibility:f.visibility, targetEntity:f.entity, targetId:f.entityId } });
     return { ok: true };
+  }
+  private async checkVisibility(user:AuthUser,file:AttachmentRow) {
+    if(!file.entity.startsWith('fleet_'))return;
+    if(file.visibility!=='GENERAL')this.access.assertFeature(user,'finance');
+    if(file.visibility==='LIABILITY') {
+      const d=await this.prisma.direction.findUniqueOrThrow({where:{code:'reb'}});
+      await this.access.assertManageDirection(user,d.id);
+    }
   }
 }

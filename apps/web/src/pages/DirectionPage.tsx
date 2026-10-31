@@ -1,4 +1,5 @@
 import { Alert, Badge, Group, Select, Stack, Tabs, Text, Title } from '@mantine/core';
+import { lazy,Suspense } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getRouteApi } from '@tanstack/react-router';
 import { IconCalendar, IconPencil } from '@tabler/icons-react';
@@ -23,6 +24,7 @@ import { RemarksTab } from './direction/RemarksTab';
 import { RemarkDrawer } from './direction/RemarkDrawer';
 
 const route = getRouteApi('/app/d/$code');
+const FleetPage=lazy(()=>import('./fleet/FleetPage'));
 
 /**
  * Страница направления. Набор вкладок зависит от данных: «График работ» — если есть плановые сроки,
@@ -30,6 +32,10 @@ const route = getRouteApi('/app/d/$code');
  * Вкладки, скрытые в карточке сотрудника, не показываются (их данные сервер и не отдаёт).
  */
 export function DirectionPage() {
+  const {code}=route.useParams();
+  return code==='reb'?<Suspense fallback={<Text>Загрузка РЭБ…</Text>}><FleetPage/></Suspense>:<ConstructionDirectionPage/>;
+}
+function ConstructionDirectionPage() {
   const { code } = route.useParams();
   const search = route.useSearch();
   const navigate = route.useNavigate();

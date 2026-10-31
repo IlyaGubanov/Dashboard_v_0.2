@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { createHash } from 'node:crypto';
-import { FLEET_SCHEMAS, liabilitySchema, type FleetKind, type FleetList, type FleetOverview, type FleetRefs, type FleetRow } from '@mvs/shared';
+import { FLEET_SCHEMAS, liabilitySchema, type FleetKind, type FleetList, type FleetOverview, type FleetRefs, type FleetRow, type FleetAnalytics } from '@mvs/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { AccessService } from '../auth/access.service';
 import { AuditService } from '../audit/audit.service';
@@ -11,7 +11,7 @@ import type { AuthUser } from '../common/request';
 import { decimalSum, fleetCounts, fuelDifference, overlaps, paymentTotals, requestStatus } from './fleet-domain';
 import { dbData, MONEY_FIELDS, redactFleet, store, wire, type DbRow } from './fleet-store';
 
-export type FleetFilter = { from?: string; to?: string; q?: string; ownership?: string; kind?: string; status?: string; departmentId?: number; targetDirectionId?: number; vehicleId?: number; archived?: boolean; page?: number; take?: number; sort?: string; order?: 'asc'|'desc'; active?: boolean };
+export type FleetFilter = { from?: string; to?: string; q?: string; ownership?: string; kind?: string; fuelType?:string;category?:string;technicalState?:string;usageState?:string;status?: string; departmentId?: number; targetDirectionId?: number; vehicleId?: number; archived?: boolean; page?: number; take?: number; sort?: string; order?: 'asc'|'desc'; active?: boolean };
 const day = (v: unknown) => v instanceof Date ? v.toISOString().slice(0,10) : String(v ?? '').slice(0,10);
 export const fleetHash = (s: string) => createHash('sha256').update(s).digest('hex');
 
@@ -40,8 +40,8 @@ export class FleetService {
   async refs(user: AuthUser): Promise<FleetRefs> {
     const d=await this.direction(user);
     const [directions, users, departments, organizations, vehicles, assignments, types, membership, manage]=await Promise.all([
-      this.prisma.direction.findMany({where:{isActive:true,...(user.globalRole==='USER'?{members:{some:{userId:user.id}}}:{})},select:{id:true,name:true}}),
-      this.access.canSee(user,'people') ? this.prisma.user.findMany({where:{isActive:true},select:{id:true,fullName:true,position:true,phone:true},orderBy:{fullName:'asc'}}) : Promise.resolve([]),
+      this.prisma.direction.findMany({where:{isActive:true,...(user.globalRole==='USER'?{members:{some:{userId:user.id}}}:{})},select:{id:true,name:true,code:true}}),
+      this.access.canSee(user,'people') ? this.prisma.user.findMany({where:this.employeeWhere(user,d.id),select:{id:true,fullName:true,position:true,phone:true},orderBy:{fullName:'asc'}}) : Promise.resolve([]),
       this.prisma.department.findMany({where:{isArchived:false},select:{id:true,name:true}}),
       this.prisma.organization.findMany({where:{directionId:d.id},select:{id:true,name:true}}),
       this.prisma.fleetVehicle.findMany({where:{directionId:d.id,isArchived:false},select:{id:true,name:true,plate:true}}),
@@ -54,6 +54,23 @@ export class FleetService {
       vehicles:vehicles.map(v=>({id:v.id,name:`${v.name}${v.plate?' · '+v.plate:''}`})),assignments:assignments.map(a=>({id:a.id,name:`№ ${a.id} · ${a.vehicle.name} · ${day(a.startDate)} — ${a.endDate?day(a.endDate):'без окончания'}`})),fuelTypes:types.map(t=>t.code)};
   }
 
+  async addFuelType(user:AuthUser,body:unknown,ip:string|null) {
+    const d=await this.direction(user,true);await this.assertWrite(user,d.id,undefined,true);
+    const code=typeof (body as {code?:unknown})?.code==='string'?String((body as {code:string}).code).trim():'';
+    if(code.length<2||code.length>80)throw new BadRequestException('Название вида топлива: от 2 до 80 символов');
+    await this.prisma.$transaction(async tx=>{
+      await tx.fleetFuelType.upsert({where:{code},create:{code},update:{}});
+      await this.audit.write({userId:user.id,directionId:d.id,entity:'fleet_fuel_type',entityId:code,action:'CREATE',after:{code},ip},tx);
+    });
+    return {code};
+  }
+
+  private employeeWhere(user:AuthUser,directionId:number):Prisma.UserWhereInput {
+    if(user.globalRole==='ADMIN')return {isActive:true};
+    return {isActive:true,OR:[{memberships:{some:{direction:{isActive:true,...(user.globalRole==='USER'?{members:{some:{userId:user.id}}}:{})}}}},
+      ...['fleetVehicleEmployeeId','fleetAssignmentEmployeeId','fleetIncidentEmployeeId','fleetFineEmployeeId','fleetTollEmployeeId','fleetDowntimeEmployeeId','fleetRequestEmployeeId','fleetRequestInitiatorId'].map(key=>({[key]:{some:{directionId}}}))]};
+  }
+
   async get(user: AuthUser, kind: FleetKind, id: number, db: Prisma.TransactionClient | PrismaService=this.prisma) {
     const d=await this.direction(user);
     const row=await store(db,kind).findFirst({where:{id,directionId:d.id}});
@@ -61,7 +78,12 @@ export class FleetService {
     return row;
   }
 
-  private async enrich(db: Prisma.TransactionClient | PrismaService,kind:FleetKind,rows:DbRow[]) {
+  private async enrich(db: Prisma.TransactionClient | PrismaService,kind:FleetKind,rows:DbRow[]):Promise<DbRow[]> {
+    if(kind==='vehicles'&&rows.length) {
+      const today=new Date(new Date().toLocaleDateString('sv-SE',{timeZone:'Europe/Moscow'}));
+      const [idle,assigned]=await Promise.all([db.fleetDowntime.findMany({where:{vehicleId:{in:rows.map(r=>r.id)},isArchived:false,startDate:{lte:today},OR:[{endDate:null},{endDate:{gt:today}}]}}),db.fleetAssignment.findMany({where:{vehicleId:{in:rows.map(r=>r.id)},isArchived:false,startDate:{lte:today},OR:[{endDate:null},{endDate:{gt:today}}]}})]);
+      return rows.map(r=>{const stop=idle.find(v=>v.vehicleId===r.id);return {...r,effectiveTechnicalState:stop&&['REPAIR','FAULTY'].includes(stop.reason)?stop.reason:r.technicalState,effectiveUsageState:stop?'UNNEEDED':assigned.some(a=>a.vehicleId===r.id)?'ACTIVE':r.usageState,currentDowntimeId:stop?.id??null,currentDowntimeReason:stop?.reason??null,currentDowntimeStart:stop?.startDate??null,currentExpectedReturn:stop?.expectedReturn??null,currentDowntimeEmployeeId:stop?.employeeId??r.employeeId,currentDowntimeComment:stop?.comment??null};});
+    }
     if(kind==='requests') {
       const allocations=await db.fleetAllocation.findMany({where:{requestId:{in:rows.map(r=>r.id)}},select:{requestId:true,assignmentId:true}});
       return rows.map(r=>{const ids=allocations.filter(a=>a.requestId===r.id).map(a=>a.assignmentId);return {...r,allocationIds:ids,allocated:ids.length,remaining:Math.max(0,Number(r.quantity)-ids.length)};});
@@ -79,6 +101,7 @@ export class FleetService {
     if(q.targetDirectionId && !['vehicles','fuel','snapshots','downtime'].includes(kind)) where.targetDirectionId=q.targetDirectionId;
     if(q.departmentId && ['requests','incidents','fines','tolls'].includes(kind)) where.departmentId=q.departmentId;
     if(q.status && ['incidents','fines','tolls','requests'].includes(kind)) where.status=q.status;
+    if(kind==='fuel'){if(q.fuelType)where.fuelType=q.fuelType;if(q.category)where.category=q.category;}
     if(q.active!==undefined && kind==='requests') where.status=q.active?{notIn:['FULFILLED','CANCELLED','REJECTED']}:{in:['FULFILLED','CANCELLED','REJECTED']};
     const dateKey:Partial<Record<FleetKind,string>>={incidents:'occurredAt',fines:'violationDate',tolls:'passageDate',snapshots:'asOfDate',requests:'requestDate'};
     const key=dateKey[kind];
@@ -96,6 +119,8 @@ export class FleetService {
     let rows=await store(this.prisma,kind).findMany({where:this.where(kind,d.id,q),orderBy:{id:'desc'}});
     rows=await this.enrich(this.prisma,kind,rows);
     let result=rows.map(r=>wire(r,finance));
+    if(kind==='vehicles'&&q.usageState)result=result.filter(r=>q.usageState==='UNUSED'?['RESERVE','UNASSIGNED','UNNEEDED'].includes(String(r.effectiveUsageState)):r.effectiveUsageState===q.usageState);
+    if(kind==='vehicles'&&q.technicalState)result=result.filter(r=>r.effectiveTechnicalState===q.technicalState);
     if(q.q) { const term=q.q.toLocaleLowerCase('ru'); result=result.filter(r=>Object.values(r).filter(v=>typeof v==='string').some(v=>(v as string).toLocaleLowerCase('ru').includes(term))); }
     if(q.sort&&/^[a-zA-Z]+$/.test(q.sort)) {const key=q.sort; result.sort((a,b)=>String(a[key]??'').localeCompare(String(b[key]??''),'ru',{numeric:true})*(q.order==='desc'?-1:1));}
     const total=result.length,take=Math.min(200,Math.max(1,q.take??50)),offset=(Math.max(1,q.page??1)-1)*take;
@@ -110,7 +135,7 @@ export class FleetService {
   private async validateLinks(user:AuthUser,tx:Prisma.TransactionClient,directionId:number,input:Record<string,unknown>) {
     for (const key of ['employeeId','initiatorId'] as const) if(input[key]!=null) {
       if(!this.access.canSee(user,'people')) throw new ForbiddenException('Справочник сотрудников недоступен');
-      if(!await tx.user.findFirst({where:{id:Number(input[key]),isActive:true},select:{id:true}})) throw new BadRequestException('Сотрудник не найден или неактивен');
+      if(!await tx.user.findFirst({where:{...this.employeeWhere(user,directionId),id:Number(input[key])},select:{id:true}})) throw new BadRequestException('Сотрудник не найден, неактивен или недоступен');
     }
     if(input.departmentId!=null&&!await tx.department.findFirst({where:{id:Number(input.departmentId),isArchived:false}})) throw new BadRequestException('Подразделение не найдено');
     if(input.ownerId!=null&&!await tx.organization.findFirst({where:{id:Number(input.ownerId),directionId}})) throw new BadRequestException('Собственник должен быть из справочника организаций РЭБ');
@@ -139,6 +164,7 @@ export class FleetService {
     const finance=this.access.has(user,'finance');
     if(!finance&&(['fines','tolls','fuel'].includes(kind)||Object.keys(raw).some(k=>MONEY_FIELDS.has(k)))) throw new ForbiddenException('Нет доступа к финансовым изменениям');
     const parsed=new ZodPipe<Record<string,unknown>>(FLEET_SCHEMAS[kind]).transform(body);
+    await this.assertWrite(user,d.id,{...old,...parsed},kind==='snapshots');
     if(id&&!Number.isInteger(parsed.version)) throw new ConflictException('Передайте версию открытой записи');
     if(old?.isArchived) throw new ConflictException('Сначала восстановите запись из архива');
     try {
@@ -155,18 +181,21 @@ export class FleetService {
     if(id&&!before) throw new NotFoundException('Запись не найдена');
     if(before&&before.version!==input.version) throw new ConflictException('Запись изменена другим пользователем. Обновите карточку');
     const values={...input};
+    if(kind==='assignments'&&id) await tx.$queryRaw`SELECT id FROM fleet_assignment WHERE id = ${id} FOR UPDATE`;
+    if(kind==='requests') {
+      if(id) await tx.$queryRaw`SELECT id FROM fleet_request WHERE id = ${id} FOR UPDATE`;
+      for(const assignmentId of [...((values.allocationIds??[]) as number[])].sort((a,b)=>a-b)) await tx.$queryRaw`SELECT id FROM fleet_assignment WHERE id = ${assignmentId} FOR UPDATE`;
+    }
     await this.validateLinks(user,tx,d.id,values);
     if(kind==='assignments'||kind==='downtime') {
       // Блокировка одной единицы делает проверку пересечений атомарной при одновременных запросах.
       await tx.$queryRaw`SELECT id FROM fleet_vehicle WHERE id = ${Number(values.vehicleId)} FOR UPDATE`;
+      const active=await tx.fleetVehicle.findFirst({where:{id:Number(values.vehicleId),directionId:d.id,isArchived:false}});
+      if(!active)throw new ConflictException('Техника уже архивирована');
       const other=await repo.findMany({where:{vehicleId:values.vehicleId,isArchived:false,...(id?{id:{not:id}}:{})}});
       if(other.some(r=>overlaps(day(r.startDate),r.endDate?day(r.endDate):null,String(values.startDate),values.endDate?String(values.endDate):null))) throw new ConflictException('Период пересекается с существующим '+(kind==='assignments'?'назначением':'простоем'));
     }
     if(kind==='fuel'&&!await tx.fleetFuelType.findUnique({where:{code:String(values.fuelType)}})) throw new BadRequestException('Вид топлива отсутствует в справочнике');
-    if(kind==='vehicles'&&id) {
-      const open=await tx.fleetDowntime.count({where:{vehicleId:id,isArchived:false,endDate:null}});
-      if(open&&(values.usageState==='ACTIVE'||values.technicalState==='OK')) throw new ConflictException('Сначала закройте незавершённый простой');
-    }
     const allocationIds=(values.allocationIds??[]) as number[];
     if(kind==='requests') {
       const assignments=await tx.fleetAssignment.findMany({where:{id:{in:allocationIds},directionId:d.id,isArchived:false},include:{vehicle:true}});
@@ -174,6 +203,8 @@ export class FleetService {
       for(const a of assignments) {
         if(a.vehicle.isArchived || a.vehicle.kind!==values.kind || (values.targetDirectionId!=null&&a.targetDirectionId!==values.targetDirectionId) || (values.siteId!=null&&a.siteId!==values.siteId) || day(a.startDate)>String(values.startDate) || (a.endDate&&day(a.endDate)<String(values.endDate))) throw new BadRequestException('Назначение не соответствует виду техники, месту или полному периоду потребности');
       }
+      const occupied=await tx.fleetAllocation.count({where:{assignmentId:{in:allocationIds},...(id?{requestId:{not:id}}:{}),request:{isArchived:false,status:{notIn:['CANCELLED','REJECTED']}}}});
+      if(occupied)throw new ConflictException('Назначение уже выделено другой действующей заявке');
       if(assignments.length>Number(values.quantity)) throw new BadRequestException('Выделено больше запрошенного количества');
       values.status=requestStatus(Number(values.quantity),assignments.length,String(values.status));
     }
@@ -194,13 +225,8 @@ export class FleetService {
       if(allocationIds.length) await tx.fleetAllocation.createMany({data:allocationIds.map(assignmentId=>({requestId:row.id,assignmentId}))});
       row={...row,allocationIds,allocated:allocationIds.length,remaining:Number(row.quantity)-allocationIds.length};
     }
-    if(kind==='downtime') {
-      const v=await tx.fleetVehicle.findUniqueOrThrow({where:{id:Number(values.vehicleId)}});
-      const state=values.endDate?{usageState:'UNASSIGNED'}:{usageState:'UNNEEDED',...(['REPAIR','FAULTY'].includes(String(values.reason))?{technicalState:values.reason as string}:{})};
-      // Окончание простоя само по себе не подтверждает техническую исправность.
-      const after=await tx.fleetVehicle.update({where:{id:v.id},data:{...state,version:{increment:1},updatedById:user.id}});
-      await this.audit.write({userId:user.id,directionId:d.id,entity:'fleet_vehicles',entityId:v.id,action:'UPDATE',before:v,after,ip,comment:'Изменение состояния при регистрации простоя'},tx);
-    }
+    // Простой влияет на эффективное состояние только в действующем интервале (enrich).
+    // Последнее подтверждённое состояние автомобиля остаётся самостоятельным признаком.
     await this.audit.write({userId:user.id,directionId:d.id,entity:`fleet_${kind}`,entityId:row.id,action:id?'UPDATE':'CREATE',before,after:row,ip},tx);
     return row;
   }
@@ -219,6 +245,7 @@ export class FleetService {
     const before=await this.get(user,kind,id);
     if(!this.access.has(user,'finance')&&['fines','tolls','fuel'].includes(kind)) throw new ForbiddenException('Нет доступа к финансовым изменениям');
     const result=await this.prisma.$transaction(async tx=>{
+      if(kind==='assignments')await tx.$queryRaw`SELECT id FROM fleet_assignment WHERE id = ${id} FOR UPDATE`;
       if(kind==='vehicles'&&archived) {
         await tx.$queryRaw`SELECT id FROM fleet_vehicle WHERE id = ${id} FOR UPDATE`;
         const links=await tx.fleetAssignment.count({where:{vehicleId:id,isArchived:false,OR:[{endDate:null},{endDate:{gt:new Date()}}]}})+await tx.fleetDowntime.count({where:{vehicleId:id,isArchived:false,endDate:null}});
@@ -239,6 +266,37 @@ export class FleetService {
     const row=await this.get(user,kind,id); this.access.assertFeature(user,'audit');
     const history=await this.prisma.auditLog.findMany({where:{directionId:row.directionId,entity:`fleet_${kind}`,entityId:String(id)},orderBy:{id:'desc'},take:100,include:{user:{select:{fullName:true}}}});
     return redactFleet(history,this.access.has(user,'finance'));
+  }
+
+  async analytics(user:AuthUser,kind:FleetKind,q:FleetFilter):Promise<FleetAnalytics> {
+    const d=await this.direction(user),finance=this.access.has(user,'finance');
+    let rows=await store(this.prisma,kind).findMany({where:this.where(kind,d.id,q)});
+    if(q.q){const term=q.q.toLocaleLowerCase('ru');rows=rows.filter(r=>Object.values(wire(r,finance)).filter(v=>typeof v==='string').some(v=>String(v).toLocaleLowerCase('ru').includes(term)));}
+    const summary:Record<string,string|number|null>={records:rows.length};
+    const monthly:FleetAnalytics['monthly']=[],byVehicle:FleetAnalytics['byVehicle']=[],distribution:FleetAnalytics['distribution']=[];
+    if(kind==='fines'||kind==='tolls') {
+      const pay=paymentTotals(rows.map(r=>({amount:String(r.amount),paidAmount:r.paidAmount==null?null:String(r.paidAmount),status:String(r.status),dueDate:r.dueDate?day(r.dueDate):null})),new Date().toLocaleDateString('sv-SE',{timeZone:'Europe/Moscow'}));
+      if(finance)Object.assign(summary,pay);
+      const groups=new Map<string,DbRow[]>();for(const r of rows){const date=r[kind==='fines'?'violationDate':'passageDate'];const key=date?day(date).slice(0,7):'Без даты';groups.set(key,[...(groups.get(key)??[]),r]);}
+      if(finance)for(const [label,items] of [...groups].sort(([a],[b])=>a.localeCompare(b)))monthly.push({label,value:decimalSum(items.filter(r=>r.status!=='CANCELLED').map(r=>String(r.amount)))});
+      const vehicles=new Map<string,DbRow[]>();for(const r of rows){const key=String(r.plate??`ТС № ${r.vehicleId??'не установлено'}`);vehicles.set(key,[...(vehicles.get(key)??[]),r]);}
+      for(const [label,items]of vehicles)byVehicle.push({label,count:items.length,amount:finance?decimalSum(items.filter(r=>r.status!=='CANCELLED').map(r=>String(r.amount))):null,vehicleId:items[0].vehicleId==null?null:Number(items[0].vehicleId)});
+    }
+    if(kind==='fuel') {
+      const parts=rows.filter(r=>!r.isReportedTotal);summary.liters=decimalSum(parts.map(r=>String(r.liters)),null);if(finance)summary.cost=decimalSum(parts.map(r=>r.cost==null?null:String(r.cost)),null);
+      const months=[...new Set(parts.map(r=>String(r.period)))].sort();for(const label of months)monthly.push({label,value:decimalSum(parts.filter(r=>r.period===label).map(r=>String(r.liters)),null)});
+    }
+    if(kind==='incidents') {summary.open=rows.filter(r=>r.status!=='CLOSED').length;summary.casualties=rows.filter(r=>r.casualties===true).length;if(finance)for(const k of ['damage','repairCost','recoveredAmount'])summary[k]=decimalSum(rows.map(r=>r[k]==null?null:String(r[k])),null);}
+    if(kind==='requests') {const enhanced=await this.enrich(this.prisma,kind,rows);summary.requested=rows.reduce((a,r)=>a+Number(r.quantity),0);summary.allocated=enhanced.reduce((a,r)=>a+Number(r.allocated),0);summary.remaining=enhanced.filter(r=>!['CANCELLED','REJECTED'].includes(String(r.status))).reduce((a,r)=>a+Number(r.remaining),0);}
+    if(kind==='assignments') {
+      if(!q.from&&!q.to){const now=new Date(new Date().toLocaleDateString('sv-SE',{timeZone:'Europe/Moscow'}));rows=rows.filter(r=>new Date(String(r.startDate))<=now&&(!r.endDate||new Date(String(r.endDate))>now));}
+      const refs=await this.refs(user),groups=new Map<string,DbRow[]>();
+      for(const direction of refs.directions)distribution.push({group:'direction',label:direction.name,quantity:0,vehicleIds:[],targetDirectionId:direction.id,siteId:null});
+      for(const r of rows){const entry=distribution.find(v=>v.targetDirectionId===r.targetDirectionId);if(entry){entry.vehicleIds.push(Number(r.vehicleId));entry.quantity=new Set(entry.vehicleIds).size;}const key=`${r.siteId??'none'}|${r.targetDirectionId}`;groups.set(key,[...(groups.get(key)??[]),r]);}
+      for(const [,items]of groups){const siteId=items[0].siteId==null?null:Number(items[0].siteId),dirId=Number(items[0].targetDirectionId);distribution.push({group:'site',label:siteId?(refs.sites.find(s=>s.id===siteId)?.name??'Объект недоступен'):'Без объекта · '+(refs.directions.find(v=>v.id===dirId)?.name??'Направление'),quantity:new Set(items.map(r=>r.vehicleId)).size,vehicleIds:[...new Set(items.map(r=>Number(r.vehicleId)))],siteId,targetDirectionId:dirId});}
+      summary.assigned=new Set(rows.map(r=>r.vehicleId)).size;
+    }
+    return {summary,monthly,byVehicle,distribution};
   }
 
   async getLiability(user:AuthUser,incidentId:number) {
@@ -267,7 +325,8 @@ export class FleetService {
     const d=await this.direction(user); const finance=this.access.has(user,'finance');
     const kinds=['vehicles','incidents','fines','tolls','fuel','requests'] as const;
     const data=await Promise.all(kinds.map(k=>store(this.prisma,k).findMany({where:this.where(k,d.id,{...q,archived:false}),orderBy:{id:'desc'}})));
-    const [vehicles,incidents,fines,tolls,fuel,requests]=data;
+    const [rawVehicles,incidents,fines,tolls,fuel,requests]=data;
+    const vehicles=await this.enrich(this.prisma,'vehicles',rawVehicles);
     const snapshot=await this.prisma.fleetSnapshot.findFirst({where:{directionId:d.id,isArchived:false,...(q.to?{asOfDate:{lte:new Date(q.to)}}:{})},orderBy:[{asOfDate:'desc'},{id:'desc'}]});
     const warnings:string[]=[];
     const categories=fuel.filter(r=>!r.isReportedTotal), totals=fuel.filter(r=>r.isReportedTotal);
@@ -279,9 +338,9 @@ export class FleetService {
     if(snapshot&&snapshot.used!=null&&snapshot.unused!=null&&snapshot.used+snapshot.unused!==snapshot.total) warnings.push('Исторический срез: используемая и неиспользуемая техника не дают общий итог');
     const updated=data.flat().map(r=>new Date(String(r.updatedAt)).getTime()).filter(Number.isFinite);
     const payments=(rows:DbRow[])=>paymentTotals(rows.map(r=>({amount:String(r.amount),paidAmount:r.paidAmount==null?null:String(r.paidAmount),status:String(r.status),dueDate:r.dueDate?day(r.dueDate):null})),new Date().toLocaleDateString('sv-SE',{timeZone:'Europe/Moscow'}));
-    return {asOf:updated.length?new Date(Math.max(...updated)).toISOString():null,counts:vehicles.length?fleetCounts(vehicles.map(v=>({ownership:String(v.ownership),technicalState:String(v.technicalState),usageState:String(v.usageState)}))):null,
+    return {asOf:updated.length?new Date(Math.max(...updated)).toISOString():null,counts:vehicles.length?fleetCounts(vehicles.map(v=>({ownership:String(v.ownership),technicalState:String(v.effectiveTechnicalState??v.technicalState),usageState:String(v.effectiveUsageState??v.usageState)}))):null,
       incidents:incidents.length||null,fines:finance&&fines.length?payments(fines):null,tolls:finance&&tolls.length?payments(tolls):null,
       fuel:{liters:decimalSum(categories.map(r=>String(r.liters)),null),cost:finance?decimalSum(categories.map(r=>r.cost==null?null:String(r.cost)),null):null},openRequests:requests.length?requests.filter(r=>!['FULFILLED','CANCELLED','REJECTED'].includes(String(r.status))).length:null,
-      snapshot:snapshot?wire(snapshot as unknown as DbRow,true):null,warnings};
+      snapshot:snapshot?wire(snapshot as unknown as DbRow,finance):null,warnings};
   }
 }

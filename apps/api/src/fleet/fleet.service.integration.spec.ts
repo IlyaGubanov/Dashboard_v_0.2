@@ -5,6 +5,10 @@ import { AuditService } from '../audit/audit.service';
 import { KpiService } from '../kpi/kpi.service';
 import type { AuthUser } from '../common/request';
 import { FleetService } from './fleet.service';
+import { AttachmentsService } from '../attachments/attachments.service';
+import { Readable } from 'node:stream';
+import { FleetImportService } from './fleet-import.service';
+import { workbookFixture } from './fleet-test-fixtures';
 
 const url = process.env.FLEET_TEST_DATABASE_URL;
 const db = url ? new PrismaService({ datasourceUrl: url }) : null;
@@ -75,10 +79,29 @@ describe.skipIf(!url)('РЭБ: транзакции, права и жизнен�
   });
   it('закрытие простоя возвращает ту же единицу, старые записи остаются', async () => {
     const r=await service.save(admin,'downtime',null,{vehicleId:vehicle,reason:'REPAIR',startDate:'2026-11-01',expectedReturn:'2026-11-05'},null);
-    const v=await db!.fleetVehicle.findUniqueOrThrow({where:{id:vehicle}}); expect(v.technicalState).toBe('REPAIR');
+    const v=await service.card(admin,'vehicles',vehicle); expect(v.technicalState).toBe('OK');
     await service.save(admin,'downtime',r.id,{vehicleId:vehicle,reason:'REPAIR',startDate:'2026-11-01',endDate:'2026-11-05',version:r.version},null);
     expect(await db!.fleetDowntime.count({where:{id:r.id}})).toBe(1);
     expect(await db!.fleetVehicle.count({where:{id:vehicle}})).toBe(1);
+  });
+  it('будущий и исторический простой не меняют текущее состояние техники', async () => {
+    const v=await service.save(admin,'vehicles',null,{name:'Проверка времён '+suffix,kind:'Самосвал',technicalState:'OK',usageState:'RESERVE'},null);
+    await service.save(admin,'downtime',null,{vehicleId:v.id,reason:'REPAIR',startDate:'2099-01-01'},null);
+    await service.save(admin,'downtime',null,{vehicleId:v.id,reason:'FAULTY',startDate:'2020-01-01',endDate:'2020-01-02'},null);
+    expect(await service.card(admin,'vehicles',v.id)).toMatchObject({technicalState:'OK',usageState:'RESERVE'});
+  });
+  it('refs не отдаёт несвязанных сотрудников и их телефоны',async()=>{
+    await db!.user.update({where:{id:outsider.id},data:{phone:'+79991234567'}});
+    const refs=await service.refs(viewer);
+    expect(refs.users.some(u=>u.id===outsider.id)).toBe(false);
+  });
+  it('закрытый финансовый файл ДТП не раскрывается через список, скачивание и журнал',async()=>{
+    const access=new AccessService(db!); const attachments=new AttachmentsService(db!,new AuditService(db!),access);
+    const file=await attachments.upload(admin,'fleet_incidents',incident,'Конфиденциальная_смета.pdf',Readable.from(Buffer.from('%PDF-1.7\n')),null,'FINANCE');
+    const list=await attachments.list(restricted,'fleet_incidents',incident);
+    expect(list.files.some(f=>f.id===file.id)).toBe(false);
+    await expect(attachments.open(restricted,file.id)).rejects.toMatchObject({status:403});
+    expect(await db!.auditLog.count({where:{directionId:reb,entity:'attachment',entityId:String(file.id)}})).toBe(0);
   });
   it('исторический срез не порождает фиктивные автомобили', async () => {
     const before=await db!.fleetVehicle.count();
@@ -86,5 +109,34 @@ describe.skipIf(!url)('РЭБ: транзакции, права и жизнен�
     expect(await db!.fleetVehicle.count()).toBe(before);
     const k=await service.overview(admin,{}); expect(k.snapshot).toMatchObject({total:252,used:239});
     expect(k.counts?.total).toBeLessThan(252);
+  });
+  it('dry-run не пишет в БД; повторный импорт не затирает ручную правку',async()=>{
+    const access=new AccessService(db!),imports=new FleetImportService(db!,access,service),uin='000'+Date.now();
+    const buffer=workbookFixture([['УИН','Госномер','Сумма','Нарушение','Дата','Статус'],[uin,'А001АА77','1000.10','Подтверждённое нарушение','30.10.2026','оплачен']]);
+    await expect(imports.upload(viewer,'source.xlsx',buffer)).rejects.toMatchObject({status:403});
+    const counts=[await db!.fleetFine.count(),await db!.fleetImportBatch.count()];
+    const uploaded=await imports.upload(admin,'source.xlsx',buffer),body={uploadId:uploaded.uploadId,kind:'fines',sheet:'штрафы',headerRow:1,mapping:{uin:1,plate:2,amount:3,violation:4,violationDate:5,sourceStatus:6}};
+    const preview=await imports.preview(admin,body);
+    expect(preview.ready).toBe(1);expect([await db!.fleetFine.count(),await db!.fleetImportBatch.count()]).toEqual(counts);
+    await expect(imports.preview(outsider,body)).rejects.toMatchObject({status:403});
+    await expect(imports.commit(admin,{uploadId:uploaded.uploadId,previewId:preview.previewId,rows:[2],acknowledgeWarnings:false},null)).rejects.toMatchObject({status:400});
+    const saved=await imports.commit(admin,{uploadId:uploaded.uploadId,previewId:preview.previewId,rows:[2],acknowledgeWarnings:true},null);expect(saved.imported).toBe(1);
+    const fine=await db!.fleetFine.findFirstOrThrow({where:{uin}});expect(fine).toMatchObject({uin,paidAmount:null,status:'REVIEW',sourceStatus:'оплачен'});
+    await service.save(admin,'fines',fine.id,{uin,plate:'А001АА77',amount:'1000.10',violation:'Подтверждённое нарушение',note:'Ручная проверка',version:fine.version},null);
+    const again=await imports.upload(admin,'повтор.xlsx',buffer),p=await imports.preview(admin,{...body,uploadId:again.uploadId});
+    expect(p.ready).toBe(0);expect((p.rows as {duplicate:boolean}[])[0].duplicate).toBe(true);
+    expect((await db!.fleetFine.findUniqueOrThrow({where:{id:fine.id}})).note).toBe('Ручная проверка');
+  });
+  it('сервер проверяет и старую, и новую область EDITOR при переносе записи',async()=>{
+    const u=await db!.user.create({data:{fullName:'Сотрудник с ограниченной областью '+suffix}});
+    await db!.directionMember.create({data:{directionId:reb,userId:u.id,role:'EDITOR',scope:'SITES'}});
+    await db!.directionMember.create({data:{directionId:target,userId:u.id,role:'EDITOR',scope:'SITES'}});
+    await db!.siteAssignment.create({data:{siteId:site,userId:u.id,role:'ENTRY'}});
+    const other=await db!.site.create({data:{directionId:target,name:'Недоступный объект',code:'limited-'+suffix}});
+    const scoped={...editor,id:u.id};
+    const input={requestDate:'2026-10-01',kind:'Самосвал',quantity:1,workPurpose:'Вывоз грунта',reason:'Работы',startDate:'2026-10-01',endDate:'2026-11-01',siteId:site,targetDirectionId:target};
+    const request=await service.save(scoped,'requests',null,input,null);
+    await expect(service.save(scoped,'requests',request.id,{...input,siteId:other.id,version:request.version},null)).rejects.toMatchObject({status:403});
+    expect((await db!.fleetRequest.findUniqueOrThrow({where:{id:request.id}})).siteId).toBe(site);
   });
 });

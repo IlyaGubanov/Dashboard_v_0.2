@@ -4,7 +4,7 @@ type VehicleState = { ownership: string; technicalState: string; usageState: str
 export function fleetCounts(rows: VehicleState[]) {
   const count = (f: (r: VehicleState) => boolean) => rows.filter(f).length;
   return { total: rows.length, own: count(r => r.ownership === 'OWN'), rented: count(r => r.ownership === 'RENTED'),
-    unknown: count(r => r.ownership === 'UNKNOWN'), used: count(r => r.usageState === 'ACTIVE'), unused: count(r => r.usageState !== 'ACTIVE'),
+    unknown: count(r => r.ownership === 'UNKNOWN'), used: count(r => r.usageState === 'ACTIVE'), unused: count(r => ['RESERVE','UNASSIGNED','UNNEEDED'].includes(r.usageState)),
     repair: count(r => r.technicalState === 'REPAIR'), reserve: count(r => r.usageState === 'RESERVE') };
 }
 

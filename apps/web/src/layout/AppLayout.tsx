@@ -123,12 +123,12 @@ export function AppLayout() {
           <Text size="xs" c="dimmed" tt="uppercase" fw={600} px="sm" mt="md" mb={4}>
             Направления
           </Text>
-          {directions.map((d) => (
+          {directions.filter(d=>d.code!=='reb'||canSee(me,'fleet')).map((d) => (
             <NavLink
               key={d.code}
               renderRoot={(props) => <Link to="/d/$code" params={{ code: d.code }} {...props} />}
               label={d.shortName}
-              description={`${d.sitesCount} ${d.siteUnit}`}
+              description={d.code==='reb'?undefined:`${d.sitesCount} ${d.siteUnit}`}
               leftSection={<DirectionIcon icon={d.icon} color={d.color} />}
               active={path.startsWith(`/d/${d.code}`)}
               onClick={close}

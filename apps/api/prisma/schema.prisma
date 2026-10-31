@@ -898,6 +898,7 @@ model Attachment {
   siteId       Int?     @map("site_id")
   /// к чему приложен: site, remark, work_item, contract…
   entity       String   @db.VarChar(40)
+  visibility   String   @default("GENERAL") @db.VarChar(20)
   entityId     Int      @map("entity_id")
   fileName     String   @map("file_name") @db.VarChar(300)
   mimeType     String   @map("mime_type") @db.VarChar(100)
@@ -1111,6 +1112,7 @@ model FleetIncident {
   departmentId           Int?
   employeeId             Int?
   occurredAt             DateTime
+  timeKnown              Boolean   @default(true)
   incidentType           String    @db.VarChar(200)
   location               String?   @db.VarChar(500)
   description            String?   @db.Text
@@ -1213,7 +1215,7 @@ model FleetToll {
   sourceRaw         Json?
   note              String?   @db.Text
   chargeIdentifier  String?   @db.VarChar(100)
-  passageDate       DateTime  @db.Date
+  passageDate       DateTime? @db.Date
   route             String    @db.Text
   vehicleId         Int?
   plate             String?   @db.VarChar(32)

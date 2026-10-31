@@ -3,7 +3,7 @@ import * as domain from './fleet-domain';
 
 // Литеральные ожидания: неизвестная принадлежность не становится собственной,
 // конец интервала исключён, денежные значения считаются в копейках.
-const d = domain as Record<string, any>;
+const d = domain;
 describe('РЭБ: предметные правила', () => {
   it('не относит неизвестную принадлежность к собственной', () => {
     expect(d.fleetCounts?.([{ ownership: 'OWN', technicalState: 'REPAIR', usageState: 'RESERVE' }, { ownership: 'RENTED', technicalState: 'OK', usageState: 'ACTIVE' }, { ownership: 'UNKNOWN', technicalState: 'UNKNOWN', usageState: 'UNASSIGNED' }]))
@@ -12,6 +12,9 @@ describe('РЭБ: предметные правила', () => {
   it('выявляет пересечение назначений, включая открытый конец', () => {
     expect(d.overlaps?.('2026-10-01', null, '2026-10-31', '2026-11-01')).toBe(true);
     expect(d.overlaps?.('2026-10-01', '2026-10-31', '2026-10-31', null)).toBe(false);
+  });
+  it('не считает неизвестное использование подтверждённым простоем',()=>{
+    expect(d.fleetCounts?.([{ownership:'UNKNOWN',technicalState:'UNKNOWN',usageState:'UNKNOWN'}])).toMatchObject({used:0,unused:0});
   });
   it('не теряет копейки при сложении и частичной оплате', () => {
     expect(d.paymentTotals?.([{ amount: '0.10', paidAmount: '0.00', status: 'REVIEW' }, { amount: '1000.20', paidAmount: '500.10', status: 'PARTIAL' }], '2026-10-31'))

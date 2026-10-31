@@ -26,11 +26,12 @@ export class AttachmentsController {
   }
 
   @Post()
-  async upload(@CurrentUser() u: AuthUser, @Query('entity') entity: string, @Query('entityId') entityId: string, @Query('name') name: string, @Req() r: AuthRequest): Promise<Attachment> {
+  async upload(@CurrentUser() u: AuthUser, @Query('entity') entity: string, @Query('entityId') entityId: string, @Query('name') name: string, @Query('visibility') visibility: string | undefined, @Req() r: AuthRequest): Promise<Attachment> {
     try {
       if ((r.headers['content-type'] ?? '').startsWith('application/json')) throw new BadRequestException('Файл передаётся как application/octet-stream');
       if (Number(r.headers['content-length'] ?? 0) > ATTACHMENT_MAX_MB * 1024 * 1024) throw new PayloadTooLargeException(`Файл больше ${ATTACHMENT_MAX_MB} МБ`);
-      return await this.s.upload(u, ...target(entity, entityId), String(name ?? ''), r, clientIp(r));
+      if(visibility&&!['GENERAL','FINANCE','LIABILITY'].includes(visibility)) throw new BadRequestException('Неизвестный режим доступа к файлу');
+      return await this.s.upload(u, ...target(entity, entityId), String(name ?? ''), r, clientIp(r), visibility as 'GENERAL'|'FINANCE'|'LIABILITY'|undefined);
     } catch (e) {
       // тело запроса могло быть прочитано не до конца — соединение повторно не используем
       r.res?.setHeader('Connection', 'close');

@@ -27,10 +27,10 @@ async function shrink(file: File): Promise<File> {
   }
 }
 
-export async function uploadFile(entity: AttachmentEntity, entityId: number, original: File): Promise<Attachment> {
+export async function uploadFile(entity: AttachmentEntity, entityId: number, original: File, visibility?:'GENERAL'|'FINANCE'|'LIABILITY'): Promise<Attachment> {
   const file = await shrink(original);
   if (file.size > ATTACHMENT_MAX_MB * 1024 * 1024) throw new ApiError(413, `«${file.name}» больше ${ATTACHMENT_MAX_MB} МБ`);
-  const res = await fetch(`/api/attachments?entity=${entity}&entityId=${entityId}&name=${encodeURIComponent(file.name)}`, {
+  const res = await fetch(`/api/attachments?entity=${entity}&entityId=${entityId}&name=${encodeURIComponent(file.name)}${visibility?'&visibility='+visibility:''}`, {
     method: 'POST',
     credentials: 'same-origin',
     headers: { 'content-type': 'application/octet-stream' },

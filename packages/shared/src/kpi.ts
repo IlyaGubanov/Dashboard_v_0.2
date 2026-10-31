@@ -17,7 +17,10 @@ export type KpiFormat = 'money' | 'int' | 'qty' | 'days' | 'percent';
 
 /** Дополнительный показатель направления (набор задаётся в настройках направления). */
 export interface KpiTile {
+  /** метрика */
   key: string;
+  /** место в «Показателях сводки» направления (0…5) — по нему плитку находит настройка «Плитки обзора» */
+  slot?: number;
   label: string;
   value: number | null;
   format: KpiFormat;
@@ -65,6 +68,18 @@ export interface Forecast {
   planEnd: string | null;
 }
 
+/** Физические объёмы сетей по способу прокладки на отчётную точку. */
+export interface NetworkLayingKpi {
+  code: 'open' | 'closed';
+  /** Объекты с хотя бы одной неисключённой позицией этого вида. */
+  sites: number;
+  /** Погонные метры; null, если хотя бы у одной позиции нет объёма. */
+  planQty: number | null;
+  factQty: number | null;
+  /** Σ факт / Σ проект; null при неполных данных или нулевом проекте. */
+  fact: number | null;
+}
+
 export interface DirectionKpi {
   reportPrograms?: ReportProgramSummary[];
   code: string;
@@ -91,6 +106,8 @@ export interface DirectionKpi {
   tech: number | null;
   money: { portfolio: number | null; portfolioLabel: string; closed: number | null; paid: number | null } | null;
   kpis: KpiTile[];
+  /** Только для направления «Сети»: открытая и закрытая прокладка. */
+  networkLaying?: NetworkLayingKpi[];
   attention: KpiAttention[];
   /** прогноз завершения направления и сколько объектов по прогнозу не успевают */
   forecast: Forecast | null;
@@ -103,6 +120,7 @@ export interface DirectionKpi {
 }
 
 export interface ReportProgramSummary {
+  periodId: number;
   aggregate?: ReportSummary | null;
   code: string; name: string; asOf: string; source: string | null; sheet: string | null;
   volumeDone: number; volumeTotal: number; statusDone: number | null; statusTotal: number;

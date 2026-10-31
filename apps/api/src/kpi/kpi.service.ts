@@ -62,7 +62,7 @@ export class KpiService {
   /** Показатели с учётом ограничений сотрудника: без денег и без списка замечаний, если они ему скрыты. */
   private forUser(user: AuthUser, k: DirectionKpi): DirectionKpi {
     const r = this.access.has(user, 'finance') ? k : kpiNoFinance(k);
-    return this.access.canSee(user, 'remarks') ? r : { ...r, remarks: undefined, reportPrograms: r.reportPrograms?.map(p => ({ ...p, aggregate: p.aggregate ? { ...p.aggregate, violations: [] } : p.aggregate, rows: p.rows.map(s => ({ ...s, remarksCount: undefined })) })) };
+    return this.access.canSee(user, 'remarks') ? r : { ...r, kpis:r.kpis.filter(m=>m.key!=='remarksTotal'), remarks: undefined, reportPrograms: r.reportPrograms?.map(p => ({ ...p, aggregate: p.aggregate ? { ...p.aggregate, violations: [] } : p.aggregate, rows: p.rows.map(s => ({ ...s, remarksCount: undefined })) })) };
   }
 
   async sites(user: AuthUser, code: string, date?: string): Promise<SiteKpiRow[]> {

@@ -35,6 +35,7 @@ export function RemarkDrawer({ code, remarkId, onClose, onOpenSite }: { code: st
   const { data, error, isLoading } = useQuery({ ...directionQueries.remark(code, remarkId ?? 0), enabled: !!remarkId });
   return (
     <Drawer
+      className="direction-page"
       opened={!!remarkId}
       onClose={onClose}
       position="right"

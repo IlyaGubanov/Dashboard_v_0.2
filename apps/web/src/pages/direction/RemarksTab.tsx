@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { CKKB_GROUPS, CKKB_GROUP_LABELS, CKKB_TYPES, ckkbTypeLabel, type CkkbGroup } from '@mvs/shared';
+import { CKKB_GROUP_LABELS, ckkbTypeLabel } from '@mvs/shared';
 import { Alert, Button, Card, Checkbox, Group, SegmentedControl, Select, SimpleGrid, Skeleton, Stack, Table, Text, TextInput } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { IconPaperclip, IconPlus, IconSearch } from '@tabler/icons-react';
@@ -30,7 +30,6 @@ export function RemarksTab({ code, onOpen, initial }: { code: string; onOpen: (i
   const [site, setSite] = useState<string | null>(null);
   const [q, setQ] = useState('');
   const [creating, setCreating] = useState(false);
-  const [violationGroup, setViolationGroup] = useState<CkkbGroup | null>(null), [violationType, setViolationType] = useState<string | null>(null);
 
   const rows = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -40,12 +39,10 @@ export function RemarksTab({ code, onOpen, initial }: { code: string; onOpen: (i
       .filter((r) => !mine || r.assignee?.id === me?.id || r.author?.id === me?.id)
       .filter((r) => !sev || r.severity === sev)
       .filter((r) => !cat || r.category === cat)
-      .filter((r) => !violationGroup || r.violationGroup === violationGroup)
-      .filter((r) => !violationType || r.violationType === violationType)
       .filter((r) => !site || r.site.id === Number(site))
       .filter((r) => !s || `${r.num} ${r.text} ${r.site.name} ${r.assignee?.fullName ?? ''} ${r.sourceName ?? ''} ${ckkbTypeLabel(r.violationType)}`.toLowerCase().includes(s))
       .sort((a, b) => Number(b.overdue) - Number(a.overdue) || SEV_ORDER[a.severity] - SEV_ORDER[b.severity] || b.num - a.num);
-  }, [data, view, overdue, mine, sev, cat, site, q, me, violationGroup, violationType]);
+  }, [data, view, overdue, mine, sev, cat, site, q, me]);
 
   if (error) return <Alert color="red">{(error as Error).message}</Alert>;
   if (!data) return <Skeleton h={400} />;
@@ -69,7 +66,7 @@ export function RemarksTab({ code, onOpen, initial }: { code: string; onOpen: (i
             <Text size="xs" c="dimmed">
               {s.label}
             </Text>
-            <Text fz={26} fw={700} c={s.critical && s.value > 0 ? 'var(--status-critical)' : undefined}>
+            <Text fz="calc(26px * var(--text-scale, 1))" fw={700} c={s.critical && s.value > 0 ? 'var(--status-critical)' : undefined}>
               {int(s.value)}
             </Text>
           </Card>
@@ -77,7 +74,7 @@ export function RemarksTab({ code, onOpen, initial }: { code: string; onOpen: (i
       </SimpleGrid>
 
       <Group justify="space-between" align="flex-end">
-        <Group gap="sm" align="flex-end">
+        <Group gap="sm" align="flex-end" maw="100%" miw={0}>
           <SegmentedControl
             style={{ maxWidth: '100%', overflowX: 'auto' }}
             value={view}
@@ -106,8 +103,6 @@ export function RemarksTab({ code, onOpen, initial }: { code: string; onOpen: (i
       </Group>
 
       <Card withBorder padding={0}>
-        <Group gap="sm" p="sm" align="flex-end"><Select label="Группа нарушений ЦККБ" clearable value={violationGroup} data={CKKB_GROUPS.map(value=>({value,label:CKKB_GROUP_LABELS[value]}))} onChange={g=>{setViolationGroup(g as CkkbGroup|null);setViolationType(null);}}/>
-          <Select label="Тип нарушения ЦККБ" clearable searchable value={violationType} data={CKKB_TYPES.filter(t=>!violationGroup||t.group===violationGroup).map(t=>({value:t.code,label:t.label}))} onChange={setViolationType} style={{flex:'1 1 280px'}}/></Group>
         <Table.ScrollContainer minWidth={900}>
           <Table highlightOnHover verticalSpacing="sm">
             <Table.Thead>

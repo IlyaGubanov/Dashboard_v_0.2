@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { CKKB_GROUPS, CKKB_GROUP_LABELS, CKKB_TYPES } from '@mvs/shared';
 import { Autocomplete, Button, Group, Modal, SegmentedControl, Select, SimpleGrid, Stack, Text, TextInput, Textarea } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -78,7 +77,7 @@ export function RemarkForm({
   };
 
   return (
-    <Modal opened={opened} onClose={onClose} title={edit ? `Замечание № ${edit.num}` : 'Новое замечание'} size="lg" zIndex={400}>
+    <Modal className="direction-page" opened={opened} onClose={onClose} title={edit ? `Замечание № ${edit.num}` : 'Новое замечание'} size="lg" zIndex={400}>
       <Stack>
         <Select
           comboboxProps={DROPDOWN}
@@ -108,13 +107,7 @@ export function RemarkForm({
           <Autocomplete comboboxProps={DROPDOWN} label="Источник нарушения" data={['ЦККБ', 'Внутренний контроль']} value={v.sourceName ?? ''} onChange={sourceName => set({ sourceName })} error={errors.sourceName} />
           <TextInput type="date" label="Дата выявления" value={v.detectedOn ?? ''} onChange={e => set({ detectedOn: e.currentTarget.value })} error={errors.detectedOn} />
         </SimpleGrid>
-        {(v.sourceName?.trim().toUpperCase() === 'ЦККБ' || v.violationGroup) && <>
-          <Select comboboxProps={DROPDOWN} label="Группа нарушений ЦККБ" required data={CKKB_GROUPS.map(value => ({ value, label: CKKB_GROUP_LABELS[value] }))} value={v.violationGroup ?? null}
-            onChange={value => set({ violationGroup: value as typeof v.violationGroup, violationType: null })} error={errors.violationGroup} />
-          <Select comboboxProps={DROPDOWN} label="Тип нарушения ЦККБ" required searchable disabled={!v.violationGroup} data={CKKB_TYPES.filter(t => t.group === v.violationGroup).map(t => ({ value: t.code, label: t.label }))}
-            value={v.violationType ?? null} onChange={violationType => set({ violationType })} error={errors.violationType} />
-        </>}
-        {!(v.sourceName?.trim().toUpperCase() === 'ЦККБ' || v.violationGroup) && <TextInput label="Тип нарушения (необязательно)" value={v.typeName ?? ''} maxLength={300} onChange={e => set({typeName:e.currentTarget.value})} error={errors.typeName} />}
+        <TextInput label="Тип нарушения (необязательно)" value={v.typeName ?? ''} maxLength={300} onChange={e => set({typeName:e.currentTarget.value})} error={errors.typeName} />
         <TextInput label="Документ / ссылка на источник / страница" value={v.sourceRef ?? ''} maxLength={300} onChange={e => set({ sourceRef: e.currentTarget.value })} error={errors.sourceRef} />
         <Autocomplete comboboxProps={DROPDOWN} label="Место / зона нарушения" data={['Проезжая часть', 'Тротуар', 'Площадка', 'Газон']} value={v.location ?? ''} onChange={location => set({ location })} />
         <Select comboboxProps={DROPDOWN} label="Ответственный за нарушение" searchable clearable data={list.people.map(p => ({ value: String(p.id), label: p.fullName }))} value={v.responsibleId ? String(v.responsibleId) : null}

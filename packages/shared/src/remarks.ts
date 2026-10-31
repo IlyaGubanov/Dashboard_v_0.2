@@ -75,7 +75,7 @@ export const remarkSchema = z.object({
   /** при правке — номер версии, которую видел пользователь */
   version: z.number().int().positive().optional(),
 }).superRefine((v, ctx) => {
-  if (v.sourceName?.trim().toUpperCase() === 'ЦККБ' || v.violationGroup || v.violationType) {
+  if (v.violationGroup || v.violationType) {
     if (!v.violationGroup) ctx.addIssue({ code: 'custom', path: ['violationGroup'], message: 'Выберите группу нарушений ЦККБ' });
     if (!CKKB_TYPES.some(t => t.code === v.violationType && t.group === v.violationGroup)) ctx.addIssue({ code: 'custom', path: ['violationType'], message: 'Выберите тип из выбранной группы' });
   }

@@ -28,9 +28,13 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getRouteApi, Link } from '@tanstack/react-router';
 import { IconArrowDown, IconArrowUp, IconPlus, IconTrash } from '@tabler/icons-react';
 import {
+  DEFAULT_APPEARANCE,
   FIELD_TYPE_LABELS,
   FIELD_TYPES,
   METRIC_CATALOG,
+  OVERVIEW_TILES,
+  TILE_COLOR_TOKENS,
+  type OverviewTileConfig,
   TRACKER_VALUE_LABELS,
   TRACKER_VALUE_TYPES,
   type DirectionDef,
@@ -120,6 +124,7 @@ export function DirectionEditorPage() {
           <Tabs.Tab value="fields">Доп. поля · {d.fields.filter((f) => !f.isArchived).length}</Tabs.Tab>
           <Tabs.Tab value="trackers">Надстройки · {d.trackers.length}</Tabs.Tab>
           <Tabs.Tab value="kpis">Показатели сводки · {d.kpis.length}</Tabs.Tab>
+          <Tabs.Tab value="tiles">Плитки обзора</Tabs.Tab>
         </Tabs.List>
         <Tabs.Panel value="main" pt="md">
           <Main d={d} />
@@ -135,6 +140,9 @@ export function DirectionEditorPage() {
         </Tabs.Panel>
         <Tabs.Panel value="kpis" pt="md">
           <Kpis d={d} />
+        </Tabs.Panel>
+        <Tabs.Panel value="tiles" pt="md">
+          <Tiles d={d} />
         </Tabs.Panel>
       </Tabs>
     </Stack>
@@ -513,6 +521,96 @@ function TrackerForm({ d, t, isNew, onCreated }: { d: DirectionDef; t: TrackerRo
         </Group>
         <Group justify="flex-end">
           <Button onClick={submit}>{isNew ? 'Создать надстройку' : 'Сохранить надстройку'}</Button>
+        </Group>
+      </Stack>
+    </Card>
+  );
+}
+
+/** Цвет плитки: как у всех, смысловой (подстраивается под тему) или свой код. */
+const TILE_COLOR_OPTIONS = [
+  { value: '', label: 'Как у всех' },
+  ...Object.entries(TILE_COLOR_TOKENS).map(([value, label]) => ({ value, label })),
+  { value: 'custom', label: 'Свой цвет…' },
+];
+/** Быстрый выбор своего кода цвета: смысловые цвета оформления (светлая тема). */
+const TILE_SWATCHES = [DEFAULT_APPEARANCE.light.primary, DEFAULT_APPEARANCE.light.good, DEFAULT_APPEARANCE.light.warning, DEFAULT_APPEARANCE.light.critical, DEFAULT_APPEARANCE.light.series3];
+
+/** Плитки вкладки «Обзор»: какие показывать, порядок, своя подпись и цвет. Вид и размеры плиток — «Оформление». */
+function Tiles({ d }: { d: DirectionDef }) {
+  const save = useSave(d.code);
+  const all = [...OVERVIEW_TILES.map((t) => ({ key: t.key as string, name: t.label })), ...d.kpis.map((k, i) => ({ key: `kpi:${i}`, name: `Показатель сводки: ${k.label}` }))];
+  const name = (key: string) => all.find((t) => t.key === key)?.name ?? key;
+  // сохранённый порядок, затем плитки, которых в настройке ещё нет
+  const [rows, setRows] = useState<OverviewTileConfig[]>(() => [
+    ...d.overviewTiles.filter((c) => all.some((t) => t.key === c.key)),
+    ...all.filter((t) => !d.overviewTiles.some((c) => c.key === t.key)).map((t) => ({ key: t.key, hidden: false, label: '', color: null })),
+  ]);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const upd = (i: number, p: Partial<OverviewTileConfig>) => setRows(rows.map((r, j) => (j === i ? { ...r, ...p } : r)));
+  return (
+    <Card withBorder padding="lg">
+      <Stack>
+        <Text size="sm" c="dimmed">
+          Плитки справа от готовности на вкладке «Обзор» направления. Снимите галочку, чтобы скрыть плитку; стрелки меняют порядок. Пустая подпись —
+          стандартная. Цвет красит число и полосу (или заливку) плитки; смысловые цвета сами меняются в тёмной теме. Вид плиток, размеры и общие цвета —{' '}
+          <Anchor component={Link} to="/admin/appearance" size="sm">
+            «Оформление»
+          </Anchor>
+          . Некоторые плитки появляются только при данных: отставание — при графике, люди, техника и деньги — если их вносят.
+        </Text>
+        {rows.map((r, i) => (
+          <Card key={r.key} withBorder padding="sm" opacity={r.hidden ? 0.6 : 1}>
+            <Group align="flex-end" wrap="wrap" gap="sm">
+              <Checkbox
+                label={name(r.key)}
+                checked={!r.hidden}
+                onChange={(e) => upd(i, { hidden: !e.currentTarget.checked })}
+                style={{ flex: '1 1 220px' }}
+                styles={{ label: { fontWeight: 600 } }}
+              />
+              <TextInput
+                w={220}
+                label="Своя подпись"
+                placeholder="стандартная"
+                value={r.label}
+                error={errors[`${i}.label`]}
+                onChange={(e) => upd(i, { label: e.currentTarget.value })}
+              />
+              <Select
+                w={190}
+                label="Цвет"
+                allowDeselect={false}
+                data={TILE_COLOR_OPTIONS}
+                value={r.color == null ? '' : r.color in TILE_COLOR_TOKENS ? r.color : 'custom'}
+                onChange={(x) => upd(i, { color: x === 'custom' ? DEFAULT_APPEARANCE.light.critical : x || null })}
+                error={r.color != null && !(r.color in TILE_COLOR_TOKENS) ? undefined : errors[`${i}.color`]}
+              />
+              {r.color != null && !(r.color in TILE_COLOR_TOKENS) && (
+                <ColorInput
+                  w={150}
+                  label="Код цвета"
+                  description="одинаковый в обеих темах"
+                  format="hex"
+                  swatches={TILE_SWATCHES}
+                  value={r.color}
+                  error={errors[`${i}.color`]}
+                  onChange={(x) => upd(i, { color: x })}
+                />
+              )}
+              <Group gap={2} wrap="nowrap" pb={6}>
+                <ActionIcon variant="subtle" size="sm" disabled={i === 0} onClick={() => setRows(move(rows, i, -1))} aria-label="Выше">
+                  <IconArrowUp size={14} />
+                </ActionIcon>
+                <ActionIcon variant="subtle" size="sm" disabled={i === rows.length - 1} onClick={() => setRows(move(rows, i, 1))} aria-label="Ниже">
+                  <IconArrowDown size={14} />
+                </ActionIcon>
+              </Group>
+            </Group>
+          </Card>
+        ))}
+        <Group justify="flex-end">
+          <Button onClick={async () => setErrors((await save('/tiles', 'PUT', rows)) ?? {})}>Сохранить плитки</Button>
         </Group>
       </Stack>
     </Card>

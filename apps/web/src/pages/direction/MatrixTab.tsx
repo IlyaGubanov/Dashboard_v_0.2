@@ -70,7 +70,7 @@ export function MatrixTab({ code, date, onOpenSite }: { code: string; date?: str
       </Group>
 
       <Box style={{ overflow: 'auto', maxHeight: '70vh' }}>
-        <table className="matrix-table" style={{ borderCollapse: 'separate', borderSpacing: 2, fontSize: 12 }}>
+        <table className="matrix-table" style={{ borderCollapse: 'separate', borderSpacing: 2, fontSize: 'calc(12px * var(--text-scale, 1))' }}>
           <thead style={{ position: 'sticky', top: 0, zIndex: 2, background: 'var(--mantine-color-body)' }}>
             {hasGroups && (
               <tr>

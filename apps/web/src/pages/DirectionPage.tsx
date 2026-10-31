@@ -75,7 +75,8 @@ export function DirectionPage() {
     d?.periodKind === 'WEEK' ? weekLabel(iso) : d?.periodKind === 'REPORT' ? `отчёт ${l ?? fmtDate(iso)}` : fmtDate(iso);
 
   return (
-    <Stack gap="md">
+    // direction-page: размер текста направлений из «Оформления» (ui/appearance.tsx)
+    <Stack gap="md" className="direction-page">
       <Group justify="space-between" align="flex-start">
         <Group gap="sm" wrap="nowrap">
           {d && <DirectionIcon icon={d.icon} color={d.color} size={40} />}

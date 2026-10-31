@@ -24,6 +24,7 @@ export interface KEntry {
 export interface KItem {
   id: number;
   workTypeId: number;
+  workTypeCode: string;
   unit: string | null;
   planQty: number | null;
   planCost: number | null;

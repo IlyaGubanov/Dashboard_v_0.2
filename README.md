@@ -9,7 +9,7 @@
 | `apps/web` | интерфейс: React + Vite + Mantine + TanStack Router/Query |
 | `packages/shared` | общие типы и проверки (zod) для сервера и интерфейса |
 | `deploy/caddy` | HTTPS-шлюз: сертификат, перенаправление на https, заголовки безопасности |
-| `docs/` | анализ, архитектура, описание БД, [развёртывание](docs/03-razvertyvanie.md), [расчёт показателей](docs/04-raschet-pokazateley.md), [экраны направлений](docs/05-ekrany-napravleniy.md), [ввод данных](docs/06-vvod-dannyh.md), [конструктор направлений](docs/07-konstruktor.md), [замечания и файлы](docs/08-zamechaniya-i-faily.md), [прогнозы, задачи, телефон](docs/09-prognozy-zadachi-telefon.md), **[план запуска](docs/10-zapusk.md)**, **[запуск на своём компьютере](docs/11-lokalnyy-zapusk.md)** |
+| `docs/` | анализ, архитектура, описание БД, [развёртывание](docs/03-razvertyvanie.md), [расчёт показателей](docs/04-raschet-pokazateley.md), [экраны направлений](docs/05-ekrany-napravleniy.md), [ввод данных](docs/06-vvod-dannyh.md), [конструктор направлений](docs/07-konstruktor.md), [замечания и файлы](docs/08-zamechaniya-i-faily.md), [прогнозы, задачи, телефон](docs/09-prognozy-zadachi-telefon.md), **[план запуска](docs/10-zapusk.md)**, **[запуск на своём компьютере](docs/11-lokalnyy-zapusk.md)**, [сотрудники и доступ](docs/12-sotrudniki-i-dostup.md), [оформление](docs/13-oformlenie.md) |
 
 ## Посмотреть на своём компьютере (Windows)
 

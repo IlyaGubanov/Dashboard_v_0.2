@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import type { DirectionSummary } from '@mvs/shared';
+import type { DirectionSummary, OverviewTileConfig } from '@mvs/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { AccessService } from '../auth/access.service';
 import type { AuthUser } from '../common/request';
@@ -36,6 +36,7 @@ export class DirectionsService {
       isReadonly: d.isReadonly,
       siteUnit: d.siteUnit,
       sitesCount: d._count.sites,
+      overviewTiles: ((d.settings as { overviewTiles?: OverviewTileConfig[] } | null)?.overviewTiles ?? []) as OverviewTileConfig[],
       sections: d.sections,
       curators: d.members.filter((m) => m.role === 'CURATOR').map((m) => m.user),
       myRole: d.members.find((m) => m.userId === user.id)?.role ?? null,

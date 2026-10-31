@@ -21,6 +21,7 @@ export async function loadDirection(db: Db, directionId: number, periods: KPerio
   const d = await db.direction.findUniqueOrThrow({ where: { id: directionId }, include: { workTypes: true, statusDefs: true } });
   const date = new Map(periods.map((p) => [p.id, p.date]));
   const weight = new Map(d.workTypes.map((w) => [w.id, num(w.weight)]));
+  const workTypeCode = new Map(d.workTypes.map((w) => [w.id, w.code]));
   const ids = { in: periodIds };
 
   const sites = await db.site.findMany({
@@ -134,6 +135,7 @@ export async function loadDirection(db: Db, directionId: number, periods: KPerio
       items: s.workItems.map((it) => ({
         id: it.id,
         workTypeId: it.workTypeId,
+        workTypeCode: workTypeCode.get(it.workTypeId) ?? '',
         unit: it.unit,
         planQty: num(it.planQty),
         planCost: num(it.planCost),

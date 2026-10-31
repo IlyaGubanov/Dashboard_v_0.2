@@ -19,7 +19,7 @@ describe.skipIf(!url)('отчётные программы: ввод, истор
   beforeAll(async () => {
     const target = new URL(url!);
     if (!['localhost','127.0.0.1'].includes(target.hostname) || !target.pathname.endsWith('_test')) throw new Error('Только локальная тестовая БД');
-    const d = await db!.direction.create({ data: { code, name: 'Отчётный тест', shortName: 'Тест', periodKind: 'REPORT', progressMethod: 'SHARE_COMPLETED', planMethod: 'NONE', settings: { programs: { kbu: 'КБУ', current: 'Текущий ремонт', future: 'Новая программа' }, kpis: [{ metric: 'reportStatusCount', label: 'По статусу', params: { statuses: ['Работы завершены', 'Сдан ЦККБ'] } }] } } }); dirId = d.id;
+    const d = await db!.direction.create({ data: { code, name: 'Отчётный тест', shortName: 'Тест', periodKind: 'REPORT', progressMethod: 'SHARE_COMPLETED', planMethod: 'NONE', settings: { programs: { kbu: 'КБУ', current: 'Текущий ремонт', future: 'Новая программа' }, kpis: [{metric:'remarksTotal',label:'Замечаний в отчёте'}, { metric: 'reportStatusCount', label: 'По статусу', params: { statuses: ['Работы завершены', 'Сдан ЦККБ'] } }] } } }); dirId = d.id;
     userId = (await db!.user.create({ data: { fullName: 'QA администратор' } })).id;
     editorId = (await db!.user.create({ data: { fullName: 'QA ввод' } })).id;
     admin = { id: userId, login: 'qa', fullName: 'QA', globalRole: 'ADMIN', sessionId: -1, mustChangePassword: false, hiddenSections: [], deniedFeatures: [] };
@@ -104,6 +104,9 @@ describe.skipIf(!url)('отчётные программы: ввод, истор
     expect(summary?.rows.find(s => s.id === siteId)).toMatchObject({ volumeDone: false, statusDone: true, remarksCount: 3, source: 'MANUAL' });
     expect(summary?.rows.find(s => s.id === other.id)).toMatchObject({ volumeDone: true, statusDone: false });
     expect(data.fact).toBe(0.5);
+    expect(data.kpis.some(m=>m.key==='remarksTotal')).toBe(true);
+    const hidden=await kpi.kpi({...admin,hiddenSections:['remarks']},code);
+    expect(hidden.kpis.some(m=>m.key==='remarksTotal')).toBe(false);
   });
   it('реестр, карта и карточка получают собственную программу объекта', async () => {
     const p = await entry.openPeriod(admin, code, '2026-01-08', null, 'current');

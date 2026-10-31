@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { remarkSchema } from '../../../../packages/shared/src/remarks';
 const base = { siteId: 1, text: 'Проверка нарушения', sourceName: 'ЦККБ' };
 describe('типизация нарушений ЦККБ', () => {
-  it('требует группу и конкретный тип для нового нарушения ЦККБ', () => {
-    expect(remarkSchema.safeParse(base).success).toBe(false);
+  it('позволяет зарегистрировать ЦККБ обычным замечанием без обязательного классификатора', () => {
+    expect(remarkSchema.safeParse(base).success).toBe(true);
   });
   it('не позволяет отнести документ к технологиям', () => {
     expect(remarkSchema.safeParse({ ...base, violationGroup: 'TECHNOLOGY', violationType: 'missing_work_log' }).success).toBe(false);

@@ -24,7 +24,7 @@ export function reportPrograms(dir: KDirection, until: number): ReportProgramSum
       source: s.report?.source ?? null,
     }));
     return {
-      code, name: dir.settings.programs?.[code] ?? code, asOf: isoDate(p.date), source: dir.settings.source ?? null, sheet: p.label,
+      periodId: p.id, code, name: dir.settings.programs?.[code] ?? code, asOf: isoDate(p.date), source: dir.settings.source ?? null, sheet: p.label,
       aggregate: p.summary?.value ?? null,
       volumeDone: rows.filter(s => s.volumeDone).length, volumeTotal: rows.filter(s => s.volumeDone != null).length,
       statusDone: statuses.length ? rows.filter(s => s.statusDone).length : null, statusTotal: rows.filter(s => s.statusDone != null).length,

@@ -30,7 +30,6 @@ import { IconCheck, IconDeviceFloppy, IconLock, IconLockOpen, IconPlus, IconSear
 import type { EntryReportValue, EntrySaveInput, EntrySheet, EntryValue, PeriodItem } from '@mvs/shared';
 import { api, ApiError, directionQueries } from '../../api';
 import { date, weekLabel } from '../../ui/format';
-import { ReportAggregateEditor } from './ReportAggregate';
 
 type Site = EntrySheet['sites'][number];
 type Item = Site['items'][number];
@@ -62,7 +61,6 @@ export function EntryTab({ code, periodKind, program = '', onDirty }: { code: st
     enabled: current != null,
   });
   const [draft, setDraft] = useState<Draft>(EMPTY);
-  const [summaryDirty, setSummaryDirty] = useState(false);
   const [scope, setScope] = useState<'mine' | 'all'>('mine');
   const [q, setQ] = useState('');
   const [notUpdated, setNotUpdated] = useState(false);
@@ -72,14 +70,14 @@ export function EntryTab({ code, periodKind, program = '', onDirty }: { code: st
   const [opened, setOpened] = useState<string[] | null>(null);
 
   const dirtyCount = Object.keys(draft.items).length + Object.keys(draft.reports).length;
-  useEffect(() => { onDirty?.(dirtyCount > 0 || summaryDirty); }, [dirtyCount, summaryDirty, onDirty]);
+  useEffect(() => { onDirty?.(dirtyCount > 0); }, [dirtyCount, onDirty]);
   // не потерять несохранённое при закрытии вкладки браузера
   useEffect(() => {
-    if (!dirtyCount && !summaryDirty) return;
+    if (!dirtyCount) return;
     const h = (e: BeforeUnloadEvent) => e.preventDefault();
     window.addEventListener('beforeunload', h);
     return () => window.removeEventListener('beforeunload', h);
-  }, [dirtyCount, summaryDirty]);
+  }, [dirtyCount]);
   useEffect(() => setDraft(EMPTY), [current]);
 
   const refresh = () =>
@@ -160,8 +158,7 @@ export function EntryTab({ code, periodKind, program = '', onDirty }: { code: st
 
   return (
     <Stack>
-      <PeriodBar code={code} sheet={sheet} periods={own} periodKind={periodKind} onSelect={setPeriodId} dirty={dirtyCount > 0 || summaryDirty} onChanged={refresh} />
-      {sheet.aggregate && <ReportAggregateEditor key={sheet.period.id} code={code} periodId={sheet.period.id} aggregate={sheet.aggregate} onDirty={setSummaryDirty} />}
+      <PeriodBar code={code} sheet={sheet} periods={own} periodKind={periodKind} onSelect={setPeriodId} dirty={dirtyCount > 0} onChanged={refresh} />
 
       {sheet.permissions.reason && <Alert color="orange">{sheet.permissions.reason}</Alert>}
       {conflicts.length > 0 && (
@@ -373,6 +370,7 @@ function PeriodBar({
       </Group>
 
       <Modal
+        className="direction-page"
         opened={action != null}
         onClose={() => setAction(null)}
         title={

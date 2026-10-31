@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PERIOD_KINDS, PROGRESS_METHODS } from './directions';
+import { PERIOD_KINDS, PROGRESS_METHODS, type OverviewTileConfig } from './directions';
 
 /** Код записи: латиница, цифры, «_» и «-», начинается с буквы. Код не меняется после создания. */
 export const codeSchema = z
@@ -200,6 +200,50 @@ export const kpisSchema = z
   )
   .max(6);
 
+/** Стандартные плитки вкладки «Обзор»; показатели из «Показателей сводки» — ключи kpi:0…kpi:5 по порядку. */
+export const OVERVIEW_TILES = [
+  { key: 'sites', label: 'Число объектов (подпись — единица направления)' },
+  { key: 'lagging', label: 'отстают от графика' },
+  { key: 'critical', label: 'критично' },
+  { key: 'done', label: 'выполнено' },
+  { key: 'people', label: 'людей на объектах' },
+  { key: 'tech', label: 'техники' },
+  { key: 'portfolio', label: 'Стоимость (подпись — «Деньги» направления)' },
+  { key: 'closed', label: 'закрыто по КС-2' },
+  { key: 'paid', label: 'оплачено' },
+] as const;
+
+/**
+ * Смысловые цвета плитки: берутся из «Оформления» и сами подстраиваются под светлую и тёмную темы
+ * (в отличие от своего кода цвета, одинакового в обеих).
+ */
+export const TILE_COLOR_TOKENS = {
+  primary: 'Основной',
+  good: 'Как «в графике»',
+  warning: 'Как «отставание»',
+  critical: 'Как «критично»',
+  series1: 'Серия графика 1',
+  series2: 'Серия графика 2',
+  series3: 'Серия графика 3',
+} as const;
+
+export const overviewTilesSchema = z
+  .array(
+    z.object({
+      key: z.string().regex(/^(sites|lagging|critical|done|people|tech|portfolio|closed|paid|kpi:[0-5])$/, 'Неизвестная плитка'),
+      hidden: z.boolean().default(false),
+      label: z.string().trim().max(60, 'До 60 символов').default(''),
+      // смысловой цвет (critical, warning…) или свой код
+      color: z
+        .string()
+        .refine((c) => /^#[0-9a-fA-F]{6}$/.test(c) || c in TILE_COLOR_TOKENS, 'Цвет вида #c8102e')
+        .nullable()
+        .default(null),
+    }),
+  )
+  .max(20)
+  .refine((a) => new Set(a.map((t) => t.key)).size === a.length, 'Плитка указана дважды') satisfies z.ZodType<OverviewTileConfig[], unknown>;
+
 export const overviewThresholdsSchema = z
   .object({ warn: z.number().min(-100).max(0), crit: z.number().min(-100).max(0) })
   .refine((t) => t.crit <= t.warn, { message: '«Критично» должно быть строже «отставания»', path: ['crit'] });
@@ -224,5 +268,6 @@ export interface DirectionDef extends Omit<DirectionData, 'copyFrom' | 'descript
     items: { code: string; name: string; category: string | null; unit: string | null; isArchived: boolean }[];
   }[];
   kpis: { metric: string; label: string; params?: Record<string, string | string[]> }[];
+  overviewTiles: OverviewTileConfig[];
   units: string[];
 }

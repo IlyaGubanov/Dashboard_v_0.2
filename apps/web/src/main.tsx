@@ -3,20 +3,20 @@ import '@mantine/notifications/styles.css';
 import './theme.css';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { MantineProvider } from '@mantine/core';
 import { Notifications } from '@mantine/notifications';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { RouterProvider } from '@tanstack/react-router';
 import { queryClient, router } from './router';
-import { theme } from './theme';
+import { AppearanceProvider } from './ui/appearance';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <MantineProvider theme={theme} defaultColorScheme="auto">
-      <Notifications position="top-right" />
-      <QueryClientProvider client={queryClient}>
+    <QueryClientProvider client={queryClient}>
+      {/* оформление (тема Mantine и цвета) — из настроек администратора */}
+      <AppearanceProvider>
+        <Notifications position="top-right" />
         <RouterProvider router={router} />
-      </QueryClientProvider>
-    </MantineProvider>
+      </AppearanceProvider>
+    </QueryClientProvider>
   </StrictMode>,
 );

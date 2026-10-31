@@ -17,7 +17,7 @@
 | `apps/web` | интерфейс | React 19, Vite 7, Mantine 8, TanStack Router + Query; ECharts и OpenLayers грузятся лениво |
 | `deploy/` | сервер: HTTPS-шлюз Caddy, `install.sh`, `backup.sh`, `restore.sh`, `update.sh` | Docker Compose |
 | `scripts/local.ps1`, `local.cmd` | запуск на Windows без Docker | PowerShell 5.1 |
-| `docs/` | всё описание по этапам: `01`…`12` | |
+| `docs/` | всё описание по этапам: `01`…`13` | |
 
 Ключевые места:
 - `apps/api/prisma/schema.prisma` — схема; `prisma/migrations/` — миграции; `prisma/seed.ts` — справочники (идемпотентно);
@@ -26,7 +26,8 @@
   `forecast.ts`, `loader.ts`; кеш 60 с, `kpi.invalidate(directionId)` после любой записи.
 - `apps/api/src/auth/access.service.ts` — все правила доступа (кто видит, кто вносит, кто управляет).
 - `apps/api/src/entry/` ввод факта и журнал, `manage/` объекты и справочники, `admin/` конструктор направлений,
-  `remarks/` замечания, `attachments/` файлы, `tasks/` «Мои задачи», `users/` пользователи и загрузка списком.
+  `remarks/` замечания, `attachments/` файлы, `tasks/` «Мои задачи», `users/` пользователи и загрузка списком,
+  `appearance/` оформление (цвета, шрифт, название — настраивает администратор, см. `docs/13-oformlenie.md`).
 - `apps/web/src/api.ts` — запросы (`directionQueries`), `router.tsx` — маршруты, `pages/direction/` — вкладки направления,
   `pages/direction/search.ts` — параметры адреса (`tab`, `date`, `site`, `remark`…), `theme.css` — цвета, `ui/` — общие компоненты.
 

@@ -21,9 +21,10 @@ export const int = (v: number | null | undefined) => (v == null ? '—' : nf0.fo
 export function money(v: number | null | undefined) {
   if (v == null) return '—';
   const a = Math.abs(v);
-  if (a >= 1e9) return `${nf(2).format(v / 1e9)} млрд ₽`;
-  if (a >= 1e6) return `${nf1.format(v / 1e6)} млн ₽`;
-  if (a >= 1e3) return `${nf0.format(v / 1e3)} тыс. ₽`;
+  // «₽» не отрывается от единицы при переносе строки
+  if (a >= 1e9) return `${nf(2).format(v / 1e9)} млрд ₽`;
+  if (a >= 1e6) return `${nf1.format(v / 1e6)} млн ₽`;
+  if (a >= 1e3) return `${nf0.format(v / 1e3)} тыс. ₽`;
   return `${nf0.format(v)} ₽`;
 }
 

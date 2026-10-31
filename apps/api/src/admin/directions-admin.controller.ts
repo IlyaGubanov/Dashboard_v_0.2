@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Patch, Post, Put, Req } from '@nestjs/common';
 import { z } from 'zod';
-import { directionSchema, fieldsSchema, kpisSchema, overviewThresholdsSchema, statusesSchema, trackerDefSchema, METRIC_CATALOG, type DirectionData, type DirectionDef } from '@mvs/shared';
+import { directionSchema, fieldsSchema, kpisSchema, overviewThresholdsSchema, overviewTilesSchema, statusesSchema, trackerDefSchema, METRIC_CATALOG, type DirectionData, type DirectionDef } from '@mvs/shared';
 import { ZodPipe } from '../common/zod.pipe';
 import { clientIp, type AuthRequest, type AuthUser } from '../common/request';
 import { CurrentUser, Roles } from '../auth/decorators';
@@ -56,6 +56,11 @@ export class DirectionsAdminController {
   @Put('directions/:code/kpis')
   kpis(@CurrentUser() u: AuthUser, @Param('code') code: string, @Body(new ZodPipe(kpisSchema)) b: z.output<typeof kpisSchema>, @Req() r: AuthRequest) {
     return this.s.saveKpis(u, code, b, clientIp(r));
+  }
+
+  @Put('directions/:code/tiles')
+  tiles(@CurrentUser() u: AuthUser, @Param('code') code: string, @Body(new ZodPipe(overviewTilesSchema)) b: z.output<typeof overviewTilesSchema>, @Req() r: AuthRequest) {
+    return this.s.saveTiles(u, code, b, clientIp(r));
   }
 
   @Get('metrics')

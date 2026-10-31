@@ -25,6 +25,14 @@ export const PROGRESS_METHOD_LABELS: Record<ProgressMethod, string> = {
 };
 
 /** Карточка направления для меню и сводки. */
+/** Плитка на вкладке «Обзор» направления: показывать ли, подпись (пусто — стандартная), свой цвет. */
+export interface OverviewTileConfig {
+  key: string;
+  hidden: boolean;
+  label: string;
+  color: string | null;
+}
+
 export interface DirectionSummary {
   id: number;
   code: string;
@@ -36,6 +44,8 @@ export interface DirectionSummary {
   isReadonly: boolean;
   siteUnit: string;
   sitesCount: number;
+  /** плитки вкладки «Обзор»: порядок и вид (конструктор → «Плитки обзора») */
+  overviewTiles: OverviewTileConfig[];
   sections: { id: number; name: string }[];
   curators: { id: number; fullName: string }[];
   /** роль текущего пользователя (null — доступ через глобальную роль) */

@@ -25,6 +25,25 @@ export class AccessService {
     });
   }
 
+  async fleetMembership(user: AuthUser, registryId: number) {
+    return this.prisma.fleetMember.findUnique({where:{registryId_userId:{registryId,userId:user.id}}});
+  }
+
+  async assertViewFleet(user: AuthUser, registryId: number) {
+    this.assertSection(user, 'fleet');
+    if (user.globalRole === 'USER' && !await this.fleetMembership(user, registryId)) throw new ForbiddenException('Нет доступа к РЭБ');
+  }
+
+  async canManageFleet(user: AuthUser, registryId: number) {
+    return user.globalRole === 'ADMIN' || (await this.fleetMembership(user, registryId))?.role === 'CURATOR';
+  }
+
+  async canEditFleet(user: AuthUser, registryId: number, row?: Record<string, unknown>) {
+    if (await this.canManageFleet(user, registryId)) return true;
+    const member = await this.fleetMembership(user, registryId);
+    return member?.role === 'EDITOR' && (member.scope === 'ALL' || (typeof row?.siteId === 'number' && await this.canEditSite(user, row.siteId)));
+  }
+
   async canViewDirection(user: AuthUser, directionId: number): Promise<boolean> {
     if (user.globalRole !== 'USER') return true;
     return !!(await this.membership(user, directionId));

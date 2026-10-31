@@ -14,7 +14,7 @@ function editable(kind:FleetKind,row?:FleetRow) {
 export function FleetForm({kind,row,refs,onClose,onSaved}:{kind:FleetKind;row?:FleetRow;refs:FleetRefs;onClose:()=>void;onSaved:(row:FleetRow)=>void}) {
  const [values,setValues]=useState(()=>editable(kind,row));const [errors,setErrors]=useState<Record<string,string>>({});const qc=useQueryClient();
  const set=(key:string,value:unknown)=>{setValues(v=>({...v,[key]:value}));setErrors(e=>({...e,[key]:''}));};
- const mutation=useMutation({mutationFn:(body:unknown)=>api<FleetRow>(`${FLEET_BASE}/${kind}${row?'/'+row.id:''}`,{method:row?'PATCH':'POST',body}),onSuccess:async result=>{await qc.invalidateQueries({queryKey:['dir','reb']});await qc.invalidateQueries({queryKey:['overview']});onSaved(result);},onError:e=>{if(e instanceof ApiError)setErrors(e.fields);}});
+ const mutation=useMutation({mutationFn:(body:unknown)=>api<FleetRow>(`${FLEET_BASE}/${kind}${row?'/'+row.id:''}`,{method:row?'PATCH':'POST',body}),onSuccess:async result=>{await qc.invalidateQueries({queryKey:['fleet']});await qc.invalidateQueries({queryKey:['overview']});onSaved(result);},onError:e=>{if(e instanceof ApiError)setErrors(e.fields);}});
  function submit() {
    const body={...values};for(const f of FIELDS[kind])if(f.type==='datetime'&&body[f.key])body[f.key]=new Date(String(body[f.key])+'+03:00').toISOString();
    const checked=FLEET_SCHEMAS[kind].safeParse(body);
@@ -22,15 +22,15 @@ export function FleetForm({kind,row,refs,onClose,onSaved}:{kind:FleetKind;row?:F
    mutation.mutate(checked.data);
  }
  const fields=FIELDS[kind].filter(f=>!f.finance||refs.canFinance);
- return <Modal opened onClose={onClose} title={`${row?'Изменить':'Добавить'} · ${FLEET_LABELS[kind]}`} size="xl" zIndex={400}>
-  <form onSubmit={e=>{e.preventDefault();submit();}}><Stack>
+ return <Modal opened onClose={()=>{if(!mutation.isPending)onClose();}} closeOnClickOutside={!mutation.isPending} closeOnEscape={!mutation.isPending} withCloseButton={!mutation.isPending} title={`${row?'Изменить':'Добавить'} · ${FLEET_LABELS[kind]}`} size="xl" zIndex={400}>
+  <form onSubmit={e=>{e.preventDefault();submit();}}><fieldset disabled={mutation.isPending} style={{border:0,padding:0,margin:0,minWidth:0}}><Stack>
    {kind==='assignments'||kind==='requests'?<Text size="xs" c="dimmed">Окончание периода не включается. В дату передачи техника может быть закреплена на новом объекте.</Text>:null}
    {kind==='downtime'?<Text size="xs" c="dimmed">Простой влияет на состояние только в своём периоде. Подтверждённое состояние техники хранится в её карточке.</Text>:null}
    <SimpleGrid cols={{base:1,sm:2}}>{fields.map(field=><FieldControl key={field.key} field={field} value={values[field.key]} onChange={v=>set(field.key,v)} error={errors[field.key]} refs={refs} values={values}/>)}</SimpleGrid>
    {errors._?<Alert color="red">{errors._}</Alert>:null}
    {mutation.error?<Alert color="red">{mutation.error.message}{mutation.error instanceof ApiError&&mutation.error.status===409?' Закройте форму и откройте карточку заново.':''}</Alert>:null}
    <Group justify="flex-end"><Button variant="default" onClick={onClose}>Отмена</Button><Button type="submit" loading={mutation.isPending}>Сохранить</Button></Group>
-  </Stack></form>
+  </Stack></fieldset></form>
  </Modal>;
 }
 function FieldControl({field:f,value,onChange,error,refs,values}:{field:Field;value:unknown;onChange:(v:unknown)=>void;error?:string;refs:FleetRefs;values:Record<string,unknown>}) {

@@ -100,19 +100,19 @@ export class AttachmentsService {
   private async target(user: AuthUser, entity: AttachmentEntity, entityId: number) {
     if (entity.startsWith('fleet_')) {
       this.access.assertSection(user,'fleet');
-      const d=await this.prisma.direction.findFirst({where:{code:'reb',isActive:true}});
-      if(!d) throw new NotFoundException('Направление РЭБ недоступно');
-      await this.access.assertViewDirection(user,d.id);
+      const d=await this.prisma.fleetRegistry.findUnique({where:{code:'reb'}});
+      if(!d) throw new NotFoundException('Раздел РЭБ недоступен');
+      await this.access.assertViewFleet(user,d.id);
       const kind=(entity==='fleet_liability'?'incidents':entity.slice(6)) as FleetKind;
       if(!['vehicles','incidents','fines','tolls','requests'].includes(kind)) throw new BadRequestException('Неизвестный тип вложения РЭБ');
       const row=await store(this.prisma,kind).findFirst({where:{id:entityId,directionId:d.id}});
       if(!row) throw new NotFoundException('Запись РЭБ не найдена');
-      const manager=await this.access.canManageDirection(user,d.id);
+      const manager=await this.access.canManageFleet(user,d.id);
       if(['fleet_fines','fleet_tolls','fleet_liability'].includes(entity)) this.access.assertFeature(user,'finance');
       if(entity==='fleet_liability'&&!manager) throw new ForbiddenException('Нужны права куратора РЭБ');
-      const m=await this.access.membership(user,d.id);
+      const m=await this.access.fleetMembership(user,d.id);
       const editor=m?.role==='EDITOR'&&(m.scope==='ALL'||(typeof row.siteId==='number'&&await this.access.canEditSite(user,row.siteId)));
-      return {siteId:null,directionId:d.id,canUpload:!d.isReadonly&&!row.isArchived&&(manager||editor),label:'запись РЭБ'};
+      return {siteId:null,directionId:null,manager,canUpload:!d.isReadonly&&!row.isArchived&&(manager||editor),label:'запись РЭБ'};
     }
     if (entity === 'site') {
       const s = await this.prisma.site.findUnique({ where: { id: entityId }, select: { id: true, directionId: true, isArchived: true } });
@@ -133,7 +133,7 @@ export class AttachmentsService {
 
   async list(user: AuthUser, entity: AttachmentEntity, entityId: number): Promise<{ files: Attachment[]; canUpload: boolean }> {
     const t = await this.target(user, entity, entityId);
-    const manager = await this.access.canManageDirection(user, t.directionId);
+    const manager = 'manager' in t ? t.manager : await this.access.canManageDirection(user, t.directionId!);
     const files = await this.prisma.attachment.findMany({
       where: { entity, entityId, isArchived: false, ...(entity.startsWith('fleet_')?{visibility:{in:['GENERAL',...(this.access.has(user,'finance')?['FINANCE']:[]),...(manager&&this.access.has(user,'finance')?['LIABILITY']:[])]}}:{}) },
       include: { uploadedBy: { select: { fullName: true } } },
@@ -147,7 +147,7 @@ export class AttachmentsService {
     if (!t.canUpload) throw new ForbiddenException('Нет прав добавлять файлы сюда');
     const scope=entity==='fleet_liability'?'LIABILITY':entity==='fleet_fines'||entity==='fleet_tolls'?'FINANCE':visibility??(entity.startsWith('fleet_')?'FINANCE':'GENERAL');
     if(scope!=='GENERAL') this.access.assertFeature(user,'finance');
-    if(scope==='LIABILITY') await this.access.assertManageDirection(user,t.directionId);
+    if(scope==='LIABILITY') { if('manager' in t) { if(!t.manager) throw new ForbiddenException('Нужны права куратора РЭБ'); } else await this.access.assertManageDirection(user,t.directionId!); }
     const fileName = rawName.replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').trim().slice(0, 200);
     const ext = extOf(fileName);
     if (!fileName || !(ATTACHMENT_EXT as readonly string[]).includes(ext)) {
@@ -230,7 +230,7 @@ export class AttachmentsService {
     if (!f || f.isArchived) throw new NotFoundException('Файл не найден');
     const t = await this.target(user, f.entity as AttachmentEntity, f.entityId);
     await this.checkVisibility(user,f);
-    const manager = await this.access.canManageDirection(user, t.directionId);
+    const manager = 'manager' in t ? t.manager : await this.access.canManageDirection(user, t.directionId!);
     if (!manager && f.uploadedById !== user.id) throw new ForbiddenException('Убрать файл может тот, кто его добавил, или куратор');
     await this.prisma.attachment.update({ where: { id }, data: { isArchived: true } });
     await this.audit.write({ userId: user.id, action: 'DELETE', entity: f.entity.startsWith('fleet_')?'fleet_attachment':'attachment', entityId: id, directionId: t.directionId, siteId: t.siteId, ip, comment: `файл «${f.fileName}» убран в архив (${t.label})`, before: { file: f.fileName, visibility:f.visibility, targetEntity:f.entity, targetId:f.entityId } });
@@ -240,8 +240,8 @@ export class AttachmentsService {
     if(!file.entity.startsWith('fleet_'))return;
     if(file.visibility!=='GENERAL')this.access.assertFeature(user,'finance');
     if(file.visibility==='LIABILITY') {
-      const d=await this.prisma.direction.findUniqueOrThrow({where:{code:'reb'}});
-      await this.access.assertManageDirection(user,d.id);
+      const d=await this.prisma.fleetRegistry.findUniqueOrThrow({where:{code:'reb'}});
+      if(!await this.access.canManageFleet(user,d.id))throw new ForbiddenException('Нужны права куратора РЭБ');
     }
   }
 }

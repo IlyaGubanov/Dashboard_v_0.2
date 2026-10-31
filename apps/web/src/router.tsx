@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { QueryClient } from '@tanstack/react-query';
 import { createRootRouteWithContext, createRoute, createRouter, Outlet, redirect } from '@tanstack/react-router';
 import { Alert } from '@mantine/core';
@@ -9,10 +10,11 @@ import { ChangePasswordPage } from './pages/ChangePasswordPage';
 import { OverviewPage } from './pages/OverviewPage';
 import { MapPage, parseMapSearch } from './pages/MapPage';
 import { DirectionPage } from './pages/DirectionPage';
-import { parseDirectionSearch } from './pages/direction/search';
+import { parseDirectionSearch, type DirectionSearch } from './pages/direction/search';
 import { UsersPage } from './pages/UsersPage';
 import { AdminDirectionsPage } from './pages/admin/AdminDirectionsPage';
 import { DirectionEditorPage } from './pages/admin/DirectionEditorPage';
+import { AppearancePage } from './pages/admin/AppearancePage';
 import { HelpPage } from './pages/HelpPage';
 import { ContractorsPage } from './pages/ContractorsPage';
 
@@ -77,6 +79,7 @@ const overviewRoute = createRoute({
   beforeLoad: async ({ context }) => {
     if (canSee(context.me, 'overview')) return;
     const dirs = await context.queryClient.ensureQueryData(directionsQuery);
+    if (!dirs[0]&&context.me.fleetRole&&canSee(context.me,'fleet'))throw redirect({to:'/reb',search:{}});
     if (dirs[0]) throw redirect({ to: '/d/$code', params: { code: dirs[0].code }, search: {} });
   },
   component: HomePage,
@@ -92,11 +95,16 @@ const objectsMapRoute = createRoute({
   beforeLoad: ({ context }) => { if (!canSee(context.me, 'map')) throw redirect({ to: '/' }); },
 });
 
+const FleetPage=lazy(()=>import('./pages/fleet/FleetPage'));
+const fleetRoute=createRoute({getParentRoute:()=>appRoute,path:'/reb',validateSearch:parseFleetSearch,component:()=> <Suspense fallback={<div>Загрузка РЭБ…</div>}><FleetPage/></Suspense>});
+function parseFleetSearch(s:Record<string,unknown>):Pick<DirectionSearch,'fleet'|'fr'|'ff'>{const v=parseDirectionSearch(s);return {fleet:v.fleet==='snapshots'?undefined:v.fleet,fr:v.fr,ff:v.ff};}
+
 const directionRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/d/$code',
   // вкладка, дата и открытый объект — в адресе: ссылкой можно поделиться, «назад» работает
   validateSearch: parseDirectionSearch,
+  beforeLoad:({params,search})=>{if(params.code==='reb')throw redirect({to:'/reb',search:parseFleetSearch(search)});},
   component: DirectionPage,
 });
 
@@ -108,6 +116,7 @@ const adminOnly = ({ context }: { context: { queryClient: QueryClient } }) => {
 const usersRoute = createRoute({ getParentRoute: () => appRoute, path: '/admin/users', beforeLoad: adminOnly, component: UsersPage });
 const adminDirectionsRoute = createRoute({ getParentRoute: () => appRoute, path: '/admin/directions', beforeLoad: adminOnly, component: AdminDirectionsPage });
 const directionEditorRoute = createRoute({ getParentRoute: () => appRoute, path: '/admin/directions/$code', beforeLoad: adminOnly, component: DirectionEditorPage });
+const appearanceRoute = createRoute({ getParentRoute: () => appRoute, path: '/admin/appearance', beforeLoad: adminOnly, component: AppearancePage });
 
 const contractorsRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -123,7 +132,7 @@ const helpRoute = createRoute({ getParentRoute: () => appRoute, path: '/help', c
 const routeTree = rootRoute.addChildren([
   loginRoute,
   changePasswordRoute,
-  appRoute.addChildren([overviewRoute, objectsMapRoute, directionRoute, usersRoute, adminDirectionsRoute, directionEditorRoute, contractorsRoute, helpRoute]),
+  appRoute.addChildren([overviewRoute, objectsMapRoute, fleetRoute, directionRoute, usersRoute, adminDirectionsRoute, directionEditorRoute, appearanceRoute, contractorsRoute, helpRoute]),
 ]);
 
 export const router = createRouter({ routeTree, context: { queryClient }, defaultPreload: 'intent' });

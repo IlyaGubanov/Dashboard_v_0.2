@@ -1,14 +1,13 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { createHash } from 'node:crypto';
-import { FLEET_SCHEMAS, liabilitySchema, type FleetKind, type FleetList, type FleetOverview, type FleetRefs, type FleetRow, type FleetAnalytics } from '@mvs/shared';
+import { fleetMembershipSchema, FLEET_SCHEMAS, liabilitySchema, type FleetKind, type FleetList, type FleetOverview, type FleetRefs, type FleetRow, type FleetAnalytics } from '@mvs/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { AccessService } from '../auth/access.service';
 import { AuditService } from '../audit/audit.service';
-import { KpiService } from '../kpi/kpi.service';
 import { ZodPipe } from '../common/zod.pipe';
 import type { AuthUser } from '../common/request';
-import { decimalSum, fleetCounts, fuelDifference, overlaps, paymentTotals, requestStatus } from './fleet-domain';
+import { decimalSum, fleetCounts, overlaps, paymentTotals, requestStatus } from './fleet-domain';
 import { dbData, MONEY_FIELDS, redactFleet, store, wire, type DbRow } from './fleet-store';
 
 export type FleetFilter = { from?: string; to?: string; q?: string; ownership?: string; kind?: string; fuelType?:string;category?:string;technicalState?:string;usageState?:string;status?: string; departmentId?: number; targetDirectionId?: number; vehicleId?: number; archived?: boolean; page?: number; take?: number; sort?: string; order?: 'asc'|'desc'; active?: boolean };
@@ -17,62 +16,66 @@ export const fleetHash = (s: string) => createHash('sha256').update(s).digest('h
 
 @Injectable()
 export class FleetService {
-  constructor(private readonly prisma: PrismaService, private readonly access: AccessService, private readonly audit: AuditService, private readonly kpi: KpiService) {}
+  constructor(private readonly prisma: PrismaService, private readonly access: AccessService, private readonly audit: AuditService) {}
 
-  async direction(user: AuthUser, write = false) {
+  async context(user: AuthUser, write = false) {
     this.access.assertSection(user,'fleet');
-    const d=await this.prisma.direction.findUnique({where:{code:'reb'}});
-    if (!d?.isActive) throw new NotFoundException('Направление РЭБ не найдено или выключено');
-    await this.access.assertViewDirection(user,d.id);
-    if (write && d.isReadonly) throw new ForbiddenException('Направление доступно только для просмотра');
+    const d=await this.prisma.fleetRegistry.findUnique({where:{code:'reb'}});
+    if (!d) throw new NotFoundException('Раздел РЭБ не настроен');
+    await this.access.assertViewFleet(user,d.id);
+    if (write && d.isReadonly) throw new ForbiddenException('РЭБ доступна только для просмотра');
     return d;
   }
 
   async assertWrite(user: AuthUser, directionId: number, row?: Record<string,unknown>, manage=false) {
-    if (await this.access.canManageDirection(user,directionId)) return;
-    if (!manage) {
-      const m=await this.access.membership(user,directionId);
-      if (m?.role==='EDITOR' && (m.scope==='ALL' || (typeof row?.siteId==='number' && await this.access.canEditSite(user,row.siteId)))) return;
-    }
+    if (manage ? await this.access.canManageFleet(user,directionId) : await this.access.canEditFleet(user,directionId,row)) return;
     throw new ForbiddenException(manage?'Нужны права куратора РЭБ':'Нет прав на изменение этой записи РЭБ');
   }
 
   async refs(user: AuthUser): Promise<FleetRefs> {
-    const d=await this.direction(user);
+    const d=await this.context(user);
     const [directions, users, departments, organizations, vehicles, assignments, types, membership, manage]=await Promise.all([
-      this.prisma.direction.findMany({where:{isActive:true,...(user.globalRole==='USER'?{members:{some:{userId:user.id}}}:{})},select:{id:true,name:true,code:true}}),
+      this.prisma.direction.findMany({where:{isActive:true,code:{not:'reb'},...(user.globalRole==='USER'?{members:{some:{userId:user.id}}}:{})},select:{id:true,name:true,code:true}}),
       this.access.canSee(user,'people') ? this.prisma.user.findMany({where:this.employeeWhere(user,d.id),select:{id:true,fullName:true,position:true,phone:true},orderBy:{fullName:'asc'}}) : Promise.resolve([]),
       this.prisma.department.findMany({where:{isArchived:false},select:{id:true,name:true}}),
-      this.prisma.organization.findMany({where:{directionId:d.id},select:{id:true,name:true}}),
+      this.prisma.organization.findMany({where:{direction:{OR:[{code:'reb'},{isActive:true,...(user.globalRole==='USER'?{members:{some:{userId:user.id}}}:{})}]}},select:{id:true,name:true}}),
       this.prisma.fleetVehicle.findMany({where:{directionId:d.id,isArchived:false},select:{id:true,name:true,plate:true}}),
       this.prisma.fleetAssignment.findMany({where:{directionId:d.id,isArchived:false},include:{vehicle:{select:{name:true,plate:true}}}}),
-      this.prisma.fleetFuelType.findMany({orderBy:{code:'asc'}}), this.access.membership(user,d.id), this.access.canManageDirection(user,d.id),
+      this.prisma.fleetFuelType.findMany({orderBy:{code:'asc'}}), this.access.fleetMembership(user,d.id), this.access.canManageFleet(user,d.id),
     ]);
     const sites=await this.prisma.site.findMany({where:{isArchived:false,directionId:{in:directions.map(x=>x.id)}},select:{id:true,name:true,directionId:true},orderBy:{name:'asc'}});
-    return {directionId:d.id,canEdit:!d.isReadonly&&(manage||membership?.role==='EDITOR'),canManage:manage,canFinance:this.access.has(user,'finance'),canLiability:manage&&this.access.has(user,'finance'),canAudit:this.access.has(user,'audit'),
+    return {registryId:d.id,canEdit:!d.isReadonly&&(manage||membership?.role==='EDITOR'),canManage:manage,canFinance:this.access.has(user,'finance'),canLiability:manage&&this.access.has(user,'finance'),canAudit:this.access.has(user,'audit'),
       directions,users:users.map(u=>({id:u.id,name:u.fullName,position:u.position,phone:u.phone})),departments,organizations,sites,
       vehicles:vehicles.map(v=>({id:v.id,name:`${v.name}${v.plate?' · '+v.plate:''}`})),assignments:assignments.map(a=>({id:a.id,name:`№ ${a.id} · ${a.vehicle.name} · ${day(a.startDate)} — ${a.endDate?day(a.endDate):'без окончания'}`})),fuelTypes:types.map(t=>t.code)};
   }
 
-  async addFuelType(user:AuthUser,body:unknown,ip:string|null) {
-    const d=await this.direction(user,true);await this.assertWrite(user,d.id,undefined,true);
-    const code=typeof (body as {code?:unknown})?.code==='string'?String((body as {code:string}).code).trim():'';
-    if(code.length<2||code.length>80)throw new BadRequestException('Название вида топлива: от 2 до 80 символов');
+  async member(user:AuthUser,userId:number) {
+    if(user.globalRole!=='ADMIN')throw new ForbiddenException('Нужны права администратора');
+    const d=await this.context(user);
+    const row=await this.prisma.fleetMember.findUnique({where:{registryId_userId:{registryId:d.id,userId}}});
+    return {role:row?.role??null,scope:row?.scope??'ALL'};
+  }
+  async setMember(user:AuthUser,userId:number,body:unknown,ip:string|null) {
+    if(user.globalRole!=='ADMIN')throw new ForbiddenException('Нужны права администратора');
+    const d=await this.context(user,true),value=new ZodPipe(fleetMembershipSchema).transform(body);
+    if(!await this.prisma.user.findUnique({where:{id:userId}}))throw new NotFoundException('Пользователь не найден');
     await this.prisma.$transaction(async tx=>{
-      await tx.fleetFuelType.upsert({where:{code},create:{code},update:{}});
-      await this.audit.write({userId:user.id,directionId:d.id,entity:'fleet_fuel_type',entityId:code,action:'CREATE',after:{code},ip},tx);
+      const where={registryId_userId:{registryId:d.id,userId}},before=await tx.fleetMember.findUnique({where});
+      if(value.role)await tx.fleetMember.upsert({where,create:{registryId:d.id,userId,role:value.role,scope:value.scope},update:{role:value.role,scope:value.scope}});
+      else await tx.fleetMember.deleteMany({where:{registryId:d.id,userId}});
+      await this.audit.write({userId:user.id,entity:'fleet_member',entityId:userId,action:'UPDATE',before,after:value,ip},tx);
     });
-    return {code};
+    return value;
   }
 
   private employeeWhere(user:AuthUser,directionId:number):Prisma.UserWhereInput {
     if(user.globalRole==='ADMIN')return {isActive:true};
-    return {isActive:true,OR:[{memberships:{some:{direction:{isActive:true,...(user.globalRole==='USER'?{members:{some:{userId:user.id}}}:{})}}}},
+    return {isActive:true,OR:[{fleetMemberships:{some:{registryId:directionId}}},{memberships:{some:{direction:{isActive:true,...(user.globalRole==='USER'?{members:{some:{userId:user.id}}}:{})}}}},
       ...['fleetVehicleEmployeeId','fleetAssignmentEmployeeId','fleetIncidentEmployeeId','fleetFineEmployeeId','fleetTollEmployeeId','fleetDowntimeEmployeeId','fleetRequestEmployeeId','fleetRequestInitiatorId'].map(key=>({[key]:{some:{directionId}}}))]};
   }
 
   async get(user: AuthUser, kind: FleetKind, id: number, db: Prisma.TransactionClient | PrismaService=this.prisma) {
-    const d=await this.direction(user);
+    const d=await this.context(user);
     const row=await store(db,kind).findFirst({where:{id,directionId:d.id}});
     if(!row) throw new NotFoundException('Запись РЭБ не найдена');
     return row;
@@ -97,11 +100,11 @@ export class FleetService {
     for(const key of ['ownership','kind','departmentId'] as const) if(q[key]) vehicleWhere[key]=q[key];
     if(kind==='vehicles') Object.assign(where,vehicleWhere);
     else if(Object.keys(vehicleWhere).length && !['fuel','requests','snapshots'].includes(kind)) where.vehicle=vehicleWhere;
-    if(q.vehicleId) where[kind==='vehicles'?'id':'vehicleId']=q.vehicleId;
+    if(q.vehicleId&&!['fuel','requests','snapshots'].includes(kind))where[kind==='vehicles'?'id':'vehicleId']=q.vehicleId;
     if(q.targetDirectionId && !['vehicles','fuel','snapshots','downtime'].includes(kind)) where.targetDirectionId=q.targetDirectionId;
     if(q.departmentId && ['requests','incidents','fines','tolls'].includes(kind)) where.departmentId=q.departmentId;
     if(q.status && ['incidents','fines','tolls','requests'].includes(kind)) where.status=q.status;
-    if(kind==='fuel'){if(q.fuelType)where.fuelType=q.fuelType;if(q.category)where.category=q.category;}
+    if(kind==='fuel'){where.isReportedTotal=false;if(q.fuelType)where.fuelType=q.fuelType;if(q.category)where.category=q.category;}
     if(q.active!==undefined && kind==='requests') where.status=q.active?{notIn:['FULFILLED','CANCELLED','REJECTED']}:{in:['FULFILLED','CANCELLED','REJECTED']};
     const dateKey:Partial<Record<FleetKind,string>>={incidents:'occurredAt',fines:'violationDate',tolls:'passageDate',snapshots:'asOfDate',requests:'requestDate'};
     const key=dateKey[kind];
@@ -114,7 +117,7 @@ export class FleetService {
   }
 
   async list(user:AuthUser,kind:FleetKind,q:FleetFilter):Promise<FleetList> {
-    const d=await this.direction(user); const finance=this.access.has(user,'finance');
+    const d=await this.context(user); const finance=this.access.has(user,'finance');
     // Поиск выполняется по разрешённой проекции: скрытая сумма не должна влиять на результаты поиска.
     let rows=await store(this.prisma,kind).findMany({where:this.where(kind,d.id,q),orderBy:{id:'desc'}});
     rows=await this.enrich(this.prisma,kind,rows);
@@ -138,7 +141,7 @@ export class FleetService {
       if(!await tx.user.findFirst({where:{...this.employeeWhere(user,directionId),id:Number(input[key])},select:{id:true}})) throw new BadRequestException('Сотрудник не найден, неактивен или недоступен');
     }
     if(input.departmentId!=null&&!await tx.department.findFirst({where:{id:Number(input.departmentId),isArchived:false}})) throw new BadRequestException('Подразделение не найдено');
-    if(input.ownerId!=null&&!await tx.organization.findFirst({where:{id:Number(input.ownerId),directionId}})) throw new BadRequestException('Собственник должен быть из справочника организаций РЭБ');
+    if(input.ownerId!=null) { const owner=await tx.organization.findUnique({where:{id:Number(input.ownerId)},include:{direction:{select:{id:true,code:true}}}}); if(!owner) throw new BadRequestException('Организация не найдена'); if(owner.direction.code!=='reb') await this.access.assertViewDirection(user,owner.direction.id); }
     if(input.vehicleId!=null) {
       const v=await tx.fleetVehicle.findFirst({where:{id:Number(input.vehicleId),directionId,isArchived:false}});
       if(!v) throw new BadRequestException('Техника не найдена или архивирована');
@@ -158,24 +161,25 @@ export class FleetService {
   }
 
   async save(user:AuthUser,kind:FleetKind,id:number|null,body:unknown,ip:string|null):Promise<FleetRow> {
-    const d=await this.direction(user,true); const raw=(body??{}) as Record<string,unknown>;
+    const d=await this.context(user,true); const raw=(body??{}) as Record<string,unknown>;
     const old=id?await this.get(user,kind,id):null;
     await this.assertWrite(user,d.id,old??raw,kind==='snapshots');
     const finance=this.access.has(user,'finance');
     if(!finance&&(['fines','tolls','fuel'].includes(kind)||Object.keys(raw).some(k=>MONEY_FIELDS.has(k)))) throw new ForbiddenException('Нет доступа к финансовым изменениям');
     const parsed=new ZodPipe<Record<string,unknown>>(FLEET_SCHEMAS[kind]).transform(body);
+    if(kind==='fuel'&&old) { if(raw.source===undefined)parsed.source=old.source; if(raw.isReportedTotal===undefined)parsed.isReportedTotal=old.isReportedTotal; }
     await this.assertWrite(user,d.id,{...old,...parsed},kind==='snapshots');
     if(id&&!Number.isInteger(parsed.version)) throw new ConflictException('Передайте версию открытой записи');
     if(old?.isArchived) throw new ConflictException('Сначала восстановите запись из архива');
     try {
       const result=await this.prisma.$transaction(async tx=>this.saveInTransaction(user,tx,kind,id,parsed,ip),{isolationLevel:Prisma.TransactionIsolationLevel.ReadCommitted});
-      this.kpi.invalidate(d.id); return wire(result,finance);
+      return wire(result,finance);
     } catch(e) { this.dbError(e); }
   }
 
   /** Используется и ручной формой, и подтверждённым импортом; транзакция принадлежит вызывающему. */
   async saveInTransaction(user:AuthUser,tx:Prisma.TransactionClient,kind:FleetKind,id:number|null,input:Record<string,unknown>,ip:string|null,source?:{batchId:number;key:string;raw:Prisma.InputJsonValue}):Promise<DbRow> {
-    const d=await tx.direction.findUniqueOrThrow({where:{code:'reb'}});
+    const d=await tx.fleetRegistry.findUniqueOrThrow({where:{code:'reb'}});
     const repo=store(tx,kind);
     const before=id?await repo.findFirst({where:{id,directionId:d.id}}):null;
     if(id&&!before) throw new NotFoundException('Запись не найдена');
@@ -210,7 +214,7 @@ export class FleetService {
     }
     if(kind==='assignments'&&id&&await tx.fleetAllocation.count({where:{assignmentId:id}})) throw new ConflictException('Назначение связано с заявкой. Сначала скорректируйте выделение в заявке');
     const data=dbData(values);
-    if(kind==='fuel'&&!source&&!before?.sourceKey) data.sourceKey=fleetHash([values.period,values.fuelType,values.category,values.source].join('|'));
+    if(kind==='fuel'&&!source&&!before?.importBatchId) data.sourceKey=fleetHash([values.period,values.fuelType,values.category,values.source].join('|'));
     if(source) Object.assign(data,{importBatchId:source.batchId,sourceKey:source.key,sourceRaw:source.raw});
     let row:DbRow;
     if(id) {
@@ -227,7 +231,7 @@ export class FleetService {
     }
     // Простой влияет на эффективное состояние только в действующем интервале (enrich).
     // Последнее подтверждённое состояние автомобиля остаётся самостоятельным признаком.
-    await this.audit.write({userId:user.id,directionId:d.id,entity:`fleet_${kind}`,entityId:row.id,action:id?'UPDATE':'CREATE',before,after:row,ip},tx);
+    await this.audit.write({userId:user.id,entity:`fleet_${kind}`,entityId:row.id,action:id?'UPDATE':'CREATE',before,after:row,ip},tx);
     return row;
   }
 
@@ -241,7 +245,7 @@ export class FleetService {
   }
 
   async archive(user:AuthUser,kind:FleetKind,id:number,version:number,archived:boolean,ip:string|null) {
-    const d=await this.direction(user,true); await this.assertWrite(user,d.id,undefined,true);
+    const d=await this.context(user,true); await this.assertWrite(user,d.id,undefined,true);
     const before=await this.get(user,kind,id);
     if(!this.access.has(user,'finance')&&['fines','tolls','fuel'].includes(kind)) throw new ForbiddenException('Нет доступа к финансовым изменениям');
     const result=await this.prisma.$transaction(async tx=>{
@@ -256,20 +260,20 @@ export class FleetService {
       const changed=await store(tx,kind).updateMany({where:{id,directionId:d.id,version},data:{isArchived:archived,version:{increment:1},updatedById:user.id}});
       if(changed.count!==1) throw new ConflictException('Запись изменена другим пользователем');
       const after=(await store(tx,kind).findFirst({where:{id}}))!;
-      await this.audit.write({userId:user.id,directionId:d.id,entity:`fleet_${kind}`,entityId:id,action:archived?'DELETE':'UPDATE',before,after,ip},tx);
+      await this.audit.write({userId:user.id,entity:`fleet_${kind}`,entityId:id,action:archived?'DELETE':'UPDATE',before,after,ip},tx);
       return after;
     });
-    this.kpi.invalidate(d.id); return wire(result,this.access.has(user,'finance'));
+    return wire(result,this.access.has(user,'finance'));
   }
 
   async history(user:AuthUser,kind:FleetKind,id:number) {
     const row=await this.get(user,kind,id); this.access.assertFeature(user,'audit');
-    const history=await this.prisma.auditLog.findMany({where:{directionId:row.directionId,entity:`fleet_${kind}`,entityId:String(id)},orderBy:{id:'desc'},take:100,include:{user:{select:{fullName:true}}}});
+    const history=await this.prisma.auditLog.findMany({where:{entity:`fleet_${kind}`,entityId:String(id)},orderBy:{id:'desc'},take:100,include:{user:{select:{fullName:true}}}});
     return redactFleet(history,this.access.has(user,'finance'));
   }
 
   async analytics(user:AuthUser,kind:FleetKind,q:FleetFilter):Promise<FleetAnalytics> {
-    const d=await this.direction(user),finance=this.access.has(user,'finance');
+    const d=await this.context(user),finance=this.access.has(user,'finance');
     let rows=await store(this.prisma,kind).findMany({where:this.where(kind,d.id,q)});
     if(q.q){const term=q.q.toLocaleLowerCase('ru');rows=rows.filter(r=>Object.values(wire(r,finance)).filter(v=>typeof v==='string').some(v=>String(v).toLocaleLowerCase('ru').includes(term)));}
     const summary:Record<string,string|number|null>={records:rows.length};
@@ -294,6 +298,8 @@ export class FleetService {
       for(const direction of refs.directions)distribution.push({group:'direction',label:direction.name,quantity:0,vehicleIds:[],targetDirectionId:direction.id,siteId:null});
       for(const r of rows){const entry=distribution.find(v=>v.targetDirectionId===r.targetDirectionId);if(entry){entry.vehicleIds.push(Number(r.vehicleId));entry.quantity=new Set(entry.vehicleIds).size;}const key=`${r.siteId??'none'}|${r.targetDirectionId}`;groups.set(key,[...(groups.get(key)??[]),r]);}
       for(const [,items]of groups){const siteId=items[0].siteId==null?null:Number(items[0].siteId),dirId=Number(items[0].targetDirectionId);distribution.push({group:'site',label:siteId?(refs.sites.find(s=>s.id===siteId)?.name??'Объект недоступен'):'Без объекта · '+(refs.directions.find(v=>v.id===dirId)?.name??'Направление'),quantity:new Set(items.map(r=>r.vehicleId)).size,vehicleIds:[...new Set(items.map(r=>Number(r.vehicleId)))],siteId,targetDirectionId:dirId});}
+      const vehicles=await this.prisma.fleetVehicle.findMany({where:{id:{in:[...new Set(rows.map(r=>Number(r.vehicleId)))]}},select:{id:true,kind:true}});
+      for(const label of [...new Set(vehicles.map(v=>v.kind))]){const ids=vehicles.filter(v=>v.kind===label).map(v=>v.id);distribution.push({group:'kind',label,quantity:ids.length,vehicleIds:ids,siteId:null,targetDirectionId:null});}
       summary.assigned=new Set(rows.map(r=>r.vehicleId)).size;
     }
     return {summary,monthly,byVehicle,distribution};
@@ -306,41 +312,35 @@ export class FleetService {
   }
 
   async saveLiability(user:AuthUser,incidentId:number,body:unknown,ip:string|null) {
-    const d=await this.direction(user,true); await this.get(user,'incidents',incidentId); await this.assertWrite(user,d.id,undefined,true); this.access.assertFeature(user,'finance');
+    const d=await this.context(user,true); await this.get(user,'incidents',incidentId); await this.assertWrite(user,d.id,undefined,true); this.access.assertFeature(user,'finance');
     const input=new ZodPipe(liabilitySchema).transform(body);
     await this.prisma.$transaction(async tx=>{
       await tx.$queryRaw`SELECT id FROM fleet_incident WHERE id = ${incidentId} FOR UPDATE`;
       const before=await tx.fleetIncidentLiability.findUnique({where:{incidentId}});
       if(before&&before.version!==input.version) throw new ConflictException('Ответственность уже изменена');
-      if(!await tx.user.findFirst({where:{id:input.employeeId,isActive:true}})) throw new BadRequestException('Сотрудник не найден');
+      await this.validateLinks(user,tx,d.id,{employeeId:input.employeeId});
       const data={employeeId:input.employeeId,confirmedAmount:input.confirmedAmount,recoveredAmount:input.recoveredAmount,evidence:input.evidence,note:input.note};
       const after=before?await tx.fleetIncidentLiability.update({where:{incidentId},data:{...data,version:{increment:1}}}):await tx.fleetIncidentLiability.create({data:{...data,incidentId}});
       // В общем журнале — только факт операции; персональные суммы доступны через защищённую карточку.
-      await this.audit.write({userId:user.id,directionId:d.id,entity:'fleet_liability',entityId:incidentId,action:before?'UPDATE':'CREATE',before,after,ip,comment:'Подтверждённая ответственность: ограниченный доступ'},tx);
+      await this.audit.write({userId:user.id,entity:'fleet_liability',entityId:incidentId,action:before?'UPDATE':'CREATE',before,after,ip,comment:'Подтверждённая ответственность: ограниченный доступ'},tx);
     });
     return this.getLiability(user,incidentId);
   }
 
   async overview(user:AuthUser,q:FleetFilter):Promise<FleetOverview> {
-    const d=await this.direction(user); const finance=this.access.has(user,'finance');
+    const d=await this.context(user); const finance=this.access.has(user,'finance');
     const kinds=['vehicles','incidents','fines','tolls','fuel','requests'] as const;
     const data=await Promise.all(kinds.map(k=>store(this.prisma,k).findMany({where:this.where(k,d.id,{...q,archived:false}),orderBy:{id:'desc'}})));
     const [rawVehicles,incidents,fines,tolls,fuel,requests]=data;
     const vehicles=await this.enrich(this.prisma,'vehicles',rawVehicles);
-    const snapshot=await this.prisma.fleetSnapshot.findFirst({where:{directionId:d.id,isArchived:false,...(q.to?{asOfDate:{lte:new Date(q.to)}}:{})},orderBy:[{asOfDate:'desc'},{id:'desc'}]});
-    const warnings:string[]=[];
-    const categories=fuel.filter(r=>!r.isReportedTotal), totals=fuel.filter(r=>r.isReportedTotal);
-    for(const r of totals) for(const measure of ['liters','cost'] as const) {
-      const parts=categories.filter(c=>c.period===r.period&&c.fuelType===r.fuelType&&c.source===r.source);
-      const diff=fuelDifference(parts.map(p=>p[measure]==null?null:String(p[measure])),r[measure]==null?null:String(r[measure]));
-      if(diff&&Number(diff)!==0&&(measure==='liters'||finance)) warnings.push(`${r.period} · ${r.fuelType} · ${measure==='liters'?'литры':'рубли'}: сумма категорий отличается от итога источника на ${diff}`);
-    }
-    if(snapshot&&snapshot.used!=null&&snapshot.unused!=null&&snapshot.used+snapshot.unused!==snapshot.total) warnings.push('Исторический срез: используемая и неиспользуемая техника не дают общий итог');
+    const categories=fuel.filter(r=>!r.isReportedTotal);
+    const months=[...new Set(categories.map(r=>String(r.period)))].sort();
+    const monthly=months.map(period=>{const rows=categories.filter(r=>r.period===period);return {period,liters:decimalSum(rows.map(r=>String(r.liters)),null),cost:finance?decimalSum(rows.map(r=>r.cost==null?null:String(r.cost)),null):null};});
+    const latest=monthly.at(-1);
     const updated=data.flat().map(r=>new Date(String(r.updatedAt)).getTime()).filter(Number.isFinite);
     const payments=(rows:DbRow[])=>paymentTotals(rows.map(r=>({amount:String(r.amount),paidAmount:r.paidAmount==null?null:String(r.paidAmount),status:String(r.status),dueDate:r.dueDate?day(r.dueDate):null})),new Date().toLocaleDateString('sv-SE',{timeZone:'Europe/Moscow'}));
     return {asOf:updated.length?new Date(Math.max(...updated)).toISOString():null,counts:vehicles.length?fleetCounts(vehicles.map(v=>({ownership:String(v.ownership),technicalState:String(v.effectiveTechnicalState??v.technicalState),usageState:String(v.effectiveUsageState??v.usageState)}))):null,
       incidents:incidents.length||null,fines:finance&&fines.length?payments(fines):null,tolls:finance&&tolls.length?payments(tolls):null,
-      fuel:{liters:decimalSum(categories.map(r=>String(r.liters)),null),cost:finance?decimalSum(categories.map(r=>r.cost==null?null:String(r.cost)),null):null},openRequests:requests.length?requests.filter(r=>!['FULFILLED','CANCELLED','REJECTED'].includes(String(r.status))).length:null,
-      snapshot:snapshot?wire(snapshot as unknown as DbRow,finance):null,warnings};
+      fuel:{period:latest?.period??null,liters:latest?.liters??null,cost:latest?.cost??null,monthly},openRequests:requests.length?requests.filter(r=>!['FULFILLED','CANCELLED','REJECTED'].includes(String(r.status))).length:null};
   }
 }

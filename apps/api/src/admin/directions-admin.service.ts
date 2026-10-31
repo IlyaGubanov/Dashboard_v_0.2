@@ -8,7 +8,7 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { z } from 'zod';
-import type { DirectionData, DirectionDef, fieldsSchema, kpisSchema, statusesSchema, trackerDefSchema } from '@mvs/shared';
+import type { DirectionData, DirectionDef, fieldsSchema, kpisSchema, OverviewTileConfig, statusesSchema, trackerDefSchema } from '@mvs/shared';
 import { METRIC_CATALOG } from '@mvs/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
@@ -32,6 +32,7 @@ export class DirectionsAdminService {
   ) {}
 
   private async byCode(code: string) {
+    if (code === 'reb') throw new NotFoundException('РЭБ управляется в самостоятельном разделе');
     const d = await this.prisma.direction.findUnique({ where: { code } });
     if (!d) throw new NotFoundException('Направление не найдено');
     return d;
@@ -42,7 +43,7 @@ export class DirectionsAdminService {
   }
 
   async list() {
-    const rows = await this.prisma.direction.findMany({
+    const rows = await this.prisma.direction.findMany({ where: {code: {not: 'reb'}},
       orderBy: [{ sort: 'asc' }, { name: 'asc' }],
       include: { _count: { select: { sites: { where: { isArchived: false } }, members: true, trackers: true, fieldDefs: { where: { isArchived: false } } } } },
     });
@@ -92,6 +93,7 @@ export class DirectionsAdminService {
         items: t.items.map((i) => ({ code: i.code, name: i.name, category: i.category, unit: i.unit, isArchived: i.isArchived })),
       })),
       kpis: (s.kpis ?? []) as DirectionDef['kpis'],
+      overviewTiles: (s.overviewTiles ?? []) as DirectionDef['overviewTiles'],
       units: units.map((u) => u.unit!).sort(),
     };
   }
@@ -106,6 +108,7 @@ export class DirectionsAdminService {
   }
 
   async create(user: AuthUser, b: DirectionData, ip: string | null) {
+    if(b.code==='reb')throw new BadRequestException('РЭБ — самостоятельный раздел');
     if (await this.prisma.direction.findUnique({ where: { code: b.code } })) {
       throw new ConflictException({ message: 'Направление с таким кодом уже есть', fields: { code: 'Код занят' } });
     }
@@ -309,6 +312,14 @@ export class DirectionsAdminService {
     await this.prisma.direction.update({ where: { id: d.id }, data: { settings: { ...s, kpis: items } as Prisma.InputJsonValue } });
     await this.log(user, d.id, 'direction', 'показатели сводки', s.kpis, items, ip);
     this.kpi.invalidate(d.id);
+    return { ok: true };
+  }
+
+  async saveTiles(user: AuthUser, code: string, tiles: OverviewTileConfig[], ip: string | null) {
+    const d = await this.byCode(code);
+    const s = (d.settings ?? {}) as Settings;
+    await this.prisma.direction.update({ where: { id: d.id }, data: { settings: { ...s, overviewTiles: tiles } as unknown as Prisma.InputJsonValue } });
+    await this.log(user, d.id, 'direction', 'плитки обзора', s.overviewTiles, tiles, ip);
     return { ok: true };
   }
 

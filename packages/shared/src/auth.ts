@@ -61,6 +61,7 @@ export interface DirectionAccess {
  * hiddenSections / deniedFeatures — что скрыто у сотрудника (у администратора всегда пусто).
  */
 export interface Me extends AccessRestrictions {
+  fleetRole?: MemberRole | 'ADMIN' | null;
   id: number;
   login: string;
   fullName: string;

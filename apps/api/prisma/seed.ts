@@ -146,10 +146,9 @@ const APP_SETTINGS: Record<string, Prisma.InputJsonValue> = {
 async function main() {
   for (const d of DIRECTIONS) {
     const { code, ...rest } = d;
-    await prisma.direction.upsert({ where: { code }, create: d, update: rest });
+    await prisma.direction.upsert({ where: { code }, create: d, update: {} });
   }
-  // Предметное направление использует общую авторизацию и навигацию; автомобилей в seed нет.
-  await prisma.direction.upsert({where:{code:'reb'},update:{},create:{code:'reb',name:'РЭБ — Ремонтно-эксплуатационная база',shortName:'РЭБ',icon:'truck',color:'#317186',sort:50,periodKind:'REPORT',progressMethod:'SIMPLE_AVERAGE',planMethod:'NONE',moneySource:'NONE',siteUnit:'единиц техники',settings:{module:'fleet'}}});
+  await prisma.fleetRegistry.upsert({where:{code:'reb'},update:{},create:{code:'reb',name:'Ремонтно-эксплуатационная база'}});
   for(const code of ['ДТ','АИ-92','АИ-95']) await prisma.fleetFuelType.upsert({where:{code},create:{code},update:{}});
   const byCode = Object.fromEntries((await prisma.direction.findMany()).map((d) => [d.code, d.id]));
 

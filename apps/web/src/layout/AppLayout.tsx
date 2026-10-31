@@ -1,5 +1,6 @@
 import {
   ActionIcon,
+  Alert,
   AppShell,
   Avatar,
   Burger,
@@ -17,18 +18,22 @@ import {
 import { useDisclosure } from '@mantine/hooks';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
-import { IconAdjustments, IconBuildingFactory2, IconMap, IconChartBar, IconCurrencyRubel, IconEyeOff, IconHelp, IconLogout, IconMoon, IconSun, IconUsers } from '@tabler/icons-react';
+import { IconTruck, IconAdjustments, IconBuildingFactory2, IconMap, IconChartBar, IconCurrencyRubel, IconEyeOff, IconHelp, IconLogout, IconMoon, IconPalette, IconSun, IconUsers } from '@tabler/icons-react';
 import { GLOBAL_ROLE_LABELS } from '@mvs/shared';
 import { api, directionsQuery, meQuery } from '../api';
 import { DirectionIcon } from '../ui/DirectionIcon';
 import { TasksBell } from './MyTasks';
 import { Brand } from '../ui/Brand';
+import { useAppearance } from '../ui/appearance';
 import { canHideFinance, setFinanceHidden, useFinanceToggle } from '../ui/finance';
 import { canSee } from '../ui/access';
 
 export function AppLayout() {
   const [opened, { toggle, close }] = useDisclosure();
   const { data: me } = useQuery(meQuery);
+  // подпись под направлением в меню — «Оформление» → «Меню направлений»
+  const { appearance, draft, setDraft } = useAppearance();
+  const navCaption = appearance.nav.caption;
   const { data: directions = [] } = useQuery(directionsQuery);
   const path = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
@@ -109,6 +114,22 @@ export function AppLayout() {
               onClick={close}
             />
           )}
+          {canSee(me, 'map') && <NavLink component={Link} to="/map" label="Карта объектов" leftSection={<IconMap size={18} />} active={path === '/map'} onClick={close} />}
+          <Text size="xs" c="dimmed" tt="uppercase" fw={600} px="sm" mt="md" mb={4}>
+            Направления работ
+          </Text>
+          {directions.map((d) => (
+            <NavLink
+              key={d.code}
+              renderRoot={(props) => <Link to="/d/$code" params={{ code: d.code }} {...props} />}
+              label={d.shortName}
+              description={navCaption === 'count' ? `${d.sitesCount} ${d.siteUnit}` : navCaption === 'name' ? d.name : undefined}
+              leftSection={<DirectionIcon icon={d.icon} color={d.color} />}
+              active={path.startsWith(`/d/${d.code}`)}
+              onClick={close}
+            />
+          ))}
+          {me?.fleetRole&&canSee(me,'fleet')?<NavLink component={Link} to="/reb" label="РЭБ" leftSection={<IconTruck size={18}/>} active={path==='/reb'} onClick={close} mt="md"/>:null}
           {canSee(me, 'contractors') && (
             <NavLink
               component={Link}
@@ -119,21 +140,6 @@ export function AppLayout() {
               onClick={close}
             />
           )}
-          {canSee(me, 'map') && <NavLink component={Link} to="/map" label="Карта" leftSection={<IconMap size={18} />} active={path === '/map'} onClick={close} />}
-          <Text size="xs" c="dimmed" tt="uppercase" fw={600} px="sm" mt="md" mb={4}>
-            Направления
-          </Text>
-          {directions.filter(d=>d.code!=='reb'||canSee(me,'fleet')).map((d) => (
-            <NavLink
-              key={d.code}
-              renderRoot={(props) => <Link to="/d/$code" params={{ code: d.code }} {...props} />}
-              label={d.shortName}
-              description={d.code==='reb'?undefined:`${d.sitesCount} ${d.siteUnit}`}
-              leftSection={<DirectionIcon icon={d.icon} color={d.color} />}
-              active={path.startsWith(`/d/${d.code}`)}
-              onClick={close}
-            />
-          ))}
           {me?.globalRole === 'ADMIN' && (
             <>
               <Text size="xs" c="dimmed" tt="uppercase" fw={600} px="sm" mt="md" mb={4}>
@@ -155,6 +161,14 @@ export function AppLayout() {
                 active={path.startsWith('/admin/directions')}
                 onClick={close}
               />
+              <NavLink
+                component={Link}
+                to="/admin/appearance"
+                label="Оформление"
+                leftSection={<IconPalette size={18} />}
+                active={path.startsWith('/admin/appearance')}
+                onClick={close}
+              />
             </>
           )}
         </AppShell.Section>
@@ -164,6 +178,18 @@ export function AppLayout() {
       </AppShell.Navbar>
 
       <AppShell.Main id="main-content" tabIndex={-1}>
+        {draft && path !== '/admin/appearance' && (
+          <Alert color="orange" variant="light" mb="md" title="Оформление не сохранено — так его видите только вы">
+            <Group gap="xs">
+              <Button size="xs" component={Link} to="/admin/appearance">
+                Вернуться к настройке
+              </Button>
+              <Button size="xs" variant="default" onClick={() => setDraft(null)}>
+                Отменить изменения
+              </Button>
+            </Group>
+          </Alert>
+        )}
         <div className="workspace"><Outlet /></div>
       </AppShell.Main>
     </AppShell>

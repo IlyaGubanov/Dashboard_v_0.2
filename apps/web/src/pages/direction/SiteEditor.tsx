@@ -37,7 +37,7 @@ export function SiteEditor({ code, siteId, refs, onClose, onCreated }: { code: s
   const isNew = siteId === 'new';
   const { data, error } = useQuery({ ...directionQueries.siteEdit(code, typeof siteId === 'number' ? siteId : 0), enabled: typeof siteId === 'number' });
   return (
-    <Drawer opened={siteId != null} onClose={onClose} position="right" size="min(1000px, 100%)" title={<Text fw={700}>{isNew ? 'Новый объект' : (data?.shortName ?? data?.name ?? 'Объект')}</Text>}>
+    <Drawer className="direction-page" opened={siteId != null} onClose={onClose} position="right" size="min(1000px, 100%)" title={<Text fw={700}>{isNew ? 'Новый объект' : (data?.shortName ?? data?.name ?? 'Объект')}</Text>}>
       {error && <Alert color="red">{(error as Error).message}</Alert>}
       {!isNew && !data && !error && <Skeleton h={400} />}
       {(isNew || data) && (
@@ -377,7 +377,7 @@ function ItemModal({ code, siteId, item, refs, onClose, onSaved }: { code: strin
   };
 
   return (
-    <Modal opened onClose={onClose} title={item ? 'Позиция работ' : 'Новая позиция работ'} size="lg">
+    <Modal className="direction-page" opened onClose={onClose} title={item ? 'Позиция работ' : 'Новая позиция работ'} size="lg">
       <Stack>
         <Select
           label="Вид работ"

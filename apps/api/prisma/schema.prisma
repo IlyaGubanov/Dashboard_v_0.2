@@ -53,6 +53,7 @@ model User {
   organization               Organization?            @relation(fields: [organizationId], references: [id], onDelete: SetNull)
   department                 Department?              @relation(fields: [departmentId], references: [id], onDelete: SetNull)
   sessions                   UserSession[]
+  fleetMemberships           FleetMember[]
   memberships                DirectionMember[]
   siteAssignments            SiteAssignment[]
   responsibleItems           WorkItem[]               @relation("WorkItemResponsible")
@@ -286,21 +287,11 @@ model Direction {
   layouts                          DashboardLayout[]
   kpiCache                         KpiSnapshot[]
   remarks                          Remark[]
-  fleetVehicleDirectionId          FleetVehicle[]     @relation("FleetVehicleDirectionId")
-  fleetAssignmentDirectionId       FleetAssignment[]  @relation("FleetAssignmentDirectionId")
   fleetAssignmentTargetDirectionId FleetAssignment[]  @relation("FleetAssignmentTargetDirectionId")
-  fleetIncidentDirectionId         FleetIncident[]    @relation("FleetIncidentDirectionId")
   fleetIncidentTargetDirectionId   FleetIncident[]    @relation("FleetIncidentTargetDirectionId")
-  fleetFineDirectionId             FleetFine[]        @relation("FleetFineDirectionId")
   fleetFineTargetDirectionId       FleetFine[]        @relation("FleetFineTargetDirectionId")
-  fleetTollDirectionId             FleetToll[]        @relation("FleetTollDirectionId")
   fleetTollTargetDirectionId       FleetToll[]        @relation("FleetTollTargetDirectionId")
-  fleetFuelDirectionId             FleetFuel[]        @relation("FleetFuelDirectionId")
-  fleetDowntimeDirectionId         FleetDowntime[]    @relation("FleetDowntimeDirectionId")
-  fleetRequestDirectionId          FleetRequest[]     @relation("FleetRequestDirectionId")
   fleetRequestTargetDirectionId    FleetRequest[]     @relation("FleetRequestTargetDirectionId")
-  fleetSnapshotDirectionId         FleetSnapshot[]    @relation("FleetSnapshotDirectionId")
-  fleetImports                     FleetImportBatch[]
 
   @@map("direction")
 }
@@ -1035,7 +1026,7 @@ model FleetVehicle {
   employeeId      Int?
   departmentId    Int?
 
-  direction                Direction         @relation("FleetVehicleDirectionId", fields: [directionId], references: [id], onDelete: Restrict)
+  direction                FleetRegistry         @relation("FleetVehicleDirectionId", fields: [directionId], references: [id], onDelete: Restrict, map: "fleet_vehicle_registry_fkey")
   createdBy                User?             @relation("FleetVehicleCreatedById", fields: [createdById], references: [id], onDelete: Restrict)
   updatedBy                User?             @relation("FleetVehicleUpdatedById", fields: [updatedById], references: [id], onDelete: Restrict)
   importBatch              FleetImportBatch? @relation("FleetVehicleImportBatchId", fields: [importBatchId], references: [id], onDelete: Restrict)
@@ -1076,7 +1067,7 @@ model FleetAssignment {
   startDate         DateTime  @db.Date
   endDate           DateTime? @db.Date
 
-  direction       Direction         @relation("FleetAssignmentDirectionId", fields: [directionId], references: [id], onDelete: Restrict)
+  direction       FleetRegistry         @relation("FleetAssignmentDirectionId", fields: [directionId], references: [id], onDelete: Restrict, map: "fleet_assignment_registry_fkey")
   createdBy       User?             @relation("FleetAssignmentCreatedById", fields: [createdById], references: [id], onDelete: Restrict)
   updatedBy       User?             @relation("FleetAssignmentUpdatedById", fields: [updatedById], references: [id], onDelete: Restrict)
   importBatch     FleetImportBatch? @relation("FleetAssignmentImportBatchId", fields: [importBatchId], references: [id], onDelete: Restrict)
@@ -1133,7 +1124,7 @@ model FleetIncident {
   thirdPartyCompensation Decimal?  @db.Decimal(15, 2)
   recoveredAmount        Decimal?  @db.Decimal(15, 2)
 
-  direction       Direction               @relation("FleetIncidentDirectionId", fields: [directionId], references: [id], onDelete: Restrict)
+  direction       FleetRegistry               @relation("FleetIncidentDirectionId", fields: [directionId], references: [id], onDelete: Restrict, map: "fleet_incident_registry_fkey")
   createdBy       User?                   @relation("FleetIncidentCreatedById", fields: [createdById], references: [id], onDelete: Restrict)
   updatedBy       User?                   @relation("FleetIncidentUpdatedById", fields: [updatedById], references: [id], onDelete: Restrict)
   importBatch     FleetImportBatch?       @relation("FleetIncidentImportBatchId", fields: [importBatchId], references: [id], onDelete: Restrict)
@@ -1185,7 +1176,7 @@ model FleetFine {
   status            String    @default("REVIEW") @db.VarChar(20)
   sourceStatus      String?   @db.VarChar(200)
 
-  direction       Direction         @relation("FleetFineDirectionId", fields: [directionId], references: [id], onDelete: Restrict)
+  direction       FleetRegistry         @relation("FleetFineDirectionId", fields: [directionId], references: [id], onDelete: Restrict, map: "fleet_fine_registry_fkey")
   createdBy       User?             @relation("FleetFineCreatedById", fields: [createdById], references: [id], onDelete: Restrict)
   updatedBy       User?             @relation("FleetFineUpdatedById", fields: [updatedById], references: [id], onDelete: Restrict)
   importBatch     FleetImportBatch? @relation("FleetFineImportBatchId", fields: [importBatchId], references: [id], onDelete: Restrict)
@@ -1232,7 +1223,7 @@ model FleetToll {
   status            String    @default("REVIEW") @db.VarChar(20)
   sourceStatus      String?   @db.VarChar(200)
 
-  direction       Direction         @relation("FleetTollDirectionId", fields: [directionId], references: [id], onDelete: Restrict)
+  direction       FleetRegistry         @relation("FleetTollDirectionId", fields: [directionId], references: [id], onDelete: Restrict, map: "fleet_toll_registry_fkey")
   createdBy       User?             @relation("FleetTollCreatedById", fields: [createdById], references: [id], onDelete: Restrict)
   updatedBy       User?             @relation("FleetTollUpdatedById", fields: [updatedById], references: [id], onDelete: Restrict)
   importBatch     FleetImportBatch? @relation("FleetTollImportBatchId", fields: [importBatchId], references: [id], onDelete: Restrict)
@@ -1272,7 +1263,7 @@ model FleetFuel {
   source          String   @db.VarChar(500)
   isReportedTotal Boolean  @default(false)
 
-  direction   Direction         @relation("FleetFuelDirectionId", fields: [directionId], references: [id], onDelete: Restrict)
+  direction   FleetRegistry         @relation("FleetFuelDirectionId", fields: [directionId], references: [id], onDelete: Restrict, map: "fleet_fuel_registry_fkey")
   createdBy   User?             @relation("FleetFuelCreatedById", fields: [createdById], references: [id], onDelete: Restrict)
   updatedBy   User?             @relation("FleetFuelUpdatedById", fields: [updatedById], references: [id], onDelete: Restrict)
   importBatch FleetImportBatch? @relation("FleetFuelImportBatchId", fields: [importBatchId], references: [id], onDelete: Restrict)
@@ -1303,7 +1294,7 @@ model FleetDowntime {
   employeeId     Int?
   comment        String?   @db.Text
 
-  direction   Direction         @relation("FleetDowntimeDirectionId", fields: [directionId], references: [id], onDelete: Restrict)
+  direction   FleetRegistry         @relation("FleetDowntimeDirectionId", fields: [directionId], references: [id], onDelete: Restrict, map: "fleet_downtime_registry_fkey")
   createdBy   User?             @relation("FleetDowntimeCreatedById", fields: [createdById], references: [id], onDelete: Restrict)
   updatedBy   User?             @relation("FleetDowntimeUpdatedById", fields: [updatedById], references: [id], onDelete: Restrict)
   importBatch FleetImportBatch? @relation("FleetDowntimeImportBatchId", fields: [importBatchId], references: [id], onDelete: Restrict)
@@ -1345,7 +1336,7 @@ model FleetRequest {
   status            String   @default("NEW") @db.VarChar(20)
   decisionReason    String?  @db.Text
 
-  direction       Direction         @relation("FleetRequestDirectionId", fields: [directionId], references: [id], onDelete: Restrict)
+  direction       FleetRegistry         @relation("FleetRequestDirectionId", fields: [directionId], references: [id], onDelete: Restrict, map: "fleet_request_registry_fkey")
   createdBy       User?             @relation("FleetRequestCreatedById", fields: [createdById], references: [id], onDelete: Restrict)
   updatedBy       User?             @relation("FleetRequestUpdatedById", fields: [updatedById], references: [id], onDelete: Restrict)
   importBatch     FleetImportBatch? @relation("FleetRequestImportBatchId", fields: [importBatchId], references: [id], onDelete: Restrict)
@@ -1386,7 +1377,7 @@ model FleetSnapshot {
   breakdown     Json
   details       String?  @db.Text
 
-  direction   Direction         @relation("FleetSnapshotDirectionId", fields: [directionId], references: [id], onDelete: Restrict)
+  direction   FleetRegistry         @relation("FleetSnapshotDirectionId", fields: [directionId], references: [id], onDelete: Restrict, map: "fleet_snapshot_registry_fkey")
   createdBy   User?             @relation("FleetSnapshotCreatedById", fields: [createdById], references: [id], onDelete: Restrict)
   updatedBy   User?             @relation("FleetSnapshotUpdatedById", fields: [updatedById], references: [id], onDelete: Restrict)
   importBatch FleetImportBatch? @relation("FleetSnapshotImportBatchId", fields: [importBatchId], references: [id], onDelete: Restrict)
@@ -1442,7 +1433,7 @@ model FleetImportBatch {
   importedRows                 Int
   skippedRows                  Int
   createdAt                    DateTime          @default(now())
-  direction                    Direction         @relation(fields: [directionId], references: [id], onDelete: Restrict)
+  direction                    FleetRegistry         @relation(fields: [directionId], references: [id], onDelete: Restrict, map: "fleet_import_batch_registry_fkey")
   createdBy                    User              @relation(fields: [createdById], references: [id], onDelete: Restrict)
   fleetVehicleImportBatchId    FleetVehicle[]    @relation("FleetVehicleImportBatchId")
   fleetAssignmentImportBatchId FleetAssignment[] @relation("FleetAssignmentImportBatchId")
@@ -1456,4 +1447,36 @@ model FleetImportBatch {
 
   @@index([directionId, createdAt])
   @@map("fleet_import_batch")
+}
+
+/// Самостоятельная РЭБ; без строительной готовности, объектов и отчётных периодов.
+model FleetRegistry {
+  id Int @id @default(autoincrement())
+  code String @unique @db.VarChar(40)
+  name String @db.VarChar(200)
+  isReadonly Boolean @default(false) @map("is_readonly")
+  members FleetMember[]
+  fleetVehicleDirectionId FleetVehicle[] @relation("FleetVehicleDirectionId")
+  fleetAssignmentDirectionId FleetAssignment[] @relation("FleetAssignmentDirectionId")
+  fleetIncidentDirectionId FleetIncident[] @relation("FleetIncidentDirectionId")
+  fleetFineDirectionId FleetFine[] @relation("FleetFineDirectionId")
+  fleetTollDirectionId FleetToll[] @relation("FleetTollDirectionId")
+  fleetFuelDirectionId FleetFuel[] @relation("FleetFuelDirectionId")
+  fleetDowntimeDirectionId FleetDowntime[] @relation("FleetDowntimeDirectionId")
+  fleetRequestDirectionId FleetRequest[] @relation("FleetRequestDirectionId")
+  fleetSnapshotDirectionId FleetSnapshot[] @relation("FleetSnapshotDirectionId")
+  fleetImports FleetImportBatch[]
+  @@map("fleet_registry")
+}
+
+/// Общие роли сотрудников и ограничения области ввода.
+model FleetMember {
+  registryId Int @map("registry_id")
+  userId Int @map("user_id")
+  role MemberRole
+  scope MemberScope @default(ALL)
+  registry FleetRegistry @relation(fields: [registryId], references: [id], onDelete: Cascade, map: "fleet_member_registry_id_fkey")
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@id([registryId, userId])
+  @@map("fleet_member")
 }

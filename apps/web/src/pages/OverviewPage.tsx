@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { IconRefresh } from '@tabler/icons-react';
 import type { OverviewDirection } from '@mvs/shared';
-import { overviewQuery,directionsQuery,meQuery } from '../api';
+import { overviewQuery,meQuery } from '../api';
 import { canSee } from '../ui/access';
 import { FleetSummaryCard } from './fleet/FleetOverview';
 import { MyTasksCard } from '../layout/MyTasks';
@@ -24,7 +24,7 @@ const sum = (xs: (number | null | undefined)[]) => {
 
 /** Производственная сводка для руководства: все направления на последнюю отчётную точку. */
 export function OverviewPage() {
-  const {data:available}=useQuery(directionsQuery),{data:me}=useQuery(meQuery);
+  const {data:me}=useQuery(meQuery);
   const { data, isLoading, error, refetch, isFetching, dataUpdatedAt } = useQuery(overviewQuery);
   const [view, setView] = useState<'cards' | 'table'>('cards');
   const dirs = data?.directions ?? [];
@@ -46,7 +46,7 @@ export function OverviewPage() {
       </Group>
 
       <MyTasksCard />
-      {available?.some(d=>d.code==='reb')&&canSee(me,'fleet')?<FleetSummaryCard/>:null}
+      {me?.fleetRole&&canSee(me,'fleet')?<FleetSummaryCard/>:null}
       {error && <Alert color="red">{(error as Error).message}</Alert>}
       {isLoading && <Skeleton h={420} radius="md" />}
 
@@ -55,7 +55,7 @@ export function OverviewPage() {
           <Totals dirs={dirs} />
 
           <Group justify="space-between">
-            <Text fw={600}>Направления</Text>
+            <Text fw={600}>Направления работ</Text>
             <SegmentedControl
               size="xs"
               value={view}

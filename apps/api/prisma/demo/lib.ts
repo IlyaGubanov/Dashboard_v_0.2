@@ -121,6 +121,8 @@ export async function member(
 /** Удаляет всё содержимое направления (объекты, периоды, справочники, трекеры), кроме самих настроек и статусов. */
 export async function wipeDirection(db: Tx, directionId: number) {
   await db.kpiSnapshot.deleteMany({ where: { directionId } });
+  // центры затрат «Экономики» ссылаются на объекты и лоты (удаление ограничено) — удаляются вместе с направлением
+  await db.econBudget.deleteMany({ where: { directionId } });
   await db.site.deleteMany({ where: { directionId } }); // каскадом: позиции, факт, отчёты, замечания, трекеры объекта
   await db.reportingPeriod.deleteMany({ where: { directionId } });
   await db.tracker.deleteMany({ where: { directionId } });

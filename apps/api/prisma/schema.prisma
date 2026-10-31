@@ -143,6 +143,7 @@ model User {
   layouts          DashboardLayout[] @relation("LayoutOwner")
   auditEntries     AuditLog[]
   staffingEditor   StaffingEditor?
+  econEditor       EconEditor?
 
   @@index([fullName])
   @@map("user")
@@ -323,6 +324,7 @@ model Direction {
   layouts       DashboardLayout[]
   kpiCache      KpiSnapshot[]
   remarks       Remark[]
+  econBudgets   EconBudget[]
 
   @@map("direction")
 }
@@ -340,6 +342,7 @@ model Section {
   direction Direction                @relation(fields: [directionId], references: [id], onDelete: Cascade)
   sites     Site[]
   editors   DirectionMemberSection[]
+  econBudgets EconBudget[]
 
   @@unique([directionId, code])
   @@map("section")
@@ -512,6 +515,7 @@ model Site {
   remarks     Remark[]
   trackerRows TrackerRow[]
   attachments Attachment[]
+  econBudgets EconBudget[]
 
   @@unique([directionId, code])
   @@index([directionId, sectionId])
@@ -1057,4 +1061,158 @@ model AuditLog {
   @@index([directionId, at])
   @@index([siteId, at])
   @@map("audit_log")
+}
+
+// ── Экономика: нормы и лимиты расходов, факт ПЭО по месяцам ──
+
+enum EconArticleKind {
+  DIRECT // прямые: ФОТ рабочих, материалы, техника, субподряд, вывоз мусора — факт по центру затрат
+  OVERHEAD // общепроизводственные/общехозяйственные — факт общей суммой за месяц, разносится по выручке
+  ADMIN // административные — так же, как общепроизводственные
+}
+
+enum EconScope {
+  DIRECTION // всё направление (объекты без своего бюджета)
+  SECTION // лот направления (объекты лота без своего бюджета)
+  SITE // крупный объект
+}
+
+enum EconLimitMethod {
+  SHARE // доля от стоимости объекта без НДС, %
+  AMOUNT // рассчитанная сумма без НДС
+}
+
+/// Статья расходов (справочник ПЭО).
+model EconArticle {
+  id         Int             @id @default(autoincrement())
+  code       String          @unique @db.VarChar(40)
+  name       String          @db.VarChar(200)
+  kind       EconArticleKind
+  method     String?         @db.Text // методика установления лимита (подсказка)
+  sort       Int             @default(0)
+  isArchived Boolean         @default(false) @map("is_archived")
+
+  limits       EconLimit[]
+  facts        EconFact[]
+  companyFacts EconCompanyFact[]
+
+  @@map("econ_article")
+}
+
+/// Центр затрат: крупный объект, лот или всё направление. Лимиты по статьям и нормы часов.
+model EconBudget {
+  id               Int       @id @default(autoincrement())
+  directionId      Int       @map("direction_id")
+  scope            EconScope
+  /// D — направление, S<id> — лот, O<id> — объект; один центр затрат на каждый
+  scopeKey         String    @map("scope_key") @db.VarChar(20)
+  sectionId        Int?      @map("section_id")
+  siteId           Int?      @map("site_id")
+  /// Стоимость без НДС, если ПЭО задаёт её сам; пусто — по стоимости из дашборда за вычетом НДС
+  costNet          Decimal?  @map("cost_net") @db.Decimal(18, 2)
+  vatExempt        Boolean   @default(false) @map("vat_exempt")
+  laborHoursNorm   Decimal?  @map("labor_hours_norm") @db.Decimal(14, 2)
+  machineHoursNorm Decimal?  @map("machine_hours_norm") @db.Decimal(14, 2)
+  note             String?   @db.Text
+  isArchived       Boolean   @default(false) @map("is_archived")
+  version          Int       @default(1)
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  direction Direction         @relation(fields: [directionId], references: [id], onDelete: Cascade)
+  section   Section?          @relation(fields: [sectionId], references: [id], onDelete: Restrict)
+  site      Site?             @relation(fields: [siteId], references: [id], onDelete: Restrict)
+  limits    EconLimit[]
+  months    EconBudgetMonth[]
+
+  @@unique([directionId, scopeKey])
+  @@map("econ_budget")
+}
+
+/// Лимит центра затрат по статье: доля от стоимости или сумма.
+model EconLimit {
+  budgetId  Int             @map("budget_id")
+  articleId Int             @map("article_id")
+  method    EconLimitMethod
+  sharePct  Decimal?        @map("share_pct") @db.Decimal(7, 3)
+  amount    Decimal?        @db.Decimal(18, 2)
+  setBy     String?         @map("set_by") @db.VarChar(200)
+  note      String?         @db.VarChar(2000)
+
+  budget  EconBudget  @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  article EconArticle @relation(fields: [articleId], references: [id], onDelete: Restrict)
+
+  @@id([budgetId, articleId])
+  @@index([articleId])
+  @@map("econ_limit")
+}
+
+/// Отчётный месяц экономики: OPEN → CLOSED (ПЭО закрыл) → LOCKED (администратор).
+model EconMonth {
+  month      String       @id @db.Char(7)
+  status     PeriodStatus @default(OPEN)
+  version    Int          @default(1)
+  closedById Int?         @map("closed_by_id")
+  closedAt   DateTime?    @map("closed_at")
+  updatedAt  DateTime     @updatedAt @map("updated_at")
+
+  companyFacts EconCompanyFact[]
+
+  @@map("econ_month")
+}
+
+/// Общие за месяц расходы компании (общепроизводственные, административные) — до разнесения по объектам.
+model EconCompanyFact {
+  month     String  @db.Char(7)
+  articleId Int     @map("article_id")
+  amount    Decimal @db.Decimal(18, 2)
+
+  period  EconMonth   @relation(fields: [month], references: [month], onDelete: Cascade)
+  article EconArticle @relation(fields: [articleId], references: [id], onDelete: Restrict)
+
+  @@id([month, articleId])
+  @@index([articleId])
+  @@map("econ_company_fact")
+}
+
+/// Строка факта центра затрат за месяц: часы и сумма по статьям (EconFact).
+model EconBudgetMonth {
+  id           Int      @id @default(autoincrement())
+  budgetId     Int      @map("budget_id")
+  month        String   @db.Char(7)
+  laborHours   Decimal? @map("labor_hours") @db.Decimal(14, 2)
+  machineHours Decimal? @map("machine_hours") @db.Decimal(14, 2)
+  note         String?  @db.VarChar(2000)
+  version      Int      @default(1)
+  updatedById  Int?     @map("updated_by_id")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  budget EconBudget @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  facts  EconFact[]
+
+  @@unique([budgetId, month])
+  @@index([month])
+  @@map("econ_budget_month")
+}
+
+/// Фактические расходы без НДС по статье за месяц (не нарастающим итогом).
+model EconFact {
+  budgetMonthId Int     @map("budget_month_id")
+  articleId     Int     @map("article_id")
+  amount        Decimal @db.Decimal(18, 2)
+
+  row     EconBudgetMonth @relation(fields: [budgetMonthId], references: [id], onDelete: Cascade)
+  article EconArticle     @relation(fields: [articleId], references: [id], onDelete: Restrict)
+
+  @@id([budgetMonthId, articleId])
+  @@index([articleId])
+  @@map("econ_fact")
+}
+
+/// Ответственные ПЭО: вносят лимиты и факт по всем направлениям. Назначает администратор.
+model EconEditor {
+  userId Int  @id @map("user_id")
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("econ_editor")
 }

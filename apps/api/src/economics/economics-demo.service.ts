@@ -1,0 +1,251 @@
+import { ConflictException, ForbiddenException, Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
+import { econIsOwnOrg, econNet, econScopeKey, type EconScope } from '@mvs/shared';
+import { PrismaService } from '../prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
+import { AccessService } from '../auth/access.service';
+import { KpiService } from '../kpi/kpi.service';
+import type { AuthUser } from '../common/request';
+import { econCoveredSites } from './coverage';
+
+/** Что создано демо-загрузкой — удаляется только это. */
+const DEMO_KEY = 'economics.demo';
+const SETTINGS_KEY = 'economics.settings';
+/** Демо-месяцы: факт за март–сентябрь 2026, сентябрь открыт, остальные закрыты ПЭО. */
+const MONTHS = ['2026-03', '2026-04', '2026-05', '2026-06', '2026-07', '2026-08', '2026-09'];
+/** Доля расходов месяца в накопленных (S-кривая освоения). */
+const CURVE = [0.06, 0.1, 0.14, 0.17, 0.18, 0.18, 0.17];
+const LABOR_RATE = 850;
+const MACHINE_RATE = 4200;
+const ARTICLES = ['fot', 'materials', 'machinery', 'subcontract', 'waste', 'overhead', 'admin'] as const;
+type Code = (typeof ARTICLES)[number];
+/** Типовые доли статей от стоимости без НДС, % — по направлениям. */
+const SHARES: Record<string, Record<Code, number>> = {
+  schools: { fot: 16, materials: 38, machinery: 6, subcontract: 18, waste: 2.5, overhead: 6, admin: 4 },
+  mkd: { fot: 22, materials: 34, machinery: 4, subcontract: 12, waste: 1.5, overhead: 6, admin: 4 },
+  networks: { fot: 14, materials: 26, machinery: 14, subcontract: 22, waste: 3, overhead: 6, admin: 4 },
+  streets: { fot: 18, materials: 36, machinery: 12, subcontract: 12, waste: 2, overhead: 6, admin: 4 },
+};
+/** Отклонения факта от плана затрат (+ перерасход) — чтобы в обзоре были и экономия, и перерасход. */
+const SPECIAL: { dir: string; nth: number; code: Code; dev: number }[] = [
+  { dir: 'schools', nth: 0, code: 'materials', dev: 0.14 },
+  { dir: 'schools', nth: 2, code: 'fot', dev: 0.06 },
+  { dir: 'mkd', nth: 1, code: 'machinery', dev: 0.07 },
+  { dir: 'mkd', nth: 3, code: 'fot', dev: 0.12 },
+  { dir: 'networks', nth: 0, code: 'subcontract', dev: 0.12 },
+  { dir: 'networks', nth: 1, code: 'machinery', dev: 0.05 },
+  { dir: 'streets', nth: 0, code: 'waste', dev: 0.2 },
+];
+/** Детерминированный разброс −1…1 (одинаковые демо-данные при каждой загрузке). */
+const jitter = (seed: number) => {
+  const x = Math.sin(seed * 9301 + 49297) * 233280;
+  return (x - Math.floor(x)) * 2 - 1;
+};
+const r2 = (v: number) => Math.round(v * 100) / 100;
+
+interface Plan { directionId: number; code: string; scope: EconScope; sectionId: number | null; siteId: number | null; costNet: number | null; note: string | null }
+
+@Injectable()
+export class EconomicsDemoService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
+    private readonly access: AccessService,
+    private readonly kpi: KpiService,
+  ) {}
+
+  private async assertAdmin(user: AuthUser) {
+    if (!(await this.access.economicsPermissions(user)).canAdmin) throw new ForbiddenException('Демо-данные загружает и удаляет администратор');
+  }
+
+  private async marker() {
+    const s = await this.prisma.appSetting.findUnique({ where: { key: DEMO_KEY } });
+    return (s?.value ?? null) as { budgetIds: number[]; months: string[]; companyMonths: string[] } | null;
+  }
+
+  /** Центры затрат для демо: школы — по объекту, МКД — по лотам и крупнейший объект, Сети — СР-лоты и остальное направление, Благоустройство — всё направление. */
+  private async plans(): Promise<Plan[]> {
+    const dirs = await this.prisma.direction.findMany({
+      where: { isActive: true, code: { in: Object.keys(SHARES) } },
+      include: { sections: { where: { isArchived: false } }, sites: { where: { isArchived: false }, select: { id: true, sectionId: true } } },
+    });
+    const plans: Plan[] = [];
+    for (const d of dirs) {
+      if (!d.sites.length) continue;
+      const money = await this.kpi.siteMoney(d.id);
+      const cost = (id: number) => money.get(id)?.portfolio ?? 0;
+      const base = { directionId: d.id, code: d.code, costNet: null, note: 'Демо-данные' };
+      if (d.code === 'schools') {
+        for (const s of d.sites.filter((s) => cost(s.id) >= 1e7)) plans.push({ ...base, scope: 'SITE', sectionId: null, siteId: s.id });
+      } else if (d.code === 'mkd') {
+        const big = [...d.sites].sort((a, b) => cost(b.id) - cost(a.id))[0];
+        if (big && cost(big.id)) plans.push({ ...base, scope: 'SITE', sectionId: null, siteId: big.id });
+        for (const sec of d.sections) plans.push({ ...base, scope: 'SECTION', sectionId: sec.id, siteId: null });
+      } else if (d.code === 'networks') {
+        for (const sec of d.sections.filter((s) => /коллектор|пруд|водн/i.test(s.name))) plans.push({ ...base, scope: 'SECTION', sectionId: sec.id, siteId: null });
+        plans.push({ ...base, scope: 'DIRECTION', sectionId: null, siteId: null });
+      } else {
+        // в Благоустройстве стоимости в дашборде нет — ПЭО задаёт её по сметам
+        plans.push({ ...base, scope: 'DIRECTION', sectionId: null, siteId: null, costNet: 1_180_000_000, note: 'Демо-данные. Стоимость без НДС — по сметам (в дашборде стоимости нет)' });
+      }
+    }
+    return plans;
+  }
+
+  async load(user: AuthUser, ip: string | null) {
+    await this.assertAdmin(user);
+    if (await this.marker()) throw new ConflictException('Демо-данные экономики уже загружены. Чтобы загрузить заново, сначала удалите их.');
+    const settings = ((await this.prisma.appSetting.findUnique({ where: { key: SETTINGS_KEY } }))?.value ?? {}) as { vatRate?: number; laborRate?: number | null; machineRate?: number | null };
+    const vat = settings.vatRate ?? 22;
+    const articles = new Map((await this.prisma.econArticle.findMany({ where: { code: { in: [...ARTICLES] } } })).map((a) => [a.code, a]));
+    if (articles.size !== ARTICLES.length) throw new ConflictException('Нет статей расходов по умолчанию — проверьте справочник');
+    const plans = await this.plans();
+    const existing = await this.prisma.econBudget.findMany({ select: { directionId: true, scopeKey: true } });
+    const taken = new Set(existing.map((b) => `${b.directionId}:${b.scopeKey}`));
+    const todo = plans.filter((p) => !taken.has(`${p.directionId}:${econScopeKey(p.scope, p.sectionId, p.siteId)}`));
+
+    // готовность и подрядчики считаются по итоговому составу центров затрат направления
+    const sitesByDir = new Map<number, { id: number; sectionId: number | null }[]>();
+    for (const d of new Set(todo.map((p) => p.directionId)))
+      sitesByDir.set(d, await this.prisma.site.findMany({ where: { directionId: d, isArchived: false }, select: { id: true, sectionId: true } }));
+    const scopeOf = (p: Plan) => ({ scope: p.scope, sectionId: p.sectionId, siteId: p.siteId, isArchived: false });
+
+    return this.prisma.$transaction(
+      async (tx) => {
+        const budgetIds: number[] = [];
+        const directTotals = new Map<string, number>();
+        const nth = new Map<string, number>();
+        for (const p of todo) {
+          const k = nth.get(p.code) ?? 0;
+          nth.set(p.code, k + 1);
+          const allScopes = [...plans.filter((x) => x.directionId === p.directionId).map(scopeOf)];
+          const covered = econCoveredSites(scopeOf(p), allScopes, sitesByDir.get(p.directionId) ?? []);
+          const money = await this.kpi.siteMoney(p.directionId);
+          const m = covered.map((s) => money.get(s.id)).filter((x): x is NonNullable<typeof x> => !!x);
+          const gross = m.reduce((a, x) => a + (x.portfolio ?? 0), 0);
+          const costBase = p.costNet ?? econNet(gross || null, vat, false);
+          if (!costBase) continue;
+          const w = m.filter((x) => x.fact != null && x.portfolio);
+          const progress = w.length ? w.reduce((a, x) => a + x.fact! * x.portfolio!, 0) / w.reduce((a, x) => a + x.portfolio!, 0) : 0.35;
+
+          // субподряд Сетей — по договорам сторонних подрядчиков из дашборда (без своих СМУ)
+          let subcontract: number | null = null;
+          if (p.code === 'networks') {
+            const contracts = await tx.contract.findMany({ where: { siteId: { in: covered.map((s) => s.id) }, organizationId: { not: null } }, select: { amount: true, organization: { select: { name: true } } } });
+            const ext = contracts.filter((c) => c.organization && !econIsOwnOrg(c.organization.name)).reduce((a, c) => a + Number(c.amount ?? 0), 0);
+            if (ext > 0) subcontract = r2(Math.min(econNet(ext, vat, false)!, costBase * 0.6));
+          }
+
+          // при субподряде по договорам собственные прямые статьи уменьшаются пропорционально: лимиты всего ≈ 92% стоимости
+          const shares = { ...SHARES[p.code] };
+          if (subcontract != null) {
+            const subPct = (subcontract / costBase) * 100;
+            const own = ['fot', 'materials', 'machinery', 'waste'] as const;
+            const room = 92 - subPct - shares.overhead - shares.admin;
+            const sumOwn = own.reduce((a, c) => a + shares[c], 0);
+            for (const c of own) shares[c] = Math.max(0.5, (shares[c] * room) / sumOwn);
+          }
+          const b = await tx.econBudget.create({
+            data: { directionId: p.directionId, scope: p.scope, scopeKey: econScopeKey(p.scope, p.sectionId, p.siteId), sectionId: p.sectionId, siteId: p.siteId, costNet: p.costNet == null ? null : new Prisma.Decimal(p.costNet), note: p.note },
+          });
+          budgetIds.push(b.id);
+          const limit: Record<Code, number> = {} as Record<Code, number>;
+          for (const [i, code] of ARTICLES.entries()) {
+            const pct = r2(shares[code] * (1 + 0.08 * jitter(b.id * 10 + i)));
+            const asAmount = p.costNet != null || (code === 'subcontract' && subcontract != null);
+            const amount = code === 'subcontract' && subcontract != null ? subcontract : r2((costBase * pct) / 100);
+            limit[code] = asAmount ? amount : r2((costBase * pct) / 100);
+            await tx.econLimit.create({
+              data: {
+                budgetId: b.id,
+                articleId: articles.get(code)!.id,
+                method: asAmount ? 'AMOUNT' : 'SHARE',
+                sharePct: asAmount ? null : new Prisma.Decimal(pct),
+                amount: asAmount ? new Prisma.Decimal(amount) : null,
+                setBy: code === 'subcontract' && subcontract != null ? 'ПЭО по договорам подрядчиков' : asAmount ? 'ПЭО по сметам' : 'ПЭО, доля по аналогам',
+              },
+            });
+          }
+          await tx.econBudget.update({ where: { id: b.id }, data: { laborHoursNorm: new Prisma.Decimal(r2(limit.fot / LABOR_RATE)), machineHoursNorm: new Prisma.Decimal(r2(limit.machinery / MACHINE_RATE)) } });
+
+          // факт: накопленный = лимит × готовность × (1 + отклонение), разнесённый по месяцам
+          const devs = new Map<Code, number>();
+          for (const [i, code] of ARTICLES.entries()) {
+            const special = SPECIAL.find((s) => s.dir === p.code && s.nth === k && s.code === code);
+            devs.set(code, special ? special.dev : 0.05 * jitter(b.id * 31 + i) - 0.01);
+          }
+          for (const [mi, month] of MONTHS.entries()) {
+            const share = CURVE[mi] * (1 + 0.15 * jitter(b.id * 7 + mi));
+            const amounts = (['fot', 'materials', 'machinery', 'subcontract', 'waste'] as const).map((code) => ({ code, v: r2(limit[code] * progress * (1 + devs.get(code)!) * share) }));
+            const row = await tx.econBudgetMonth.create({
+              data: {
+                budgetId: b.id,
+                month,
+                laborHours: new Prisma.Decimal(r2((amounts[0].v / LABOR_RATE) * (1 + 0.04 * jitter(b.id + mi)))),
+                machineHours: new Prisma.Decimal(r2((amounts[2].v / MACHINE_RATE) * (1 + 0.06 * jitter(b.id * 3 + mi)))),
+                updatedById: user.id,
+              },
+            });
+            await tx.econFact.createMany({ data: amounts.filter((a) => a.v > 0).map((a) => ({ budgetMonthId: row.id, articleId: articles.get(a.code)!.id, amount: new Prisma.Decimal(a.v) })) });
+            directTotals.set(month, (directTotals.get(month) ?? 0) + amounts.reduce((s, a) => s + a.v, 0));
+          }
+        }
+
+        // общие расходы компании: только за месяцы, где их ещё нет
+        const companyMonths: string[] = [];
+        for (const month of MONTHS) {
+          const total = directTotals.get(month);
+          if (!total) continue;
+          await tx.econMonth.upsert({ where: { month }, create: { month }, update: {} });
+          if (await tx.econCompanyFact.count({ where: { month } })) continue;
+          await tx.econCompanyFact.createMany({
+            data: [
+              { month, articleId: articles.get('overhead')!.id, amount: new Prisma.Decimal(r2(total * 0.072)) },
+              { month, articleId: articles.get('admin')!.id, amount: new Prisma.Decimal(r2(total * 0.046)) },
+            ],
+          });
+          companyMonths.push(month);
+        }
+        // март–август закрыты ПЭО, сентябрь открыт для ввода
+        const months = MONTHS.filter((m) => directTotals.has(m));
+        for (const month of months.slice(0, -1)) {
+          const cur = await tx.econMonth.findUniqueOrThrow({ where: { month } });
+          if (cur.status === 'OPEN') await tx.econMonth.update({ where: { month }, data: { status: 'CLOSED', closedById: user.id, closedAt: new Date(), version: { increment: 1 } } });
+        }
+        if (settings.laborRate == null || settings.machineRate == null)
+          await tx.appSetting.upsert({
+            where: { key: SETTINGS_KEY },
+            create: { key: SETTINGS_KEY, value: { vatRate: vat, laborRate: LABOR_RATE, machineRate: MACHINE_RATE } },
+            update: { value: { vatRate: vat, laborRate: settings.laborRate ?? LABOR_RATE, machineRate: settings.machineRate ?? MACHINE_RATE } },
+          });
+        await tx.appSetting.upsert({ where: { key: DEMO_KEY }, create: { key: DEMO_KEY, value: { budgetIds, months, companyMonths } }, update: { value: { budgetIds, months, companyMonths } } });
+        await this.audit.write({ userId: user.id, action: 'IMPORT', entity: 'econ_demo', entityId: 'demo', after: { budgets: budgetIds.length, months }, comment: `Загружены демо-данные экономики: центров затрат ${budgetIds.length}, месяцев ${months.length}`, ip }, tx);
+        return { budgets: budgetIds.length, months: months.length, skipped: plans.length - todo.length };
+      },
+      { timeout: 120_000 },
+    );
+  }
+
+  /** Удаляет только созданное демо-загрузкой: центры затрат (с лимитами и фактом) и общие расходы демо-месяцев. */
+  async clear(user: AuthUser, ip: string | null) {
+    await this.assertAdmin(user);
+    const m = await this.marker();
+    if (!m) return { budgets: 0 };
+    return this.prisma.$transaction(async (tx) => {
+      const removed = await tx.econBudget.deleteMany({ where: { id: { in: m.budgetIds } } });
+      await tx.econCompanyFact.deleteMany({ where: { month: { in: m.companyMonths } } });
+      for (const month of m.months) {
+        const left = await tx.econBudgetMonth.count({ where: { month } });
+        const company = await tx.econCompanyFact.count({ where: { month } });
+        if (!left && !company) await tx.econMonth.deleteMany({ where: { month } });
+      }
+      await tx.appSetting.delete({ where: { key: DEMO_KEY } });
+      await this.audit.write({ userId: user.id, action: 'DELETE', entity: 'econ_demo', entityId: 'demo', before: m, comment: `Удалены демо-данные экономики: центров затрат ${removed.count}`, ip }, tx);
+      return { budgets: removed.count };
+    });
+  }
+
+  async hasDemo() {
+    return !!(await this.marker());
+  }
+}

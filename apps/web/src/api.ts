@@ -1,5 +1,6 @@
 import { queryOptions } from '@tanstack/react-query';
 import type {
+  ObjectsMap,
   AuditPage,
   ContractorsView,
   EntrySheet,
@@ -22,6 +23,8 @@ import type {
   DepartmentItem,
   WorkGrid,
 } from '@mvs/shared';
+
+export const objectsMapQuery = queryOptions({ queryKey: ['map'], queryFn: () => api<ObjectsMap>('/map'), staleTime: 0, refetchInterval: 60_000 });
 
 /** Ошибка API: сообщение, ошибки по полям (для форм) и код. */
 export class ApiError extends Error {

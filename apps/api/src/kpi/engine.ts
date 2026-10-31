@@ -34,6 +34,7 @@ import {
 import { DAY_MS, isoDate, type KDirection, type KEntry, type KItem, type KPeriod, type KReport, type KSite } from './model';
 import { computeTiles } from './metrics';
 import { basePeriod, forecastOf, sitePlanEnd } from './forecast';
+import { networkLaying } from './network-laying';
 
 export interface ItemCalc {
   item: KItem;
@@ -382,6 +383,7 @@ export function directionKpi(
             paid: sum((s) => s.money.paid),
           },
     kpis: computeTiles(dir, period, P, r),
+    networkLaying: dir.code === 'networks' ? networkLaying(r.sites) : undefined,
     attention,
     forecast: fc,
     forecastLate: hasPlan && fc ? r.sites.filter((s) => s.forecast?.status === 'late' || (s.forecast?.status === 'stalled' && s.forecast.planEnd)).length : null,

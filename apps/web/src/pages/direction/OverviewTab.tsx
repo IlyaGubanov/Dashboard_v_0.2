@@ -11,6 +11,7 @@ import { int, money, pct, pp, tileValue } from '../../ui/format';
 import { Lag } from '../../ui/Lag';
 import { useFinanceHidden } from '../../ui/finance';
 import { asOfLabel } from '../overview/DirectionCard';
+import { NetworkLayingCard } from './NetworkLayingCard';
 
 const RISK_ORDER: SiteRisk[] = ['crit', 'warn', 'ok', 'done', 'wait', 'na'];
 
@@ -35,6 +36,7 @@ export function OverviewTab({
   return (
     <Stack>
       <KpiHeader k={k} />
+      {code === 'networks' && <NetworkLayingCard rows={k.networkLaying} />}
       <Grid gutter="md">
         <Grid.Col span={{ base: 12, lg: 6 }}>
           <Stack>

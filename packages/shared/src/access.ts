@@ -24,8 +24,8 @@ export const APP_SECTION_LABELS: Record<AppSection, string> = {
 
 /** Группы для формы: разделы меню и вкладки направления. */
 export const APP_SECTION_GROUPS: { label: string; sections: AppSection[] }[] = [
-  { label: 'Меню', sections: ['overview', 'contractors'] },
-  { label: 'Вкладки направления', sections: ['sites', 'matrix', 'schedule', 'trackers', 'dynamics', 'map', 'remarks', 'people', 'settings'] },
+  { label: 'Меню', sections: ['overview', 'contractors', 'map'] },
+  { label: 'Вкладки направления', sections: ['sites', 'matrix', 'schedule', 'trackers', 'dynamics', 'remarks', 'people', 'settings'] },
 ];
 
 /** Отдельные возможности, которые можно отключить сотруднику. */

@@ -18,7 +18,7 @@ import {
 import { useDisclosure } from '@mantine/hooks';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
-import { IconAdjustments, IconBuildingFactory2, IconChartBar, IconCurrencyRubel, IconEyeOff, IconHelp, IconLogout, IconMoon, IconPalette, IconSun, IconUsers } from '@tabler/icons-react';
+import { IconAdjustments, IconBuildingFactory2, IconMap, IconChartBar, IconCurrencyRubel, IconEyeOff, IconHelp, IconLogout, IconMoon, IconPalette, IconSun, IconUsers } from '@tabler/icons-react';
 import { GLOBAL_ROLE_LABELS } from '@mvs/shared';
 import { api, directionsQuery, meQuery } from '../api';
 import { DirectionIcon } from '../ui/DirectionIcon';
@@ -125,7 +125,7 @@ export function AppLayout() {
               onClick={close}
             />
           )}
-          {me?.videoAccess?.view && <NavLink component={Link} to="/video" label="Видеонаблюдение" leftSection={<IconVideo size={18} />} active={path === '/video'} onClick={close} />}
+          {canSee(me, 'map') && <NavLink component={Link} to="/map" label="Карта" leftSection={<IconMap size={18} />} active={path === '/map'} onClick={close} />}
           <Text size="xs" c="dimmed" tt="uppercase" fw={600} px="sm" mt="md" mb={4}>
             Направления
           </Text>

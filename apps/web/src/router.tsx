@@ -7,6 +7,7 @@ import { AppLayout } from './layout/AppLayout';
 import { LoginPage } from './pages/LoginPage';
 import { ChangePasswordPage } from './pages/ChangePasswordPage';
 import { OverviewPage } from './pages/OverviewPage';
+import { MapPage, parseMapSearch } from './pages/MapPage';
 import { DirectionPage } from './pages/DirectionPage';
 import { parseDirectionSearch } from './pages/direction/search';
 import { UsersPage } from './pages/UsersPage';
@@ -89,6 +90,10 @@ function HomePage() {
   if (canSee(me, 'overview')) return <OverviewPage />;
   return <Alert color="gray">Доступных разделов пока нет. Обратитесь к администратору.</Alert>;
 }
+const objectsMapRoute = createRoute({
+  getParentRoute: () => appRoute, path: '/map', component: MapPage, validateSearch: parseMapSearch,
+  beforeLoad: ({ context }) => { if (!canSee(context.me, 'map')) throw redirect({ to: '/' }); },
+});
 
 const directionRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -141,7 +146,7 @@ const videoAdminRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   loginRoute,
   changePasswordRoute,
-  appRoute.addChildren([overviewRoute, directionRoute, usersRoute, adminDirectionsRoute, directionEditorRoute, appearanceRoute, contractorsRoute, helpRoute, videoRoute, videoAdminRoute]),
+  appRoute.addChildren([overviewRoute, objectsMapRoute, directionRoute, usersRoute, adminDirectionsRoute, directionEditorRoute, appearanceRoute, contractorsRoute, helpRoute]),
 ]);
 
 export const router = createRouter({ routeTree, context: { queryClient }, defaultPreload: 'intent' });

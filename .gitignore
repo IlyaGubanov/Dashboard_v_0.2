@@ -4,6 +4,10 @@ dist/
 *.log
 .vite/
 coverage/
+.video-qa/
+.playwright-cli/
+test-results/
+playwright-report/
 
 # сертификаты и ключи
 deploy/certs/*.pem

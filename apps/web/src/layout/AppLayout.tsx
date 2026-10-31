@@ -27,6 +27,7 @@ import { Brand } from '../ui/Brand';
 import { useAppearance } from '../ui/appearance';
 import { canHideFinance, setFinanceHidden, useFinanceToggle } from '../ui/finance';
 import { canSee } from '../ui/access';
+import { IconVideo } from '@tabler/icons-react';
 
 export function AppLayout() {
   const [opened, { toggle, close }] = useDisclosure();
@@ -126,6 +127,7 @@ export function AppLayout() {
             />
           )}
           {canSee(me, 'map') && <NavLink component={Link} to="/map" label="Карта" leftSection={<IconMap size={18} />} active={path === '/map'} onClick={close} />}
+          {me?.videoAccess?.view && <NavLink component={Link} to="/video" label="Видеонаблюдение" leftSection={<IconVideo size={18} />} active={path === '/video'} onClick={close} />}
           {staffingAccess?.canView && <NavLink component={Link} to="/staffing" label="Штатная численность" leftSection={<IconUsers size={18} />} active={path.startsWith('/staffing')} onClick={close} />}
           <Text size="xs" c="dimmed" tt="uppercase" fw={600} px="sm" mt="md" mb={4}>
             Направления
@@ -172,6 +174,7 @@ export function AppLayout() {
               />
             </>
           )}
+          {me?.videoAccess?.manage && <NavLink component={Link} to="/admin/video" label="Настройки видеонаблюдения" leftSection={<IconVideo size={18} />} active={path === '/admin/video'} onClick={close} />}
         </AppShell.Section>
         <AppShell.Section>
           <NavLink component={Link} to="/help" label="Справка" leftSection={<IconHelp size={18} />} active={path === '/help'} onClick={close} />

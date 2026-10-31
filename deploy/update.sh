@@ -8,6 +8,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 echo "== Резервная копия перед обновлением"
+bash deploy/video-secrets.sh
 bash deploy/backup.sh
 
 if [[ "${1:-}" != "--no-pull" ]]; then
@@ -21,6 +22,7 @@ if [[ "${1:-}" != "--no-pull" ]]; then
 fi
 
 echo "== Сборка и перезапуск"
+bash deploy/video-secrets.sh
 docker compose up -d --build
 
 echo "== Проверка"

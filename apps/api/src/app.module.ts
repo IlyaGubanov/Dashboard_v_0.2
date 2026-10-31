@@ -19,6 +19,7 @@ import { TasksModule } from './tasks/tasks.module';
 import { ContractorsModule } from './contractors/contractors.module';
 import { AppearanceModule } from './appearance/appearance.module';
 import { HealthController } from './health.controller';
+import { VideoModule } from './video/video.module';
 import { StaffingModule } from './staffing/staffing.module';
 
 @Module({
@@ -40,6 +41,7 @@ import { StaffingModule } from './staffing/staffing.module';
     TasksModule,
     ContractorsModule,
     AppearanceModule,
+    VideoModule,
     StaffingModule,
   ],
   controllers: [HealthController],

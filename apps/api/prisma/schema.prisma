@@ -24,7 +24,77 @@ enum GlobalRole {
 
 /// Учётная запись. Сотрудник без входа в систему (прораб, ГИП подрядчика) — запись с canLogin = false:
 /// его можно назначить ответственным, но войти он не может.
+/// Пароль только AES-256-GCM; ключ вне БД. Архив регистратора не меняет состояния камер.
+model VideoRecorder {
+  id Int @id @default(autoincrement())
+  siteId Int @map("site_id")
+  name String @db.VarChar(200)
+  host String @db.VarChar(253)
+  port Int @default(554)
+  username String @db.VarChar(128)
+  passwordEncrypted String @map("password_encrypted") @db.Text
+  profile String @default("DAHUA") @db.VarChar(20)
+  enabled Boolean @default(true)
+  isArchived Boolean @default(false) @map("is_archived")
+  version Int @default(1)
+  lastCheckAt DateTime? @map("last_check_at")
+  lastCheck String? @map("last_check") @db.VarChar(40)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdById Int? @map("created_by_id")
+  updatedById Int? @map("updated_by_id")
+  site Site @relation(fields: [siteId], references: [id], onDelete: Restrict)
+  cameras VideoCamera[]
+  createdBy User? @relation("RecorderCreated", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy User? @relation("RecorderUpdated", fields: [updatedById], references: [id], onDelete: SetNull)
+  @@index([siteId])
+  @@map("video_recorder")
+}
+
+model VideoCamera {
+  id Int @id @default(autoincrement())
+  recorderId Int @map("recorder_id")
+  name String @db.VarChar(200)
+  channel Int
+  /// Номер занят любой неархивной камерой, включая временно отключённую.
+  activeChannel Int? @map("active_channel")
+  stream Int @default(1)
+  sort Int @default(0)
+  enabled Boolean @default(true)
+  isArchived Boolean @default(false) @map("is_archived")
+  version Int @default(1)
+  syncState String @default("PENDING") @map("sync_state") @db.VarChar(20)
+  syncError String? @map("sync_error") @db.VarChar(300)
+  lastCheckAt DateTime? @map("last_check_at")
+  lastCheck String? @map("last_check") @db.VarChar(40)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdById Int? @map("created_by_id")
+  updatedById Int? @map("updated_by_id")
+  recorder VideoRecorder @relation(fields: [recorderId], references: [id], onDelete: Restrict)
+  createdBy User? @relation("CameraCreated", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy User? @relation("CameraUpdated", fields: [updatedById], references: [id], onDelete: SetNull)
+  @@unique([recorderId, activeChannel])
+  @@map("video_camera")
+}
+
+/// Положительное разрешение: отсутствие строки запрещает видео независимо от области производственного ввода.
+model VideoGrant {
+  userId Int @map("user_id")
+  siteId Int @map("site_id")
+  canManage Boolean @default(false) @map("can_manage")
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  site Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  @@id([userId, siteId])
+  @@map("video_grant")
+}
+
 model User {
+  videoGrants VideoGrant[]
+  recordersCreated VideoRecorder[] @relation("RecorderCreated")
+  recordersUpdated VideoRecorder[] @relation("RecorderUpdated")
+  camerasCreated VideoCamera[] @relation("CameraCreated")
+  camerasUpdated VideoCamera[] @relation("CameraUpdated")
   id                 Int        @id @default(autoincrement())
   login              String?    @unique @db.VarChar(64)
   passwordHash       String?    @map("password_hash") @db.VarChar(100)
@@ -394,6 +464,8 @@ model FieldDef {
 
 /// Объект направления (адрес МКД, школа, участок сети, улица).
 model Site {
+  videoRecorders VideoRecorder[]
+  videoGrants VideoGrant[]
   id           Int       @id @default(autoincrement())
   directionId  Int       @map("direction_id")
   sectionId    Int?      @map("section_id")

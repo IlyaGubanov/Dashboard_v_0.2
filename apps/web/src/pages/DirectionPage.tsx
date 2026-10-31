@@ -14,7 +14,6 @@ import { ScheduleTab } from './direction/ScheduleTab';
 import { TrackersTab } from './direction/TrackersTab';
 import { PeopleTab } from './direction/PeopleTab';
 import { DynamicsTab } from './direction/DynamicsTab';
-import { MapTab } from './direction/MapTab';
 import { SettingsTab } from './direction/SettingsTab';
 import { SiteDrawer } from './direction/SiteDrawer';
 import { EntryTab } from './direction/EntryTab';
@@ -27,7 +26,7 @@ const route = getRouteApi('/app/d/$code');
 
 /**
  * Страница направления. Набор вкладок зависит от данных: «График работ» — если есть плановые сроки,
- * «Надстройки» — если они заведены, «Карта» — если у объектов есть координаты.
+ * «Надстройки» — если они заведены. Единая карта находится в отдельном разделе меню.
  * Вкладки, скрытые в карточке сотрудника, не показываются (их данные сервер и не отдаёт).
  */
 export function DirectionPage() {
@@ -37,7 +36,6 @@ export function DirectionPage() {
   const { data: dirs } = useQuery(directionsQuery);
   const { data: periods = [] } = useQuery(directionQueries.periods(code));
   const { data: kpi } = useQuery(directionQueries.kpi(code, search.date));
-  const { data: sites } = useQuery(directionQueries.sites(code, search.date));
   const { data: me } = useQuery(meQuery);
   const see = (t: DirectionTab) => t === 'overview' || t === 'entry' || t === 'manage' || (t === 'journal' ? hasFeature(me, 'audit') : canSee(me, t));
   const { data: trackers } = useQuery({ ...directionQueries.trackers(code), enabled: !!me && see('trackers') });
@@ -60,7 +58,6 @@ export function DirectionPage() {
     trackers: !!trackers?.trackers.some((t) => t.rows.length),
     people: true,
     dynamics: true,
-    map: !!sites?.some((s) => s.lat != null),
     entry: canEnter,
     remarks: true,
     manage: canManage,
@@ -113,7 +110,7 @@ export function DirectionPage() {
         onChange={(v) => set({ tab: (v as DirectionTab) ?? 'overview' })}
         data={([
           ['entry', 'Ввод данных'], ['overview', 'Обзор'], ['sites', 'Объекты'], ['matrix', 'Матрица'],
-          ['schedule', 'График работ'], ['trackers', 'Надстройки'], ['dynamics', 'Динамика'], ['map', 'Карта'],
+          ['schedule', 'График работ'], ['trackers', 'Надстройки'], ['dynamics', 'Динамика'],
           ['remarks', `Замечания${activeRemarks ? ` · ${activeRemarks}` : ''}`], ['people', 'Ответственные'],
           ['manage', 'Управление'], ['journal', 'Журнал'], ['settings', 'Устройство'],
         ] as [DirectionTab, string][]).filter(([value]) => available[value]).map(([value, label]) => ({ value, label }))} />
@@ -131,7 +128,6 @@ export function DirectionPage() {
           {available.schedule && <Tabs.Tab value="schedule">График работ</Tabs.Tab>}
           {available.trackers && <Tabs.Tab value="trackers">Надстройки</Tabs.Tab>}
           {available.dynamics && <Tabs.Tab value="dynamics">Динамика</Tabs.Tab>}
-          {available.map && <Tabs.Tab value="map">Карта</Tabs.Tab>}
           {available.remarks && <Tabs.Tab value="remarks" rightSection={activeRemarks ? <Badge size="sm" variant="light" color={overdueRemarks ? "red" : "gray"}>{activeRemarks}</Badge> : undefined}>
             Замечания
           </Tabs.Tab>}
@@ -166,9 +162,6 @@ export function DirectionPage() {
         </Tabs.Panel>
         <Tabs.Panel value="dynamics" pt="md">
           <DynamicsTab code={code} date={search.date} />
-        </Tabs.Panel>
-        <Tabs.Panel value="map" pt="md">
-          <MapTab code={code} date={search.date} onOpenSite={openSite} />
         </Tabs.Panel>
         <Tabs.Panel value="remarks" pt="md">
           <RemarksTab key={search.rv ?? ''} code={code} initial={search.rv} onOpen={(id) => set({ remark: id })} />

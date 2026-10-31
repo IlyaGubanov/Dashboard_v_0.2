@@ -3,6 +3,7 @@ import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import cookieParser from 'cookie-parser';
+import { json } from 'express';
 import { AppModule } from './app.module';
 
 // BigInt (id журнала) в JSON — строкой
@@ -17,6 +18,10 @@ async function bootstrap() {
   app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS ?? 1));
   app.disable('x-powered-by');
   app.use(cookieParser());
+  // Срез содержит редактируемые функции всех подразделений; обычный лимит 100 КБ для него мал.
+  app.use('/api/staffing', json({ limit: '8mb' }));
+  // Nest видит первый jsonParser и не добавляет свой: регистрируем обычный лимит для остальных маршрутов явно.
+  app.use(json({ limit: '100kb' }));
   app.setGlobalPrefix('api');
   app.enableShutdownHooks();
 

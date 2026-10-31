@@ -12,3 +12,5 @@ export * from './contractors';
 export * from './appearance';
 export * from './map';
 export * from './fleet';
+export * from './video';
+export * from './staffing';

@@ -21,6 +21,8 @@ import type {
   TrackersView,
   UserListItem,
   DepartmentItem,
+  StaffingPermissions,
+  StaffingView,
   WorkGrid,
 } from '@mvs/shared';
 
@@ -71,6 +73,9 @@ export const directionsQuery = queryOptions({
   queryFn: () => api<DirectionSummary[]>('/directions'),
   staleTime: 60_000,
 });
+
+export const staffingAccessQuery = queryOptions({ queryKey: ['staffing', 'access'], queryFn: () => api<StaffingPermissions>('/staffing/access'), staleTime: 30_000 });
+export const staffingQuery = queryOptions({ queryKey: ['staffing', 'data'], queryFn: () => api<StaffingView>('/staffing'), staleTime: 30_000 });
 
 /** Производственная сводка; обновляется сама раз в 5 минут, пока страница открыта. */
 export const overviewQuery = queryOptions({

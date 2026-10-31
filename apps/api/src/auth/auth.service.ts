@@ -5,6 +5,7 @@ import { parseRestrictions, type AccessRestrictions, type Me } from '@mvs/shared
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import type { AuthUser } from '../common/request';
+import { AccessService } from './access.service';
 
 export const SESSION_COOKIE = 'mvs_sid';
 const BCRYPT_COST = 12;
@@ -35,6 +36,7 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly access: AccessService,
   ) {}
 
   async login(login: string, password: string, ip: string | null, userAgent: string | null) {
@@ -124,7 +126,10 @@ export class AuthService {
       where: { id: userId },
       include: { fleetMemberships: {where:{registry:{code:'reb'}}}, memberships: { include: { direction: { select: { code: true } }, sections: true } } },
     });
+    const videoUser = { id: u.id, globalRole: u.globalRole, ...restrictionsOf(u) } as AuthUser;
+    const [viewSites, manageSites] = await Promise.all([this.access.videoSiteIds(videoUser, 'view'), this.access.videoSiteIds(videoUser, 'manage')]);
     return {
+      videoAccess: { view: viewSites.length > 0, manage: manageSites.length > 0 },
       id: u.id,
       login: u.login!,
       fullName: u.fullName,

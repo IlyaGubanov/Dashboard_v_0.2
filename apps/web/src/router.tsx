@@ -1,8 +1,8 @@
 import { lazy, Suspense } from 'react';
 import { QueryClient } from '@tanstack/react-query';
-import { createRootRouteWithContext, createRoute, createRouter, Outlet, redirect } from '@tanstack/react-router';
+import { createRootRouteWithContext, createRoute, createRouter, lazyRouteComponent, Outlet, redirect } from '@tanstack/react-router';
 import { Alert } from '@mantine/core';
-import { ApiError, directionsQuery, meQuery } from './api';
+import { ApiError, directionsQuery, meQuery, staffingAccessQuery } from './api';
 import { canSee } from './ui/access';
 import { AppLayout } from './layout/AppLayout';
 import { LoginPage } from './pages/LoginPage';
@@ -17,6 +17,9 @@ import { DirectionEditorPage } from './pages/admin/DirectionEditorPage';
 import { AppearancePage } from './pages/admin/AppearancePage';
 import { HelpPage } from './pages/HelpPage';
 import { ContractorsPage } from './pages/ContractorsPage';
+import { VideoPage } from './video/VideoPage';
+import { VideoAdminPage } from './video/VideoAdminPage';
+import { parseStaffingSearch } from './pages/staffing/search';
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -128,11 +131,32 @@ const contractorsRoute = createRoute({
 });
 
 const helpRoute = createRoute({ getParentRoute: () => appRoute, path: '/help', component: HelpPage });
+const staffingRoute = createRoute({ getParentRoute: () => appRoute, path: '/staffing', validateSearch: parseStaffingSearch,
+  beforeLoad: async ({ context }) => { if (!(await context.queryClient.fetchQuery(staffingAccessQuery)).canView) throw redirect({ to: '/' }); }, component: lazyRouteComponent(() => import('./pages/staffing/StaffingPage'), 'StaffingPage') });
+
+const videoSearch = (s: Record<string, unknown>) => ({
+  q: typeof s.q === 'string' ? s.q.slice(0, 200) : undefined,
+  direction: typeof s.direction === 'string' ? s.direction : undefined,
+  site: Number.isSafeInteger(Number(s.site)) && Number(s.site) > 0 ? Number(s.site) : undefined,
+});
+const videoRoute = createRoute({
+  getParentRoute: () => appRoute, path: '/video', validateSearch: videoSearch, component: VideoPage,
+  beforeLoad: ({ context }) => { if (!context.me.videoAccess?.view) throw redirect({ to: '/' }); },
+});
+const videoAdminRoute = createRoute({
+  getParentRoute: () => appRoute, path: '/admin/video', component: VideoAdminPage,
+  validateSearch: (s: Record<string, unknown>) => ({ ...videoSearch(s),
+    tab: s.tab === 'cameras' ? 'cameras' as const : 'recorders' as const,
+    archive: s.archive === 'archived' ? 'archived' as const : s.archive === 'all' ? 'all' as const : 'active' as const,
+    recorder: Number.isSafeInteger(Number(s.recorder)) && Number(s.recorder) > 0 ? Number(s.recorder) : undefined,
+  }),
+  beforeLoad: ({ context }) => { if (!context.me.videoAccess?.manage) throw redirect({ to: '/' }); },
+});
 
 const routeTree = rootRoute.addChildren([
   loginRoute,
   changePasswordRoute,
-  appRoute.addChildren([overviewRoute, objectsMapRoute, fleetRoute, directionRoute, usersRoute, adminDirectionsRoute, directionEditorRoute, appearanceRoute, contractorsRoute, helpRoute]),
+  appRoute.addChildren([overviewRoute, objectsMapRoute, fleetRoute, directionRoute, usersRoute, adminDirectionsRoute, directionEditorRoute, appearanceRoute, contractorsRoute, helpRoute, staffingRoute, videoRoute, videoAdminRoute]),
 ]);
 
 export const router = createRouter({ routeTree, context: { queryClient }, defaultPreload: 'intent' });

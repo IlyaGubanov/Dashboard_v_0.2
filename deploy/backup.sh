@@ -13,6 +13,12 @@ STAMP=$(date +%F_%H%M)
 mkdir -p "$DIR"
 chmod 700 "$DIR"
 
+# Recorder passwords require the matching key; this private file must travel with the DB backup.
+if [[ -f .env ]]; then
+  cp -- .env "$DIR/secrets-$STAMP.env"
+  chmod 600 "$DIR/secrets-$STAMP.env"
+fi
+
 echo "$(date '+%F %T') начало резервной копии → $DIR"
 
 # база: согласованный снимок без блокировки работы пользователей; пишем во временный файл, чтобы не оставить обрывок
@@ -20,8 +26,9 @@ docker compose exec -T db sh -c 'exec mysqldump -u root -p"$MYSQL_ROOT_PASSWORD"
   | gzip >"$DIR/db-$STAMP.sql.gz.part"
 mv "$DIR/db-$STAMP.sql.gz.part" "$DIR/db-$STAMP.sql.gz"
 
-# файлы: том files_data, через контейнер api (там он смонтирован)
-docker compose run --rm --no-deps -T -v "$DIR":/backup --entrypoint sh api -c "tar czf /backup/files-$STAMP.tar.gz.part -C /data/files . && mv /backup/files-$STAMP.tar.gz.part /backup/files-$STAMP.tar.gz"
+# Reuse the running container: compose run api would conflict with its fixed control-network IP.
+docker compose exec -T api tar czf - -C /data/files . >"$DIR/files-$STAMP.tar.gz.part"
+mv "$DIR/files-$STAMP.tar.gz.part" "$DIR/files-$STAMP.tar.gz"
 
 # проверка: архивы читаются, в дампе есть таблицы
 gzip -t "$DIR/db-$STAMP.sql.gz"
@@ -31,6 +38,7 @@ tables=$(gzip -dc "$DIR/db-$STAMP.sql.gz" | grep -c '^CREATE TABLE' || true)
 
 find "$DIR" -name 'db-*.sql.gz' -mtime +"$KEEP" -delete
 find "$DIR" -name 'files-*.tar.gz' -mtime +"$KEEP" -delete
+find "$DIR" -name 'secrets-*.env' -mtime +"$KEEP" -delete
 find "$DIR" -name '*.part' -mtime +1 -delete
 
 echo "$(date '+%F %T') готово: db-$STAMP.sql.gz ($(du -h "$DIR/db-$STAMP.sql.gz" | cut -f1), таблиц $tables), files-$STAMP.tar.gz ($(du -h "$DIR/files-$STAMP.tar.gz" | cut -f1))"

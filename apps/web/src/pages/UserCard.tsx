@@ -49,6 +49,7 @@ import {
 import { api, ApiError, departmentsQuery, directionsQuery, usersQuery } from '../api';
 import { FleetRolePanel } from './fleet/FleetRolePanel';
 import { zodValidate } from '../ui/zodValidate';
+import { VideoAccessPanel } from '../video/VideoAccessPanel';
 
 const roleOptions = GLOBAL_ROLES.map((r) => ({ value: r, label: GLOBAL_ROLE_LABELS[r] }));
 const NEW_DEPARTMENT = '__new__';
@@ -292,7 +293,7 @@ export function CreateUserModal({ opened, onClose, onCreated }: { opened: boolea
   );
 }
 
-export type UserCardTab = 'profile' | 'roles' | 'access';
+export type UserCardTab = 'profile' | 'roles' | 'access' | 'video';
 
 /** Карточка сотрудника: данные берутся из общего списка, поэтому после сохранения сразу видны изменения. */
 export function UserCard({ userId, tab: initialTab, onClose }: { userId: number; tab: UserCardTab; onClose: () => void }) {
@@ -321,10 +322,12 @@ export function UserCard({ userId, tab: initialTab, onClose }: { userId: number;
           <Tabs.Tab value="profile">Личные данные</Tabs.Tab>
           <Tabs.Tab value="roles">Роли и доступ к РЭБ</Tabs.Tab>
           <Tabs.Tab value="access">Разделы и возможности</Tabs.Tab>
+          <Tabs.Tab value="video">Камеры</Tabs.Tab>
         </Tabs.List>
         <Tabs.Panel value="profile">
           <ProfileForm user={user} onDone={() => notifications.show({ color: 'green', message: 'Личные данные сохранены' })} />
         </Tabs.Panel>
+        <Tabs.Panel value="video"><VideoAccessPanel userId={user.id} isAdmin={user.globalRole === 'ADMIN'} /></Tabs.Panel>
         <Tabs.Panel value="roles">
           <RolesPanel user={user} />
         </Tabs.Panel>

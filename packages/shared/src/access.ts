@@ -5,12 +5,13 @@ import { z } from 'zod';
  * Скрытие только сужает то, что дают роли: вкладки «Ввод данных» и «Управление» по-прежнему зависят от роли в направлении,
  * «Обзор» направления виден всегда. Администратору скрытие не применяется.
  */
-export const APP_SECTIONS = ['overview', 'contractors', 'sites', 'matrix', 'schedule', 'trackers', 'dynamics', 'map', 'remarks', 'people', 'settings', 'fleet'] as const;
+export const APP_SECTIONS = ['overview', 'contractors', 'sites', 'matrix', 'schedule', 'trackers', 'dynamics', 'map', 'remarks', 'people', 'settings', 'fleet', 'staffing'] as const;
 export type AppSection = (typeof APP_SECTIONS)[number];
 
 export const APP_SECTION_LABELS: Record<AppSection, string> = {
   overview: 'Производственная сводка',
   contractors: 'Подрядчики',
+  staffing: 'Штатная численность',
   sites: 'Объекты',
   matrix: 'Матрица',
   schedule: 'График работ',
@@ -25,15 +26,17 @@ export const APP_SECTION_LABELS: Record<AppSection, string> = {
 
 /** Группы для формы: разделы меню и вкладки направления. */
 export const APP_SECTION_GROUPS: { label: string; sections: AppSection[] }[] = [
-  { label: 'Меню', sections: ['overview', 'contractors', 'map', 'fleet'] },
+  { label: 'Меню', sections: ['overview', 'contractors', 'map', 'fleet', 'staffing'] },
   { label: 'Вкладки направления', sections: ['sites', 'matrix', 'schedule', 'trackers', 'dynamics', 'remarks', 'people', 'settings'] },
 ];
 
 /** Отдельные возможности, которые можно отключить сотруднику. */
-export const FEATURES = ['finance', 'remarksCreate', 'export', 'audit'] as const;
+export const FEATURES = ['finance', 'remarksCreate', 'export', 'audit', 'videoView', 'videoManage'] as const;
 export type Feature = (typeof FEATURES)[number];
 
 export const FEATURE_LABELS: Record<Feature, { label: string; description: string }> = {
+  videoView: { label: 'Просмотр камер', description: 'Дополнительно требуется явный доступ к объектам на вкладке «Камеры» сотрудника.' },
+  videoManage: { label: 'Управление видеонаблюдением', description: 'Только явно разрешённые объекты; доступно руководству и кураторам.' },
   finance: { label: 'Видеть финансы', description: 'Стоимость, КС-2, оплата, авансы, лимиты. Без галочки сервер не отдаёт денежные данные.' },
   remarksCreate: { label: 'Создавать замечания', description: 'Заводить новые замечания по объектам (если есть права на объект).' },
   export: { label: 'Выгрузка в Excel', description: 'Кнопки выгрузки реестров в CSV для Excel.' },

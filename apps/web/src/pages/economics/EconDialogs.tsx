@@ -102,6 +102,7 @@ const ENTITY: Record<string, string> = {
   econ_settings: 'Настройки',
   econ_editors: 'Ответственные',
   econ_demo: 'Демо-данные',
+  econ_cash: 'ДДС',
 };
 const ACTION: Record<string, string> = { CREATE: 'Создание', UPDATE: 'Изменение', DELETE: 'Удаление', IMPORT: 'Загрузка', PERIOD_CLOSE: 'Закрытие', PERIOD_OPEN: 'Открытие' };
 
@@ -127,7 +128,7 @@ export function EconJournal() {
               <Table.Tr key={r.id}>
                 <Table.Td>{new Date(r.at).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' })}</Table.Td>
                 <Table.Td>{r.user}</Table.Td>
-                <Table.Td>{ACTION[r.action] ?? r.action}: {ENTITY[r.entity] ?? r.entity}{r.entity === 'econ_fact' || r.entity === 'econ_budget' ? ` ЦЗ-${r.entityId?.split(':')[0]}` : r.entityId && r.entity !== 'econ_settings' && r.entity !== 'econ_editors' && r.entity !== 'econ_demo' ? ` ${r.entityId}` : ''}</Table.Td>
+                <Table.Td>{ACTION[r.action] ?? r.action}: {ENTITY[r.entity] ?? r.entity}{r.entity === 'econ_fact' || r.entity === 'econ_budget' ? ` ЦЗ-${r.entityId?.split(':')[0]}` : r.entityId && r.entity !== 'econ_settings' && r.entity !== 'econ_editors' && r.entity !== 'econ_demo' && r.entity !== 'econ_cash' ? ` ${r.entityId}` : ''}</Table.Td>
                 <Table.Td>{r.comment}</Table.Td>
               </Table.Tr>
             ))}

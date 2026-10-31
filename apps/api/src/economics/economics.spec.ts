@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { econDefaultMonth, econDeviation, econDistribute, econMonthEnd, econNzp, econRevenue, econForecast, econIsOwnOrg, econLimitValue, econNet, econParseNumber, econPlanCost, econScopeKey, econStatus, econBudgetSaveSchema, econMonthSaveSchema } from '@mvs/shared';
+import { econCashBalance, econCashSaveSchema, econCashScope, econYearMonths, econDefaultMonth, econDeviation, econDistribute, econMonthEnd, econNzp, econRevenue, econForecast, econIsOwnOrg, econLimitValue, econNet, econParseNumber, econPlanCost, econScopeKey, econStatus, econBudgetSaveSchema, econMonthSaveSchema } from '@mvs/shared';
 import { econCoveredSites } from './coverage';
 
 describe('экономика: расчёты', () => {
@@ -137,5 +137,36 @@ describe('экономика: выручка, НЗП, разнесение', () 
     const row = { budgetId: 1, version: 0, laborHours: null, machineHours: null, note: null, amounts: {}, nzpOverride: 5 };
     expect(econMonthSaveSchema.safeParse({ rows: [row] }).success).toBe(false);
     expect(econMonthSaveSchema.safeParse({ rows: [{ ...row, nzpNote: 'не примут фасад' }] }).success).toBe(true);
+  });
+});
+
+describe('экономика: движение денег', () => {
+  const m = (month: string, inPlan: number, outPlan: number, inFact = 0, outFact = 0) => ({ month, inPlan, outPlan, inFact, outFact });
+
+  it('остаток: до последнего факта — по факту, дальше — по плану; кассовый разрыв — минимум ниже нуля', () => {
+    const r = econCashBalance(100, [m('2026-01', 50, 40, 30, 60), m('2026-02', 50, 40, 10, 20), m('2026-03', 10, 200), m('2026-04', 100, 10)], '2026-02');
+    expect(r.series.map((x) => x.balance)).toEqual([70, 60, -130, -40]);
+    expect(r.series.map((x) => x.actual)).toEqual([true, true, false, false]);
+    expect(r.gap).toEqual({ month: '2026-03', value: -130 });
+  });
+
+  it('без отрицательного остатка разрыва нет; без остатка на начало считается от нуля', () => {
+    expect(econCashBalance(500, [m('2026-01', 10, 20)], null).gap).toBeNull();
+    expect(econCashBalance(null, [m('2026-01', 0, 0, 5, 30)], '2026-01').gap).toEqual({ month: '2026-01', value: -25 });
+  });
+
+  it('таблицы и месяцы года', () => {
+    expect(econCashScope(null)).toBe('C');
+    expect(econCashScope(7)).toBe('D7');
+    expect(econYearMonths(2026)[0]).toBe('2026-01');
+    expect(econYearMonths(2026)).toHaveLength(12);
+  });
+
+  it('проверка ввода ДДС', () => {
+    const e = { month: '2026-05', articleId: 1, plan: 10, fact: null };
+    expect(econCashSaveSchema.safeParse({ version: 0, entries: [e] }).success).toBe(true);
+    expect(econCashSaveSchema.safeParse({ version: 0, entries: [e, e] }).success).toBe(false);
+    expect(econCashSaveSchema.safeParse({ version: 0, entries: [{ ...e, plan: -1 }] }).success).toBe(false);
+    expect(econCashSaveSchema.safeParse({ version: 0, opening: -50, entries: [] }).success).toBe(true);
   });
 });

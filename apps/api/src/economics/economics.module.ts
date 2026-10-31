@@ -4,6 +4,7 @@ import { KpiModule } from '../kpi/kpi.module';
 import { EconomicsController } from './economics.controller';
 import { EconomicsService } from './economics.service';
 import { EconomicsDemoService } from './economics-demo.service';
+import { EconomicsCashService } from './economics-cash.service';
 
-@Module({ imports: [AuthModule, KpiModule], controllers: [EconomicsController], providers: [EconomicsService, EconomicsDemoService] })
+@Module({ imports: [AuthModule, KpiModule], controllers: [EconomicsController], providers: [EconomicsService, EconomicsDemoService, EconomicsCashService] })
 export class EconomicsModule {}

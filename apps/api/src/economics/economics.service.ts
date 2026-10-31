@@ -547,7 +547,7 @@ export class EconomicsService {
   async journal(user: AuthUser): Promise<EconAuditItem[]> {
     const p = await this.access.assertEconomics(user);
     this.access.assertFeature(user, 'audit');
-    const entities = ['econ_budget', 'econ_fact', 'econ_company_fact', 'econ_month', 'econ_article', 'econ_settings', 'econ_demo', ...(p.canAdmin ? ['econ_editors'] : [])];
+    const entities = ['econ_budget', 'econ_fact', 'econ_company_fact', 'econ_month', 'econ_article', 'econ_settings', 'econ_demo', 'econ_cash', ...(p.canAdmin ? ['econ_editors'] : [])];
     const rows = await this.prisma.auditLog.findMany({
       where: { entity: { in: entities }, ...(p.directionIds ? { directionId: { in: p.directionIds } } : {}) },
       take: 200,

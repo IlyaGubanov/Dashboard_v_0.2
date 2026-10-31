@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Box, Button, Card, Group, Paper, Text, useComputedColorScheme } from '@mantine/core';
 import { IconFocusCentered } from '@tabler/icons-react';
+import { useMediaQuery } from '@mantine/hooks';
 import type { MapSite, ObjectsMap } from '@mvs/shared';
 import type { SitesMapController } from './olSitesMap';
+import { MapSiteInfo } from './MapSiteInfo';
 
 const TILES = import.meta.env.VITE_MAP_TILES || 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 const ATTRIBUTION = import.meta.env.VITE_MAP_ATTRIBUTION || '© участники OpenStreetMap';
@@ -12,6 +14,7 @@ export function ObjectsMapCanvas({ sites, directions, onSelect }: { sites: MapSi
   const [ready, setReady] = useState(false), [error, setError] = useState(false);
   const [hover, setHover] = useState<{ row: MapSite; x: number; y: number } | null>(null);
   const scheme = useComputedColorScheme('light');
+  const touch = useMediaQuery('(hover: none)');
   useEffect(() => {
     let disposed = false;
     import('./olSitesMap').then(({ mountSitesMap }) => {
@@ -36,17 +39,9 @@ export function ObjectsMapCanvas({ sites, directions, onSelect }: { sites: MapSi
       <Box pos="relative" style={{ minWidth: 0 }}>
         <Box ref={el} role="region" aria-label="Карта объектов" h="clamp(360px, 58vh, 820px)" style={{ overflow: 'hidden' }} />
         {!ready && !error && <Text pos="absolute" top={16} left={16} role="status">Загрузка карты…</Text>}
-        {hover && <Paper role="tooltip" withBorder shadow="md" p="sm" w="min(300px, calc(100% - 24px))" style={{ position: 'absolute', top: 12,
-          left: `clamp(12px, ${hover.x + 12}px, max(12px, calc(100% - 312px)))`, pointerEvents: 'none', zIndex: 2 }}>
-          <Text fw={600} size="sm">{hover.row.name}</Text>
-          <Text size="xs" mt={6}>Люди: {hover.row.people == null ? 'Нет данных' : hover.row.people.toLocaleString('ru-RU')}</Text>
-          <Text size="xs">Техника: {hover.row.tech == null ? 'Нет данных' : hover.row.tech.toLocaleString('ru-RU')}</Text>
-          <Text size="xs" fw={600} mt={6}>Ответственный</Text>
-          {!hover.row.responsibles.length ? <Text size="xs">Не назначен</Text> : hover.row.responsibles.map((p) => <Box key={p.id} mt={4}>
-            <Text size="xs" fw={500}>{p.fullName}</Text>
-            <Text size="xs">{p.position || 'Должность не указана'}</Text>
-            <Text size="xs">{p.phone || 'Телефон не указан'}</Text>
-          </Box>)}
+        {hover && !touch && <Paper role="tooltip" data-map-tooltip withBorder shadow="md" p="sm" w="min(300px, calc(100% - 24px))" onPointerLeave={()=>setHover(null)} style={{ position: 'absolute', top: 12,
+          left: `clamp(12px, ${hover.x + 12}px, max(12px, calc(100% - 312px)))`, maxHeight:'calc(100% - 24px)', overflowY:'auto', zIndex: 2 }}>
+          <MapSiteInfo site={hover.row} />
         </Paper>}
       </Box>
     </Card>

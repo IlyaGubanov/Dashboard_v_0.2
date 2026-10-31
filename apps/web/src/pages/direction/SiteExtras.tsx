@@ -8,6 +8,7 @@ import { AddFiles, Gallery, uploadMany } from '../../ui/attachments';
 import { RemarkStatusBadge, SeverityLabel } from '../../ui/RemarkBadges';
 import { date } from '../../ui/format';
 import { RemarkForm } from './RemarkForm';
+import { PanoramaGallery } from '../../ui/PanoramaGallery';
 
 /** Замечания объекта в карточке: сначала незакрытые. */
 export function SiteRemarks({ code, siteId, onOpen }: { code: string; siteId: number; onOpen: (id: number) => void }) {
@@ -60,7 +61,8 @@ export function SiteFiles({ siteId }: { siteId: number }) {
   const { data } = useQuery({ queryKey: key, queryFn: () => api<{ files: Attachment[]; canUpload: boolean }>(`/attachments?entity=site&entityId=${siteId}`) });
   const [busy, setBusy] = useState(false);
   if (!data) return <Skeleton h={120} />;
-  const refresh = () => qc.invalidateQueries({ queryKey: key });
+  const refresh = () => { qc.invalidateQueries({ queryKey: key }); qc.invalidateQueries({ queryKey: ['map'] }); };
+  const ordinary = data.files.filter(f=>f.materialType !== 'PANORAMA360');
   return (
     <Stack gap="sm">
       {data.canUpload && (
@@ -74,7 +76,9 @@ export function SiteFiles({ siteId }: { siteId: number }) {
           }}
         />
       )}
-      {data.files.length ? <Gallery files={data.files} onChanged={refresh} /> : <Text c="dimmed">Файлов пока нет</Text>}
+      <PanoramaGallery key={siteId} files={data.files.filter(f=>f.materialType === 'PANORAMA360')} siteId={siteId} canUpload={data.canUpload} onChanged={refresh} />
+      <Text fw={600}>Фото и документы</Text>
+      {ordinary.length ? <Gallery files={ordinary} onChanged={refresh} /> : <Text c="dimmed">Обычных файлов пока нет</Text>}
       {data.files.length > 0 && (
         <Text size="xs" c="dimmed">
           Фото к замечаниям — в карточках замечаний.

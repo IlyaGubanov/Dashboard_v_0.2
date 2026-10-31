@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ActionIcon, Anchor, Button, FileButton, Group, Image, Modal, SimpleGrid, Stack, Text, Tooltip, UnstyledButton } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { IconArchive, IconCamera, IconFile, IconFileTypePdf, IconPaperclip } from '@tabler/icons-react';
-import { ATTACHMENT_ACCEPT, ATTACHMENT_MAX_MB, type Attachment, type AttachmentEntity } from '@mvs/shared';
+import { ATTACHMENT_ACCEPT, ATTACHMENT_MAX_MB, type Attachment, type AttachmentEntity, type AttachmentMaterial } from '@mvs/shared';
 import { api, ApiError } from '../api';
 import { date } from './format';
 
@@ -27,10 +27,12 @@ async function shrink(file: File): Promise<File> {
   }
 }
 
-export async function uploadFile(entity: AttachmentEntity, entityId: number, original: File): Promise<Attachment> {
-  const file = await shrink(original);
+export async function uploadFile(entity: AttachmentEntity, entityId: number, original: File, material: AttachmentMaterial = { materialType: 'FILE' }): Promise<Attachment> {
+  const file = material.materialType === 'PANORAMA360' ? original : await shrink(original);
   if (file.size > ATTACHMENT_MAX_MB * 1024 * 1024) throw new ApiError(413, `«${file.name}» больше ${ATTACHMENT_MAX_MB} МБ`);
-  const res = await fetch(`/api/attachments?entity=${entity}&entityId=${entityId}&name=${encodeURIComponent(file.name)}`, {
+  const params = new URLSearchParams({ entity, entityId: String(entityId), name: file.name, materialType: material.materialType });
+  if (material.materialType === 'PANORAMA360') { params.set('capturedOn', material.capturedOn); if (material.description) params.set('description', material.description); }
+  const res = await fetch(`/api/attachments?${params}`, {
     method: 'POST',
     credentials: 'same-origin',
     headers: { 'content-type': 'application/octet-stream' },

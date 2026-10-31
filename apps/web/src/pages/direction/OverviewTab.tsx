@@ -8,6 +8,7 @@ import { int, money, pct, pp, tileValue } from '../../ui/format';
 import { Lag } from '../../ui/Lag';
 import { useFinanceHidden } from '../../ui/finance';
 import { asOfLabel } from '../overview/DirectionCard';
+import { ReportPrograms } from './ReportPrograms';
 
 const RISK_ORDER: SiteRisk[] = ['crit', 'warn', 'ok', 'done', 'wait', 'na'];
 
@@ -32,6 +33,7 @@ export function OverviewTab({
   return (
     <Stack>
       <KpiHeader k={k} />
+      {k.reportPrograms && <ReportPrograms programs={k.reportPrograms} onOpenSite={onOpenSite} />}
       <Grid gutter="md">
         <Grid.Col span={{ base: 12, lg: 6 }}>
           <Stack>
@@ -132,13 +134,13 @@ function KpiHeader({ k }: { k: DirectionKpi }) {
             <Metric label={k.siteUnit} value={int(k.sites)} />
             {k.lagging != null && <Metric label="отстают от графика" value={int(k.lagging)} />}
             {k.critical != null && <Metric label="критично" value={int(k.critical)} />}
-            <Metric label="выполнено" value={int(k.done)} />
+            {!k.reportPrograms && <Metric label="выполнено" value={int(k.done)} />}
             {k.people != null && <Metric label="людей на объектах" value={int(k.people)} />}
             {k.tech != null && <Metric label="техники" value={int(k.tech)} />}
             {m?.portfolio != null && <Metric label={m.portfolioLabel.toLowerCase()} value={money(m.portfolio)} />}
             {m?.closed != null && <Metric label="закрыто по КС-2" value={money(m.closed)} />}
             {m?.paid != null && <Metric label="оплачено" value={money(m.paid)} />}
-            {k.kpis.filter((t) => !(financeHidden && t.format === 'money')).map((t) => (
+            {k.kpis.filter((t) => !(financeHidden && t.format === 'money') && !(k.reportPrograms && ['reportStatusCount', 'remarksTotal'].includes(t.key))).map((t) => (
               <Metric key={t.key} label={t.label.toLowerCase()} value={tileValue(t)} />
             ))}
           </SimpleGrid>

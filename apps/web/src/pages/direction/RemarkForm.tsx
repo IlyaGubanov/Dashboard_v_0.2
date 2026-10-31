@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { CKKB_GROUPS, CKKB_GROUP_LABELS, CKKB_TYPES } from '@mvs/shared';
 import { Autocomplete, Button, Group, Modal, SegmentedControl, Select, SimpleGrid, Stack, Text, TextInput, Textarea } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -43,7 +44,8 @@ export function RemarkForm({
     setFiles([]);
     setV(
       edit
-        ? { siteId: edit.site.id, workItemId: edit.workItem?.id ?? null, text: edit.text, category: edit.category ?? '', severity: edit.severity, dueDate: edit.dueDate ?? '', assigneeId: edit.assignee?.id ?? null, version: edit.version }
+        ? { siteId: edit.site.id, workItemId: edit.workItem?.id ?? null, text: edit.text, category: edit.category ?? '', severity: edit.severity, dueDate: edit.dueDate ?? '', assigneeId: edit.assignee?.id ?? null, version: edit.version,
+          sourceName: edit.sourceName, sourceRef: edit.sourceRef, detectedOn: edit.detectedOn, typeName: edit.typeName, location: edit.location, responsibleId: edit.responsible?.id, violationGroup: edit.violationGroup, violationType: edit.violationType }
         : blank(siteId ?? (list.sites.length === 1 ? list.sites[0].id : undefined)),
     );
   }, [opened, edit, siteId, list.sites]);
@@ -102,6 +104,21 @@ export function RemarkForm({
           error={errors.workItemId}
         />
         <Textarea label="Замечание" required autosize minRows={3} maxRows={10} value={v.text} onChange={(e) => set({ text: e.currentTarget.value })} error={errors.text} />
+        <SimpleGrid cols={{ base: 1, sm: 2 }}>
+          <Autocomplete comboboxProps={DROPDOWN} label="Источник нарушения" data={['ЦККБ', 'Внутренний контроль']} value={v.sourceName ?? ''} onChange={sourceName => set({ sourceName })} error={errors.sourceName} />
+          <TextInput type="date" label="Дата выявления" value={v.detectedOn ?? ''} onChange={e => set({ detectedOn: e.currentTarget.value })} error={errors.detectedOn} />
+        </SimpleGrid>
+        {(v.sourceName?.trim().toUpperCase() === 'ЦККБ' || v.violationGroup) && <>
+          <Select comboboxProps={DROPDOWN} label="Группа нарушений ЦККБ" required data={CKKB_GROUPS.map(value => ({ value, label: CKKB_GROUP_LABELS[value] }))} value={v.violationGroup ?? null}
+            onChange={value => set({ violationGroup: value as typeof v.violationGroup, violationType: null })} error={errors.violationGroup} />
+          <Select comboboxProps={DROPDOWN} label="Тип нарушения ЦККБ" required searchable disabled={!v.violationGroup} data={CKKB_TYPES.filter(t => t.group === v.violationGroup).map(t => ({ value: t.code, label: t.label }))}
+            value={v.violationType ?? null} onChange={violationType => set({ violationType })} error={errors.violationType} />
+        </>}
+        {!(v.sourceName?.trim().toUpperCase() === 'ЦККБ' || v.violationGroup) && <TextInput label="Тип нарушения (необязательно)" value={v.typeName ?? ''} maxLength={300} onChange={e => set({typeName:e.currentTarget.value})} error={errors.typeName} />}
+        <TextInput label="Документ / ссылка на источник / страница" value={v.sourceRef ?? ''} maxLength={300} onChange={e => set({ sourceRef: e.currentTarget.value })} error={errors.sourceRef} />
+        <Autocomplete comboboxProps={DROPDOWN} label="Место / зона нарушения" data={['Проезжая часть', 'Тротуар', 'Площадка', 'Газон']} value={v.location ?? ''} onChange={location => set({ location })} />
+        <Select comboboxProps={DROPDOWN} label="Ответственный за нарушение" searchable clearable data={list.people.map(p => ({ value: String(p.id), label: p.fullName }))} value={v.responsibleId ? String(v.responsibleId) : null}
+          onChange={id => set({ responsibleId: id ? Number(id) : null })} error={errors.responsibleId} />
         <SimpleGrid cols={{ base: 1, sm: 2 }}>
           <Autocomplete comboboxProps={DROPDOWN} label="Категория" data={list.categories} value={v.category ?? ''} onChange={(x) => set({ category: x })} />
           <TextInput type="date" label="Срок устранения" value={v.dueDate ?? ''} onChange={(e) => set({ dueDate: e.currentTarget.value })} error={errors.dueDate} />

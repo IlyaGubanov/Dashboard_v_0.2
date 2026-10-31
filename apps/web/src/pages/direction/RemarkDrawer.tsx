@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { CKKB_GROUP_LABELS, ckkbTypeLabel } from '@mvs/shared';
 import { Alert, Anchor, Badge, Box, Button, Drawer, Group, SimpleGrid, Skeleton, Stack, Text, Textarea, Timeline } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -75,6 +76,14 @@ function Card({ c, code, onOpenSite }: { c: RemarkCard; code: string; onOpenSite
           {c.workItem && <Kv k="Позиция" v={c.workItem.name} />}
           <Kv k="Важность" v={<SeverityLabel severity={c.severity} />} />
           <Kv k="Категория" v={c.category ?? '—'} />
+          {c.violationGroup && <Kv k="Группа ЦККБ" v={CKKB_GROUP_LABELS[c.violationGroup]} />}
+          {!c.violationType && c.typeName && <Kv k="Тип нарушения" v={c.typeName} />}
+          {c.violationType && <Kv k="Тип нарушения" v={ckkbTypeLabel(c.violationType)} />}
+          <Kv k="Источник" v={c.sourceName || 'Не указан'} />
+          {c.sourceRef && <Kv k="Документ" v={c.sourceRef} />}
+          <Kv k="Выявлено" v={c.detectedOn ? date(c.detectedOn) : 'Дата не указана'} />
+          {c.location && <Kv k="Место / зона" v={c.location} />}
+          <Kv k="Ответственный" v={c.responsible?.fullName ?? 'Не назначен'} />
           <Kv
             k="Срок"
             v={

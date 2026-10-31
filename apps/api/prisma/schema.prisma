@@ -142,6 +142,7 @@ model User {
   attachments      Attachment[]
   layouts          DashboardLayout[] @relation("LayoutOwner")
   auditEntries     AuditLog[]
+  staffingEditor   StaffingEditor?
 
   @@index([fullName])
   @@map("user")
@@ -980,6 +981,34 @@ model AppSetting {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("app_setting")
+}
+
+/// Ежемесячный срез. Состав подразделений хранится на дату среза и не меняет прошлые периоды.
+model StaffingPeriod {
+  month      String   @id @db.Char(7)
+  data       Json
+  version    Int      @default(1)
+  isArchived Boolean  @default(false) @map("is_archived")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("staffing_period")
+}
+
+/// ФОТ в млн рублей отдельно по годам; не суммируется по месячным срезам.
+model StaffingPayroll {
+  year      Int      @id
+  data      Json
+  version   Int      @default(1)
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("staffing_payroll")
+}
+
+model StaffingEditor {
+  userId Int @id @map("user_id")
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("staffing_editor")
 }
 
 enum AuditAction {

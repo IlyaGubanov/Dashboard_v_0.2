@@ -20,6 +20,7 @@ import { ContractorsModule } from './contractors/contractors.module';
 import { AppearanceModule } from './appearance/appearance.module';
 import { HealthController } from './health.controller';
 import { VideoModule } from './video/video.module';
+import { StaffingModule } from './staffing/staffing.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { VideoModule } from './video/video.module';
     ContractorsModule,
     AppearanceModule,
     VideoModule,
+    StaffingModule,
   ],
   controllers: [HealthController],
   providers: [

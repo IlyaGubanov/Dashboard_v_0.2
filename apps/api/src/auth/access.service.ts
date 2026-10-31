@@ -36,6 +36,23 @@ export class AccessService {
     if (!(await this.videoSiteIds(user, action)).includes(siteId)) throw new ForbiddenException('Нет доступа к видеонаблюдению этого объекта');
   }
 
+  /** Кадровые данные: руководство читает, назначенные отдельно ответственные редактируют. */
+  async staffingPermissions(user: AuthUser) {
+    if (user.globalRole === 'ADMIN') return { canView: true, canEdit: true, canManageEditors: true };
+    if (!this.canSee(user, 'staffing')) return { canView: false, canEdit: false, canManageEditors: false };
+    const [editor, curator] = await Promise.all([
+      this.prisma.staffingEditor.findUnique({ where: { userId: user.id } }),
+      this.prisma.directionMember.findFirst({ where: { userId: user.id, role: 'CURATOR', direction: { isActive: true } }, select: { id: true } }),
+    ]);
+    return { canView: user.globalRole === 'MANAGEMENT' || !!editor || !!curator, canEdit: !!editor, canManageEditors: !!curator };
+  }
+
+  async assertStaffing(user: AuthUser, edit = false) {
+    const p = await this.staffingPermissions(user);
+    if (edit ? !p.canEdit : !p.canView) throw new ForbiddenException('Нет доступа к штатной численности');
+    return p;
+  }
+
   async membership(user: AuthUser, directionId: number) {
     return this.prisma.directionMember.findUnique({
       where: { directionId_userId: { directionId, userId: user.id } },

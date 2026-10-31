@@ -5,7 +5,7 @@ export function parseStaffingSearch(s: Record<string, unknown>): StaffingSearch 
     category: ['АУП', 'ВП', 'ОП'].includes(String(s.category)) ? String(s.category) : undefined,
     status: ['vacant', 'excess', 'missing', 'archived'].includes(String(s.status)) ? String(s.status) : undefined,
     sort: ['name', 'actual', 'planned', 'vacancies'].includes(String(s.sort)) ? String(s.sort) : undefined,
-    tab: ['overview', 'departments', 'payroll', 'journal'].includes(String(s.tab)) ? String(s.tab) : undefined,
+    tab: ['overview', 'departments', 'movements', 'payroll', 'journal'].includes(String(s.tab)) ? String(s.tab) : undefined,
     archive: s.archive === true || s.archive === 'true' || undefined,
     group: typeof s.group === 'string' && s.group.trim() ? s.group.slice(0, 120) : undefined, pie: s.pie === 'planned' ? 'planned' : undefined };
 }

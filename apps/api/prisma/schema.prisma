@@ -1004,6 +1004,16 @@ model StaffingPayroll {
   @@map("staffing_payroll")
 }
 
+/// Приём и увольнение за день по группам (строки в JSON). Один день — одна запись; правка с проверкой version.
+model StaffingMovementDay {
+  date      String   @id @db.Char(10)
+  data      Json
+  version   Int      @default(1)
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("staffing_movement_day")
+}
+
 model StaffingEditor {
   userId Int @id @map("user_id")
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)

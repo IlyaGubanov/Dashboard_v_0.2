@@ -1,14 +1,15 @@
 /** Используем компоненты и иконки действующего приложения (Mantine/Tabler), чтобы раздел наследовал оформление и доступность. */
-import { useCallback, useMemo, useState } from 'react';
-import { ActionIcon, Alert, Badge, Button, Checkbox, Group, Menu, Modal, Pagination, Paper, Progress, SegmentedControl, Select, SimpleGrid, Skeleton, Stack, Switch, Table, Tabs, Text, TextInput, Title, Tooltip, UnstyledButton } from '@mantine/core';
+import { useMemo, useState } from 'react';
+import { ActionIcon, Alert, Badge, Button, Checkbox, Group, Menu, Modal, Pagination, Paper, Select, SimpleGrid, Skeleton, Stack, Switch, Table, Tabs, Text, TextInput, Title, Tooltip, UnstyledButton } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getRouteApi } from '@tanstack/react-router';
-import { IconArchive, IconCalendar, IconDots, IconDownload, IconEdit, IconFileImport, IconPlus, IconPrinter, IconRefresh, IconSearch, IconSettings, IconUsers } from '@tabler/icons-react';
-import { STAFFING_CATEGORIES, STAFFING_CATEGORY_LABELS, STAFFING_GROUP_OTHER, staffingCsvCell, staffingDelta, staffingGroupOf, staffingGroups, summarizeStaffing, type StaffingAuditItem, type StaffingPeriod, type StaffingPeriodData, type StaffingPayroll, type StaffingRow } from '@mvs/shared';
+import { IconArchive, IconCalendar, IconCalendarEvent, IconDots, IconDownload, IconEdit, IconFileImport, IconGauge, IconPlus, IconPrinter, IconRefresh, IconSearch, IconSettings, IconUserCheck, IconUserExclamation, IconUsers, IconUsersGroup } from '@tabler/icons-react';
+import { STAFFING_CATEGORIES, staffingCsvCell, staffingDelta, staffingGroupOf, staffingGroups, summarizeStaffing, type StaffingAuditItem, type StaffingMovementDay, type StaffingPeriod, type StaffingPeriodData, type StaffingPayroll, type StaffingRow } from '@mvs/shared';
 import { api, staffingQuery } from '../../api';
-import type { EChartsOption } from 'echarts';
-import { EChart, baseOption, type ChartColors } from '../../ui/EChart';
+import { EChart, baseOption } from '../../ui/EChart';
+import { GroupPie, type Measure } from './StaffingGroups';
+import { MovementsTab } from './StaffingMovements';
 import { useFinanceHidden } from '../../ui/finance';
 import { EditorsDialog, PayrollEditor, PeriodEditor, RowEditor } from './StaffingForms';
 import type { StaffingSearch } from './search';
@@ -23,12 +24,16 @@ const download = (name: string, rows: unknown[][]) => {
   const url = URL.createObjectURL(new Blob(['\ufeff' + rows.map(r => r.map(staffingCsvCell).join(';')).join('\r\n')], { type: 'text/csv;charset=utf-8' }));
   const link = document.createElement('a'); link.href = url; link.download = name; link.click(); URL.revokeObjectURL(url);
 };
-function Stat({ label, value, hint, warning, tooltip }: { label: string; value: string; hint: string; warning?: boolean; tooltip?: string }) {
-  return <Tooltip label={tooltip || hint} multiline w={300}><Paper withBorder p="md" className="staffing-stat">
-    <Text size="xs" c="dimmed">{label}</Text><Text className="staffing-stat-value" fw={650}>{value}</Text>
+/** Карточка показателя: у каждой свой тон палитры --cat-* (полоса, фон, значок), значение — обычным цветом текста для читаемости. */
+function Stat({ label, value, hint, warning, tooltip, tone, icon }: { label: string; value: string; hint: string; warning?: boolean; tooltip?: string; tone: number; icon: React.ReactNode }) {
+  return <Tooltip label={tooltip || hint} multiline w={300}><Paper withBorder p="md" className="staffing-stat" style={{ '--stat-tone': `var(--cat-${tone})`, '--stat-ink': `var(--cat-ink-${tone})` } as React.CSSProperties}>
+    <Group gap="xs" wrap="nowrap" justify="space-between" align="flex-start"><Text size="sm" fw={600} className="staffing-stat-label">{label}</Text><span className="staffing-stat-icon" aria-hidden>{icon}</span></Group>
+    <Text className="staffing-stat-value" fw={650}>{value}</Text>
     <Text size="xs" c={warning ? 'var(--status-warning)' : 'dimmed'}>{warning ? '△ ' : ''}{hint}</Text>
   </Paper></Tooltip>;
 }
+
+const today = new Intl.DateTimeFormat('ru-RU', { timeZone: 'Europe/Moscow', day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date());
 
 export function StaffingPage() {
   const query = useQuery(staffingQuery);
@@ -99,7 +104,9 @@ export function StaffingPage() {
 
   return <Stack gap="md" className="staffing-page">
     <Group justify="space-between" align="center" className="staffing-header">
-      <Group gap="sm"><div className="staffing-title-icon"><IconUsers size={22} /></div><div><Title order={2} size="h3">Штатная численность</Title><Text size="xs" c="dimmed">{current ? `Данные на ${d(current.asOf)}` : 'Учёт по подразделениям и категориям'}{current?.isArchived ? ' · Архив' : ''}</Text></div></Group>
+      <Group gap="sm"><div className="staffing-title-icon"><IconUsers size={22} /></div><div><Title order={2} size="h3">Штатная численность</Title>
+        <Group gap="xs" mt={2} className="staffing-dates">{current ? <Text className="staffing-asof">Данные на {d(current.asOf)}{current.isArchived ? ' · архив' : ''}</Text> : <Text size="sm" c="dimmed">Учёт по подразделениям и категориям</Text>}
+          <Badge variant="light" color="gray" size="lg" radius="sm" leftSection={<IconCalendarEvent size={15} />} className="staffing-today">Сегодня {today}</Badge></Group></div></Group>
       <Group gap="xs" className="staffing-controls">
         <Tooltip label="Обновить"><ActionIcon variant="default" aria-label="Обновить штатную численность" loading={query.isFetching} onClick={() => query.refetch()}><IconRefresh size={16} /></ActionIcon></Tooltip>
         <Menu position="bottom-end"><Menu.Target><ActionIcon variant="default" aria-label="Действия раздела"><IconDots size={18} /></ActionIcon></Menu.Target><Menu.Dropdown>
@@ -107,7 +114,7 @@ export function StaffingPage() {
           {data.canExport && <Menu.Item leftSection={<IconPrinter size={16} />} onClick={() => window.print()}>Печать для руководства</Menu.Item>}
           {canEdit && current && <Menu.Item leftSection={<IconSettings size={16} />} onClick={() => { setPeriodBase(current); setPeriodForm('edit'); }}>Настройки среза</Menu.Item>}
           {data.permissions.canManageEditors && <Menu.Item leftSection={<IconUsers size={16} />} onClick={() => setEditors(true)}>Ответственные за данные</Menu.Item>}
-          {canEdit && showFinance && <Menu.Item leftSection={<IconFileImport size={16} />} onClick={() => setConfirm({ title: 'Загрузить исходные срезы (01.01.2025 – 26.10.2026) и ФОТ за 2024–2026 годы? Добавятся только отсутствующие, существующие данные сохранятся.', action: () => api('/staffing/import-source', { method: 'POST' }) })}>Загрузить исходные данные</Menu.Item>}
+          {canEdit && showFinance && <Menu.Item leftSection={<IconFileImport size={16} />} onClick={() => setConfirm({ title: 'Загрузить исходные срезы (01.01.2025 – 26.10.2026), должности, приём/увольнение (14.09–26.10.2026) и ФОТ за 2024–2026 годы? Добавятся только отсутствующие, существующие данные сохранятся.', action: () => api('/staffing/import-source', { method: 'POST' }) })}>Загрузить исходные данные</Menu.Item>}
           {canEdit && current && <Menu.Item color={current.isArchived ? undefined : 'red'} leftSection={<IconArchive size={16} />} onClick={() => setConfirm({ title: current.isArchived ? 'Восстановить срез?' : 'Архивировать срез? Данные и история сохранятся.', action: () => savePeriod(current, !current.isArchived) })}>{current.isArchived ? 'Восстановить срез' : 'Архивировать срез'}</Menu.Item>}
         </Menu.Dropdown></Menu>
         {canEdit && <Button leftSection={<IconPlus size={16} />} size="sm" onClick={() => setPeriodForm('new')}>Новый срез</Button>}
@@ -124,14 +131,15 @@ export function StaffingPage() {
       </Group>
       {!current ? <Alert color="gray">Активных срезов нет. Включите «Архив срезов», чтобы восстановить данные.</Alert> : <>
         <SimpleGrid cols={{ base: 2, lg: 4 }} spacing="sm" className="staffing-stats">
-          <Stat label="Штатная численность" value={`${n(stats.planned)} ед.`} hint={`${stats.count - stats.missingPlan} / ${stats.count} подразделений`} warning={stats.missingPlan > 0} tooltip="Сумма известных штатных единиц. Пропуски не заменяются нулями." />
-          <Stat label="Фактическая численность" value={`${n(stats.actual)} чел.`} hint={`${stats.count - stats.missingActual} / ${stats.count} подразделений`} warning={stats.missingActual > 0} tooltip="Сумма заполненного факта. При пропусках это частичная численность, а не подтверждённый общий итог." />
-          <Stat label={stats.paired < stats.count ? 'Известный дефицит, ед.' : 'Незакрытые единицы'} value={n(stats.vacancies)} hint={`${stats.paired}/${stats.count} сопоставимых · превышение ${n(stats.excess)}`} warning={(stats.vacancies ?? 0) > 0 || stats.paired < stats.count} tooltip={`Сумма положительных разниц штат − факт. По заполненным парам: ${stats.paired} из ${stats.count}. Превышение в других подразделениях не уменьшает дефицит.`} />
-          <Stat label="Укомплектованность" value={stats.occupancy == null ? '—' : `${n(stats.occupancy * 100)} %`} hint={`${stats.paired} / ${stats.count} сопоставимых`} tooltip="Факт / штат по подразделениям, где заполнены оба показателя. Может превышать 100%." />
+          <Stat tone={1} icon={<IconUsersGroup size={20} />} label="Штатная численность" value={`${n(stats.planned)} ед.`} hint={`${stats.count - stats.missingPlan} / ${stats.count} подразделений`} warning={stats.missingPlan > 0} tooltip="Сумма известных штатных единиц. Пропуски не заменяются нулями." />
+          <Stat tone={3} icon={<IconUserCheck size={20} />} label="Фактическая численность" value={`${n(stats.actual)} чел.`} hint={`${stats.count - stats.missingActual} / ${stats.count} подразделений`} warning={stats.missingActual > 0} tooltip="Сумма заполненного факта. При пропусках это частичная численность, а не подтверждённый общий итог." />
+          <Stat tone={2} icon={<IconUserExclamation size={20} />} label={stats.paired < stats.count ? 'Известный дефицит, ед.' : 'Незакрытые единицы'} value={n(stats.vacancies)} hint={`${stats.paired}/${stats.count} сопоставимых · превышение ${n(stats.excess)}`} warning={(stats.vacancies ?? 0) > 0 || stats.paired < stats.count} tooltip={`Сумма положительных разниц штат − факт. По заполненным парам: ${stats.paired} из ${stats.count}. Превышение в других подразделениях не уменьшает дефицит.`} />
+          <Stat tone={5} icon={<IconGauge size={20} />} label="Укомплектованность" value={stats.occupancy == null ? '—' : `${n(stats.occupancy * 100)} %`} hint={`${stats.paired} / ${stats.count} сопоставимых`} tooltip="Факт / штат по подразделениям, где заполнены оба показателя. Может превышать 100%." />
         </SimpleGrid>
         <Tabs value={tab} onChange={v => update({ tab: v ?? undefined })}>
-          <Tabs.List className="staffing-controls"><Tabs.Tab value="overview">Обзор</Tabs.Tab><Tabs.Tab value="departments">Подразделения</Tabs.Tab>{showFinance && <Tabs.Tab value="payroll">ФОТ по годам</Tabs.Tab>}{data.canAudit && <Tabs.Tab value="journal">Журнал</Tabs.Tab>}</Tabs.List>
-          <Tabs.Panel value="overview" pt="md"><Overview periods={active} current={current} previous={previous} open={setRow} measure={search.pie ?? 'actual'} onMeasure={m => update({ pie: m === 'planned' ? m : undefined })} openGroup={group => { update({ tab: 'departments', group, q: undefined, category: undefined, status: undefined }); setPage(1); }} /></Tabs.Panel>
+          <Tabs.List className="staffing-controls"><Tabs.Tab value="overview">Обзор</Tabs.Tab><Tabs.Tab value="departments">Подразделения</Tabs.Tab><Tabs.Tab value="movements">Приём и увольнение</Tabs.Tab>{showFinance && <Tabs.Tab value="payroll">ФОТ по годам</Tabs.Tab>}{data.canAudit && <Tabs.Tab value="journal">Журнал</Tabs.Tab>}</Tabs.List>
+          <Tabs.Panel value="overview" pt="md"><Overview periods={active} current={current} previous={previous} open={setRow} movements={data.movements ?? []} measure={search.pie ?? 'actual'} onMeasure={m => update({ pie: m === 'planned' ? m : undefined })} openGroup={group => { update({ tab: 'departments', group, q: undefined, category: undefined, status: undefined }); setPage(1); }} /></Tabs.Panel>
+          <Tabs.Panel value="movements" pt="md"><MovementsTab days={data.movements ?? []} groups={staffingGroups(current.rows).map(g => g.group)} canEdit={canEdit} onSaved={refresh} /></Tabs.Panel>
           <Tabs.Panel value="departments" pt="md">
             <Stack gap="sm">
               <Group gap="xs" className="staffing-controls">
@@ -178,85 +186,19 @@ export function StaffingPage() {
   </Stack>;
 }
 
-type Measure = 'actual' | 'planned';
-function Overview({ periods, current, previous, open, measure, onMeasure, openGroup }: { periods: StaffingPeriod[]; current: StaffingPeriod; previous?: StaffingPeriod; open: (r: StaffingRow) => void; measure: Measure; onMeasure: (m: Measure) => void; openGroup: (group: string) => void }) {
+function Overview({ periods, current, previous, open, measure, onMeasure, openGroup, movements }: { periods: StaffingPeriod[]; current: StaffingPeriod; previous?: StaffingPeriod; open: (r: StaffingRow) => void; measure: Measure; onMeasure: (m: Measure) => void; openGroup: (group: string) => void; movements: StaffingMovementDay[] }) {
   const rows = current.rows.filter(r => !r.isArchived);
   const attention = rows.filter(r => r.planned == null || r.actual == null || gap(r) !== 0).sort((a, b) => (gap(b) ?? -1) - (gap(a) ?? -1));
   return <Stack gap="md">
-    <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md">
       <Paper withBorder p="md"><Group justify="space-between" mb="sm"><Text size="sm" fw={600}>Численность по срезам</Text><Badge variant="outline" color="gray" size="sm">Суммы известных данных</Badge></Group>
-        <EChart height={245} ariaLabel="Штат и факт на исходные даты срезов, суммы известных значений" option={c => ({ ...baseOption(c), tooltip: { trigger: 'axis', confine: true, valueFormatter: v => `${n(Number(v))}` }, xAxis: { type: 'category', data: periods.map(p => d(p.asOf)), axisLabel: { color: c.muted, fontSize: 11 } }, yAxis: { type: 'value', min: 0, axisLabel: { color: c.muted }, splitLine: { lineStyle: { color: c.grid } } }, series: [ { name: 'Штат, ед.', type: 'bar', data: periods.map(p => summarizeStaffing(p.rows).planned), itemStyle: { color: c.plan }, barMaxWidth: 34 }, { name: 'Факт, чел.', type: 'bar', data: periods.map(p => summarizeStaffing(p.rows).actual), itemStyle: { color: c.series[0] }, barMaxWidth: 34 } ] })} />
+        <EChart height={245} ariaLabel="Штат и факт на исходные даты срезов, суммы известных значений" option={c => ({ ...baseOption(c), tooltip: { trigger: 'axis', confine: true, valueFormatter: v => `${n(Number(v))}` }, xAxis: { type: 'category', data: periods.map(p => d(p.asOf)), axisLabel: { color: c.muted, fontSize: 11 } }, yAxis: { type: 'value', min: 0, axisLabel: { color: c.muted }, splitLine: { lineStyle: { color: c.grid } } }, series: [ { name: 'Штат, ед.', type: 'bar', data: periods.map(p => summarizeStaffing(p.rows).planned), itemStyle: { color: c.series[1], borderRadius: [4, 4, 0, 0] }, barMaxWidth: 34 }, { name: 'Факт, чел.', type: 'bar', data: periods.map(p => summarizeStaffing(p.rows).actual), itemStyle: { color: c.series[0], borderRadius: [4, 4, 0, 0] }, barMaxWidth: 34 } ] })} />
       </Paper>
-      <Paper withBorder p="md"><Text size="sm" fw={600} mb="md">Структура по категориям</Text><Stack gap="lg">{STAFFING_CATEGORIES.map(category => {
-        const s = summarizeStaffing(rows.filter(r => r.category === category));
-        const total = summarizeStaffing(rows).actual;
-        return <div key={category}><Group justify="space-between" gap="xs"><Tooltip label={STAFFING_CATEGORY_LABELS[category]}><Text size="sm" fw={600}>{category}</Text></Tooltip><Text size="sm">{n(s.actual)} чел. <Text span c="dimmed" size="xs">/ {n(s.planned)} ед.</Text></Text></Group><Progress value={total && s.actual != null ? s.actual / total * 100 : 0} size={4} mt={8} color="var(--series-1)" aria-label={`Доля ${category} в известном факте`} /><Text size="xs" c="dimmed" mt={5}>{s.count} подразделений · заполнено {s.count - s.missingActual}/{s.count}{s.vacancies ? ` · дефицит ${n(s.vacancies)}` : ''}</Text></div>;
-      })}</Stack></Paper>
-    </SimpleGrid>
-    <GroupPie period={current} measure={measure} onMeasure={onMeasure} openGroup={openGroup} />
+    <GroupPie period={current} measure={measure} onMeasure={onMeasure} openGroup={openGroup} movements={movements} />
     <div><Group justify="space-between" mb="sm"><Group gap="xs"><Text size="sm" fw={600}>Требуют внимания</Text><Badge variant="light" color="gray" size="sm">{attention.length}</Badge></Group><Text size="xs" c="dimmed">{previous ? `Изменение к ${d(previous.asOf)}` : 'Нет предыдущего среза'}</Text></Group>
       <Table.ScrollContainer minWidth={650}><Table highlightOnHover verticalSpacing="xs"><Table.Thead><Table.Tr><Table.Th>Подразделение</Table.Th><Table.Th ta="right">Штат</Table.Th><Table.Th ta="right">Факт</Table.Th><Table.Th>Состояние</Table.Th><Table.Th ta="right">Изм.</Table.Th></Table.Tr></Table.Thead><Table.Tbody>{attention.map(r => <Table.Tr key={r.id}><Table.Td><UnstyledButton className="staffing-department" onClick={() => open(r)}>{r.department}</UnstyledButton></Table.Td><Table.Td ta="right">{n(r.planned)}</Table.Td><Table.Td ta="right">{n(r.actual)}</Table.Td><Table.Td><Badge variant="light" color={gap(r) == null ? 'gray' : 'orange'} size="sm">{gap(r) == null ? '△ Нет данных' : gap(r)! > 0 ? `Дефицит ${n(gap(r))}` : `Превышение ${n(-gap(r)!)}`}</Badge></Table.Td><Table.Td ta="right">{n(staffingDelta(r, previous?.rows ?? []))}</Table.Td></Table.Tr>)}</Table.Tbody></Table></Table.ScrollContainer>
       {!attention.length && <Text size="sm" c="dimmed" py="md">Отклонений и пропусков нет</Text>}
     </div>
   </Stack>;
-}
-
-/**
- * Кольцевая диаграмма по группам (РСУ, РЭБ, ГУП МВС…), как в листе «СВОД по подразделениям».
- * Порядок и цвета задаёт факт, чтобы переключатель «Факт / Штат» не перекрашивал группы:
- * десять тонов --cat-1…10 по убыванию, соседние группы — разные тона; «АУП» (и группы после десятой) — нейтральный --status-none.
- */
-function groupTone(groups: { group: string }[], group: string) {
-  const i = groups.filter(g => g.group !== STAFFING_GROUP_OTHER).findIndex(g => g.group === group);
-  return group !== STAFFING_GROUP_OTHER && i < 10 ? i : null;
-}
-function GroupPie({ period, measure, onMeasure, openGroup }: { period: StaffingPeriod; measure: Measure; onMeasure: (m: Measure) => void; openGroup: (group: string) => void }) {
-  const groups = useMemo(() => staffingGroups(period.rows), [period]);
-  const unit = measure === 'actual' ? 'чел.' : 'ед.';
-  const value = (g: (typeof groups)[number]) => g[measure];
-  const gaps = (g: (typeof groups)[number]) => measure === 'actual' ? g.missingActual : g.missingPlan;
-  const known = groups.filter(g => (value(g) ?? 0) > 0);
-  const total = known.reduce((s, g) => s + value(g)!, 0);
-  const missing = groups.reduce((s, g) => s + gaps(g), 0);
-  const share = (v: number | null) => v == null || !total ? '—' : `${(v / total * 100).toLocaleString('ru-RU', { maximumFractionDigits: 1 })} %`;
-  const option = useCallback((c: ChartColors): EChartsOption => {
-    const base = baseOption(c);
-    return {
-      ...base,
-      legend: { show: false },
-      tooltip: { ...(base.tooltip as object), trigger: 'item', formatter: (p: unknown) => { const x = p as { name: string; value: number; percent: number }; return `${x.name}<br/>${n(x.value)} ${unit} · ${x.percent.toLocaleString('ru-RU', { maximumFractionDigits: 1 })} %`; } },
-      title: { text: n(total), subtext: `${unit} всего`, left: 'center', top: 'middle', itemGap: 2, textStyle: { color: c.text, fontSize: Math.round(c.fontSize * 1.6), fontWeight: 600 }, subtextStyle: { color: c.muted, fontSize: c.fontSize } },
-      series: [{
-        type: 'pie', radius: ['56%', '88%'], center: ['50%', '50%'], minAngle: 1, avoidLabelOverlap: false,
-        itemStyle: { borderColor: c.surface, borderWidth: 2 },
-        label: { position: 'inside', fontSize: c.fontSize, fontWeight: 600, formatter: (p: unknown) => { const x = p as { percent: number }; return x.percent >= 5 ? `${Math.round(x.percent)}%` : ''; } },
-        emphasis: { scaleSize: 4 },
-        data: known.map(g => {
-          const t = groupTone(groups, g.group);
-          return { name: g.group, value: value(g)!, itemStyle: { color: t == null ? c.none : c.cat[t] }, label: { color: t == null ? c.surface : c.catInk[t] } };
-        }),
-      }],
-    };
-  }, [groups, known, total, unit]); // eslint-disable-line react-hooks/exhaustive-deps
-  return <Paper withBorder p="md">
-    <Group justify="space-between" mb="sm" gap="xs">
-      <div><Text size="sm" fw={600}>Распределение по РСУ и подразделениям</Text><Text size="xs" c="dimmed">Доля от общей численности на {d(period.asOf)} · групп: {groups.length}</Text></div>
-      <SegmentedControl size="xs" value={measure} onChange={v => onMeasure(v as Measure)} data={[{ value: 'actual', label: 'Факт, чел.' }, { value: 'planned', label: 'Штат, ед.' }]} aria-label="Показатель диаграммы" />
-    </Group>
-    {!known.length ? <Text size="sm" c="dimmed" py="lg" ta="center">△ {measure === 'planned' ? 'Штат по подразделениям в этом срезе не заполнен' : 'Факт в этом срезе не заполнен'}</Text> : <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
-      <EChart height={280} option={option} onClick={p => openGroup(p.name)} ariaLabel={`Распределение, ${unit}: ${known.map(g => `${g.group} — ${share(value(g))}`).join(', ')}`} />
-      <Table.ScrollContainer minWidth={300}><Table verticalSpacing={6} highlightOnHover className="staffing-table">
-        <Table.Thead><Table.Tr><Table.Th>Группа</Table.Th><Table.Th ta="right">{measure === 'actual' ? 'Факт' : 'Штат'}, {unit}</Table.Th><Table.Th ta="right">Доля</Table.Th></Table.Tr></Table.Thead>
-        <Table.Tbody>{groups.map(g => { const t = groupTone(groups, g.group); return <Table.Tr key={g.group}>
-          <Table.Td><UnstyledButton className="staffing-department staffing-group" onClick={() => openGroup(g.group)}><span className="staffing-swatch" style={{ background: t == null ? 'var(--status-none)' : `var(--cat-${t + 1})` }} aria-hidden />{g.group}</UnstyledButton>
-            {(g.count > 1 || gaps(g) > 0) && <Text size="xs" c="dimmed">подразделений: {g.count}{gaps(g) ? ` · △ без данных: ${gaps(g)}` : ''}</Text>}</Table.Td>
-          <Table.Td ta="right" className="staffing-nowrap">{n(value(g))}</Table.Td><Table.Td ta="right" c="dimmed" className="staffing-nowrap">{share(value(g))}</Table.Td>
-        </Table.Tr>; })}</Table.Tbody>
-        <Table.Tfoot><Table.Tr><Table.Td fw={600}>Итого</Table.Td><Table.Td ta="right" fw={600} className="staffing-nowrap">{n(total)}</Table.Td><Table.Td ta="right" c="dimmed" className="staffing-nowrap">100 %</Table.Td></Table.Tr></Table.Tfoot>
-      </Table></Table.ScrollContainer>
-    </SimpleGrid>}
-    <Text size="xs" c="dimmed" mt="xs">{missing ? `△ Без данных: ${missing} подразд. — доли считаются от известной суммы. ` : ''}Нажмите на группу, чтобы открыть её подразделения. Группа задаётся в карточке подразделения, по умолчанию — по названию.</Text>
-  </Paper>;
 }
 
 function Payroll({ years, canEdit, canExport, onEdit }: { years: StaffingPayroll[]; canEdit: boolean; canExport: boolean; onEdit: (p: StaffingPayroll | 'new') => void }) {

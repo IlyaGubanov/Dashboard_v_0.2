@@ -47,6 +47,39 @@ describe('штатная численность', () => {
     expect(groups[0]).toMatchObject({ group: 'РСУ-3', actual: 1358 });
     expect(Math.round(groups[0].actual! / 4484 * 10000) / 100).toBe(30.29);
   });
+  it('должности 26.10.2026: факт по группам совпадает со сводкой, план = факт + вакансии', () => {
+    const october = staffing.staffingPeriodSchema.parse(source.periods.find(p => p.month === '2026-10'));
+    for (const r of october.rows) expect(staffing.staffingGroupPositions(october.positions, r.group!).actual).toBe(r.actual);
+    expect(staffing.staffingGroupPositions(october.positions, 'РСУ-1')).toMatchObject({ planned: 612, actual: 524, need: 88 });
+    expect(staffing.staffingGroupPositions(october.positions, 'РСУ-1').items[0]).toMatchObject({ title: 'Слесарь-сантехник', planned: 121, actual: 102, need: 19 });
+    // у групп без вакансий в источнике план не выдумывается
+    expect(staffing.staffingGroupPositions(october.positions, 'АУП')).toMatchObject({ planned: null, actual: 323, need: null });
+    expect(staffing.staffingGroupPositions(undefined, 'РСУ-1')).toMatchObject({ items: [], planned: null });
+  });
+  it('приём и увольнение 14.09–26.10.2026 совпадают с итогами листа «Приемыувольнения»', () => {
+    const days = source.movements.map(d => staffing.staffingMovementDaySchema.parse(d));
+    const by = Object.fromEntries(staffing.staffingMovementByGroup(days, '2026-09-14', '2026-10-26').map(g => [g.group, g]));
+    expect(by['РСУ-3']).toMatchObject({ hired: 64, dismissed: 307, net: -243 });
+    expect(by['РСУ СР+УСР от Учредителя']).toMatchObject({ hired: 402, dismissed: 29 });
+    expect(by['ГУП МВС (СМУ+РСУ+ТЛС)']).toMatchObject({ hired: 2, dismissed: 11 });
+    const weeks = staffing.staffingMovementSeries(days, 'week', '2026-09-14', '2026-10-26');
+    expect(weeks.map(w => w.start)).toEqual(['2026-09-14', '2026-09-21', '2026-09-28', '2026-10-05', '2026-10-12', '2026-10-19', '2026-10-26']);
+    expect(weeks.reduce((s, w) => s + w.hired, 0)).toBe(685);
+    expect(weeks.reduce((s, w) => s + w.dismissed, 0)).toBe(534);
+    expect(staffing.staffingMovementSeries(days, 'month', '2026-09-14', '2026-10-26').map(m => m.start)).toEqual(['2026-09-01', '2026-10-01']);
+    expect(staffing.staffingMovementSeries(days, 'day', '2026-10-25', '2026-10-27', 'РСУ-1').map(x => x.days)).toEqual([1, 1, 0]);
+  });
+  it('день приёма и увольнения: целые неотрицательные значения, группа один раз, неделя — с понедельника', () => {
+    const ok = { date: '2026-10-27', rows: [{ group: 'РСУ-1', hired: 2, dismissed: 0 }] };
+    expect(staffing.staffingMovementDaySchema.safeParse(ok).success).toBe(true);
+    expect(staffing.staffingMovementDaySchema.safeParse({ ...ok, rows: [{ group: 'РСУ-1', hired: -1, dismissed: 0 }] }).success).toBe(false);
+    expect(staffing.staffingMovementDaySchema.safeParse({ ...ok, rows: [{ group: 'РСУ-1', hired: 1.5, dismissed: 0 }] }).success).toBe(false);
+    expect(staffing.staffingMovementDaySchema.safeParse({ ...ok, rows: [ok.rows[0], ok.rows[0]] }).success).toBe(false);
+    expect(staffing.staffingMovementDaySchema.safeParse({ ...ok, date: '2026-02-30' }).success).toBe(false);
+    expect(staffing.staffingMovementBucket('2026-10-31', 'week')).toBe('2026-10-26');
+    expect(staffing.staffingMovementBucket('2026-10-26', 'week')).toBe('2026-10-26');
+    expect(staffing.staffingMovementBucket('2026-11-01', 'week')).toBe('2026-10-26');
+  });
   it('экранирует формулы при выгрузке в Excel', () => {
     expect(staffing.staffingCsvCell('=1+1')).toBe('"\'=1+1"');
     expect(staffing.staffingCsvCell('Отдел "А"')).toBe('"Отдел ""А"""');

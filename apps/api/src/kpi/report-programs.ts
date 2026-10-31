@@ -28,7 +28,9 @@ export function reportPrograms(dir: KDirection, until: number): ReportProgramSum
       aggregate: p.summary?.value ?? null,
       volumeDone: rows.filter(s => s.volumeDone).length, volumeTotal: rows.filter(s => s.volumeDone != null).length,
       statusDone: statuses.length ? rows.filter(s => s.statusDone).length : null, statusTotal: rows.filter(s => s.statusDone != null).length,
-      volumeMethod: 'Действующий критерий выполнения: готовность по фактическим объёмам не ниже 99,5%. Знаменатель — объекты с положительными проектными объёмами в этом отчёте.',
+      volumeMethod: dir.progressMethod === 'SHARE_COMPLETED'
+        ? 'Доля позиций, где факт достиг проектного объёма, не ниже 99,5%. Учитываются только позиции с известным положительным проектом. Знаменатель — объекты с такими позициями в этом отчёте.'
+        : 'Нормированная готовность по действующей методике направления не ниже 99,5%. Знаменатель — объекты с известными положительными проектными объёмами в этом отчёте.',
       statusMethod: statuses.length ? `Завершённые отчётные статусы: ${statuses.join(', ')}. Знаменатель — объекты с заполненным отчётным статусом.` : 'Завершённые отчётные статусы не настроены.',
       rows,
     };

@@ -1,7 +1,7 @@
 import { QueryClient } from '@tanstack/react-query';
-import { createRootRouteWithContext, createRoute, createRouter, Outlet, redirect } from '@tanstack/react-router';
+import { createRootRouteWithContext, createRoute, createRouter, lazyRouteComponent, Outlet, redirect } from '@tanstack/react-router';
 import { Alert } from '@mantine/core';
-import { ApiError, directionsQuery, meQuery } from './api';
+import { ApiError, directionsQuery, meQuery, staffingAccessQuery } from './api';
 import { canSee } from './ui/access';
 import { AppLayout } from './layout/AppLayout';
 import { LoginPage } from './pages/LoginPage';
@@ -15,6 +15,7 @@ import { DirectionEditorPage } from './pages/admin/DirectionEditorPage';
 import { AppearancePage } from './pages/admin/AppearancePage';
 import { HelpPage } from './pages/HelpPage';
 import { ContractorsPage } from './pages/ContractorsPage';
+import { parseStaffingSearch } from './pages/staffing/search';
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -116,11 +117,13 @@ const contractorsRoute = createRoute({
 });
 
 const helpRoute = createRoute({ getParentRoute: () => appRoute, path: '/help', component: HelpPage });
+const staffingRoute = createRoute({ getParentRoute: () => appRoute, path: '/staffing', validateSearch: parseStaffingSearch,
+  beforeLoad: async ({ context }) => { if (!(await context.queryClient.fetchQuery(staffingAccessQuery)).canView) throw redirect({ to: '/' }); }, component: lazyRouteComponent(() => import('./pages/staffing/StaffingPage'), 'StaffingPage') });
 
 const routeTree = rootRoute.addChildren([
   loginRoute,
   changePasswordRoute,
-  appRoute.addChildren([overviewRoute, directionRoute, usersRoute, adminDirectionsRoute, directionEditorRoute, appearanceRoute, contractorsRoute, helpRoute]),
+  appRoute.addChildren([overviewRoute, directionRoute, usersRoute, adminDirectionsRoute, directionEditorRoute, appearanceRoute, contractorsRoute, helpRoute, staffingRoute]),
 ]);
 
 export const router = createRouter({ routeTree, context: { queryClient }, defaultPreload: 'intent' });

@@ -1,0 +1,23 @@
+.staffing-page { min-width: 0; }
+.staffing-title-icon { display: grid; place-items: center; width: 38px; height: 38px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--panel); }
+.staffing-stat { min-width: 0; }
+.staffing-stat-value { font-size: clamp(21px, 2vw, 30px); line-height: 1.35; margin: 5px 0; font-variant-numeric: tabular-nums; }
+.staffing-department { font-size: 13px; line-height: 1.5; text-align: left; max-width: 540px; }
+.staffing-department:hover { text-decoration: underline; }
+.staffing-table td, .staffing-table th { font-size: 13px; }
+.staffing-table tr[data-selected] { background: var(--mantine-primary-color-light); }
+.staffing-bulk { background: var(--mantine-primary-color-light); border-radius: 6px; }
+.staffing-source { overflow-wrap: anywhere; }
+@media (max-width: 600px) {
+  .staffing-header { align-items: flex-start; }
+  .staffing-stats .staffing-stat { padding: 10px; }
+  .staffing-controls { gap: 8px; }
+  .staffing-controls > .mantine-Select-root { flex: 1 1 135px; max-width: 100%; }
+}
+@media print {
+  body:has(.staffing-page) .mantine-AppShell-navbar, body:has(.staffing-page) .mantine-AppShell-header, .staffing-page .staffing-controls, .staffing-page .mantine-ActionIcon-root, .staffing-page .mantine-Checkbox-root { display: none !important; }
+  body:has(.staffing-page) .mantine-AppShell-main { padding: 12px !important; }
+  .staffing-page { color: #000; }
+  .staffing-page .mantine-Paper-root { break-inside: avoid; }
+  .staffing-page .mantine-ScrollArea-viewport { overflow: visible !important; }
+}

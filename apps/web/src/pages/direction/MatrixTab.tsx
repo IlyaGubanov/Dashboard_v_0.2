@@ -1,28 +1,15 @@
 import { useMemo, useState } from 'react';
 import { Alert, Box, Card, Group, Select, Skeleton, Switch, Text, Tooltip } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
-import type { WorkGrid } from '@mvs/shared';
+import { SITE_RISK_LABELS } from '@mvs/shared';
 import { directionQueries } from '../../api';
-import { RiskBadge } from '../../ui/RiskBadge';
-import { SEQ_STEPS, seq } from '../../ui/seq';
+import { RiskBadge, RiskIcon } from '../../ui/RiskBadge';
+import { MatrixLegend, matrixCell, matrixStatusStyle } from '../../ui/MatrixStatus';
 import { int, pct } from '../../ui/format';
 import { Lag } from '../../ui/Lag';
 
-type Site = WorkGrid['sites'][number];
-type Item = Site['items'][number];
-
-/** Сводная ячейка: по виду работ на объекте может быть несколько позиций (Сети: несколько линий). */
-function cell(items: Item[]) {
-  const live = items.filter((i) => !i.excluded);
-  if (!live.length) return null;
-  const fact = live.reduce((a, i) => a + i.fact, 0) / live.length;
-  const withPlan = live.filter((i) => i.plan != null);
-  const plan = withPlan.length ? withPlan.reduce((a, i) => a + i.plan!, 0) / withPlan.length : null;
-  return { fact, plan, overdue: live.some((i) => i.overdue), items: live };
-}
-
 /**
- * Матрица «объект × вид работ»: цвет ячейки — выполнение (одна синяя шкала, темнее — больше),
+ * Матрица «объект × вид работ»: процент — средняя готовность, цвет — состояние наиболее проблемной позиции,
  * красная метка — срок прошёл, а работа не выполнена. Щелчок по строке — карточка объекта.
  */
 export function MatrixTab({ code, date, onOpenSite }: { code: string; date?: string; onOpenSite: (id: number) => void }) {
@@ -52,21 +39,7 @@ export function MatrixTab({ code, date, onOpenSite }: { code: string; date?: str
       <Group p="md" gap="md" wrap="wrap">
         {sections.length > 1 && <Select aria-label="Все разделы" placeholder="Все разделы" clearable data={sections} value={section} onChange={setSection} w={220} />}
         {data.planDate && <Switch label="Только отстающие объекты" checked={lagOnly} onChange={(e) => setLagOnly(e.currentTarget.checked)} />}
-        <Group gap={6} ml="auto" wrap="nowrap" aria-label="Шкала выполнения: от 0 до 100 процентов">
-          <Text size="xs" c="dimmed">
-            0 %
-          </Text>
-          {SEQ_STEPS.map((s) => (
-            <Box key={s} w={18} h={12} style={{ borderRadius: 2, background: `var(--seq-${s})` }} />
-          ))}
-          <Text size="xs" c="dimmed">
-            100 %
-          </Text>
-          <Box w={8} h={8} ml="sm" style={{ borderRadius: 4, background: 'var(--status-critical)' }} />
-          <Text size="xs" c="dimmed">
-            срок прошёл
-          </Text>
-        </Group>
+        <MatrixLegend />
       </Group>
 
       <Box style={{ overflow: 'auto', maxHeight: '70vh' }}>
@@ -110,11 +83,13 @@ export function MatrixTab({ code, date, onOpenSite }: { code: string; date?: str
                   </Group>
                 </td>
                 {types.map((t) => {
-                  const c = cell(s.items.filter((i) => i.workTypeId === t.id));
+                  const c = matrixCell(s.items.filter((i) => i.workTypeId === t.id));
                   if (!c) return <td key={t.id} style={{ background: 'var(--surface-muted)', borderRadius: 3 }} aria-label="нет работ" />;
+                  const statusLabel = c.risk === 'na' ? 'Нет графика / данных' : SITE_RISK_LABELS[c.risk];
                   const tip = (
                     <div>
                       <b>{t.name}</b>
+                      <div>{statusLabel}</div>
                       {c.items.length > 1 && <div>позиций: {c.items.length}</div>}
                       <div>Факт: {pct(c.fact)}</div>
                       {c.plan != null && (
@@ -122,6 +97,18 @@ export function MatrixTab({ code, date, onOpenSite }: { code: string; date?: str
                           План на дату: {pct(c.plan)} <Lag v={c.fact - c.plan} size="xs" />
                         </div>
                       )}
+                      {c.items.length > 1 && (c.risk === 'crit' || c.risk === 'warn') && (
+                        <div>Цвет — по наиболее проблемной позиции, процент — средний.</div>
+                      )}
+                      {c.items.filter((i) => c.items.length > 1 || i.hasFact === false || (i.riskPlan != null && i.riskPlan !== i.plan)).map((i) => (
+                        <div key={`risk-${i.id}`}>
+                          {c.items.length > 1 ? `${i.name}: ` : ''}
+                          {i.hasFact === false ? 'Нет фактических данных' : SITE_RISK_LABELS[i.risk ?? 'na']}
+                          {c.items.length > 1 && ` · факт: ${pct(i.fact)}`}
+                          {c.items.length > 1 && i.riskPlan != null && i.riskPlan === i.plan && ` · план: ${pct(i.riskPlan)}`}
+                          {i.riskPlan != null && i.riskPlan !== i.plan && ` · план объекта: ${pct(i.riskPlan)}`}
+                        </div>
+                      ))}
                       {c.items.map((i) =>
                         i.planQty != null ? (
                           <div key={i.id}>
@@ -134,9 +121,11 @@ export function MatrixTab({ code, date, onOpenSite }: { code: string; date?: str
                     </div>
                   );
                   return (
-                    <Tooltip key={t.id} label={tip} multiline w={240} withArrow>
-                      <td style={{ ...seq(c.fact), textAlign: 'center', borderRadius: 3, position: 'relative', height: 34, minWidth: 64 }}>
-                        {Math.round(c.fact * 100)}
+                    <Tooltip key={t.id} label={tip} multiline w={280} withArrow events={{ hover: true, focus: true, touch: true }}>
+                      <td className="matrix-status-cell" data-risk={c.risk} tabIndex={0}
+                        aria-label={`${t.name}: ${pct(c.fact)}, ${statusLabel}${c.overdue ? ', срок прошёл' : ''}`}
+                        style={{ ...matrixStatusStyle(c.risk), textAlign: 'center', borderRadius: 3, position: 'relative', height: 34, minWidth: 64 }}>
+                        <span className="matrix-value"><RiskIcon risk={c.risk} />{Math.round(c.fact * 100)}</span>
                         {c.overdue && (
                           <span
                             aria-label="срок прошёл"

@@ -1,11 +1,21 @@
 /** Представления направления: сетка работ (матрица, график), надстройки по всем объектам, ответственные. */
 import type { Prisma, PrismaClient } from '@prisma/client';
-import type { PeopleView, TrackersView, WorkGrid } from '@mvs/shared';
-import { calcSite, planDateFor } from './engine';
+import { riskLevel, type PeopleView, type SiteRisk, type TrackersView, type WorkGrid } from '@mvs/shared';
+import { calcSite, linear, planDateFor, type ItemCalc } from './engine';
 import { isoDate, type KDirection, type KPeriod } from './model';
 
 const day = (ms: number | null) => (ms == null ? null : isoDate(ms));
 const num = (v: Prisma.Decimal | null | undefined) => (v == null ? null : Number(v));
+
+/** Правила calcSite: те же границы завершения/ожидания и пороги; показатели KPI не меняются. */
+function matrixItemRisk(i: ItemCalc, plan: number | null, hasFact: boolean, dir: KDirection): SiteRisk {
+  if (i.excluded || !hasFact) return 'na';
+  if (i.fact >= 0.995) return 'done';
+  if (plan == null) return 'na';
+  if (plan < 0.005 && i.fact < 0.005) return 'wait';
+  const risk = riskLevel((i.fact - plan) * 100, dir.thrWarn, dir.thrCrit);
+  return risk === 'ok' && i.overdue ? 'warn' : risk;
+}
 
 export async function workGrid(db: PrismaClient, dir: KDirection, period: KPeriod | null): Promise<WorkGrid> {
   const [types, labels] = await Promise.all([
@@ -32,21 +42,30 @@ export async function workGrid(db: PrismaClient, dir: KDirection, period: KPerio
       plan: c.plan,
       start: day(s.planStart ?? (starts.length ? Math.min(...starts) : null)),
       end: day(s.planEnd ?? (ends.length ? Math.max(...ends) : null)),
-      items: c.items.map((i) => ({
-        id: i.item.id,
-        workTypeId: i.item.workTypeId,
-        name: label.get(i.item.id) ?? typeName.get(i.item.workTypeId) ?? '—',
-        start: day(i.item.planStart),
-        end: day(i.item.planEnd),
-        fact: i.fact,
-        plan: i.plan,
-        excluded: i.excluded,
-        overdue: i.overdue,
-        status: i.entry?.statusCode ?? null,
-        factQty: i.entry?.factQty ?? null,
-        planQty: i.entry?.p ?? i.item.planQty,
-        unit: i.item.unit,
-      })),
+      items: c.items.map((i) => {
+        const hasFact = !!period && !!i.entry && (
+          i.entry.countsAsDone || i.entry.pct != null || (i.item.planQty != null && i.item.planQty > 0 && i.entry.factQty != null)
+        );
+        const riskPlan = dir.planMethod === 'LINEAR_SITE_DATES' ? linear(s.planStart, s.planEnd, P) : i.plan;
+        return {
+          id: i.item.id,
+          workTypeId: i.item.workTypeId,
+          name: label.get(i.item.id) ?? typeName.get(i.item.workTypeId) ?? '—',
+          start: day(i.item.planStart),
+          end: day(i.item.planEnd),
+          fact: i.fact,
+          plan: i.plan,
+          excluded: i.excluded,
+          overdue: i.overdue,
+          risk: matrixItemRisk(i, riskPlan, hasFact, dir),
+          riskPlan,
+          hasFact,
+          status: i.entry?.statusCode ?? null,
+          factQty: i.entry?.factQty ?? null,
+          planQty: i.entry?.p ?? i.item.planQty,
+          unit: i.item.unit,
+        };
+      }),
     };
   });
 

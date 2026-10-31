@@ -68,4 +68,5 @@ export interface Me extends AccessRestrictions {
   globalRole: GlobalRole;
   mustChangePassword: boolean;
   directions: DirectionAccess[];
+  videoAccess: { view: boolean; manage: boolean };
 }

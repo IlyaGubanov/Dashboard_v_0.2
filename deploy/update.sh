@@ -8,6 +8,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 echo "== Резервная копия перед обновлением"
+bash deploy/video-secrets.sh
 bash deploy/backup.sh
 
 if [[ "${1:-}" != "--no-pull" ]]; then
@@ -21,6 +22,16 @@ if [[ "${1:-}" != "--no-pull" ]]; then
 fi
 
 echo "== Сборка и перезапуск"
+bash deploy/video-secrets.sh
+# Образы собираются по очереди: одновременная сборка сервера и интерфейса требует 3–4 ГБ памяти,
+# при нехватке сервер уходит в подкачку и сборка тянется десятками минут.
+# Пока идёт сборка, работает прежняя версия; Ctrl+C до строки «-- перезапуск» её не затрагивает.
+for svc in api web mediamtx; do
+  echo "-- сборка: $svc"
+  docker compose build "$svc"
+done
+echo "-- перезапуск"
+# --build: всё уже собрано (берётся из кеша за секунды); дособерёт службу, если её нет в списке выше
 docker compose up -d --build
 
 echo "== Проверка"

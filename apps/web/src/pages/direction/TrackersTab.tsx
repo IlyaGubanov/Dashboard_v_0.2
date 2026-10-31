@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
-import { Alert, Box, Card, Group, SegmentedControl, SimpleGrid, Skeleton, Stack, Table, Text, Tooltip } from '@mantine/core';
+import { Alert, Box, Card, Group, SegmentedControl, SimpleGrid, Skeleton, Stack, Table, Text } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import type { TrackersView } from '@mvs/shared';
 import { directionQueries } from '../../api';
 import { TrackerValue, stageDone } from '../../ui/TrackerValue';
-import { seq } from '../../ui/seq';
+import { MatrixLegend } from '../../ui/MatrixStatus';
+import { TrackerMatrixCell, trackerState } from '../../ui/TrackerMatrixCell';
 import { date, pct } from '../../ui/format';
 
 type Tracker = TrackersView['trackers'][number];
@@ -44,7 +45,7 @@ function MatrixTracker({ t, onOpenSite }: { t: Tracker; onOpenSite: (id: number)
   });
   // просрочено: плановая дата прошла, а этап не завершён
   const overdue = t.rows
-    .filter((r) => r.planDate && r.planDate < today && (stageDone(stage, r.values[stage.code]) ?? 0) < 1)
+    .filter((r) => trackerState(stage, r.values[stage.code], r.planDate, today).risk === 'warn')
     .sort((a, b) => (a.planDate! < b.planDate! ? -1 : 1));
 
   return (
@@ -72,6 +73,7 @@ function MatrixTracker({ t, onOpenSite }: { t: Tracker; onOpenSite: (id: number)
             <SegmentedControl size="xs" value={stage.code} onChange={setStageCode} data={t.stages.map((s) => ({ value: s.code, label: s.name }))} />
           )}
         </Group>
+        <Box px="md" pb="sm"><MatrixLegend trackers /></Box>
         <Box style={{ overflow: 'auto', maxHeight: '65vh' }}>
           <Table striped stickyHeader verticalSpacing={4} styles={{ td: { whiteSpace: 'nowrap', fontSize: 'calc(13px * var(--text-scale, 1))' }, th: { whiteSpace: 'nowrap' } }}>
             <Table.Thead>
@@ -98,20 +100,8 @@ function MatrixTracker({ t, onOpenSite }: { t: Tracker; onOpenSite: (id: number)
                   {sites.map(([id]) => {
                     const r = cell.get(`${it.code}|${id}`);
                     const v = r?.values[stage.code];
-                    const done = stageDone(stage, v);
-                    const late = !!r?.planDate && r.planDate < today && (done ?? 0) < 1;
                     return (
-                      <Table.Td key={id} style={stage.valueType === 'PERCENT' && done != null ? seq(done) : undefined}>
-                        <Tooltip
-                          disabled={!r?.planDate && !r?.dueDate}
-                          label={`${r?.planDate ? `поставка ${date(r.planDate)}` : ''}${r?.dueDate ? ` · завершение ${date(r.dueDate)}` : ''}`}
-                        >
-                          <Group gap={4} wrap="nowrap">
-                            {r ? <TrackerValue stage={stage} value={v} /> : <Text c="dimmed">·</Text>}
-                            {late && <Box w={7} h={7} style={{ borderRadius: 4, background: 'var(--status-critical)' }} aria-label="просрочено" />}
-                          </Group>
-                        </Tooltip>
-                      </Table.Td>
+                      <TrackerMatrixCell key={id} stage={stage} value={v} planDate={r?.planDate} dueDate={r?.dueDate} today={today} />
                     );
                   })}
                 </Table.Tr>
@@ -148,8 +138,10 @@ function MatrixTracker({ t, onOpenSite }: { t: Tracker; onOpenSite: (id: number)
 
 /** Одна строка на объект (МГЭ, документация): объекты × этапы. */
 function CardTracker({ t, onOpenSite }: { t: Tracker; onOpenSite: (id: number) => void }) {
+  const today = new Date().toISOString().slice(0, 10);
   return (
     <Card withBorder padding={0}>
+      <Box p="md"><MatrixLegend trackers /></Box>
       <Table.ScrollContainer minWidth={900}>
         <Table striped highlightOnHover verticalSpacing={6} styles={{ td: { whiteSpace: 'nowrap' }, th: { whiteSpace: 'nowrap' } }}>
           <Table.Thead>
@@ -165,9 +157,7 @@ function CardTracker({ t, onOpenSite }: { t: Tracker; onOpenSite: (id: number) =
               <Table.Tr key={r.siteId} style={{ cursor: 'pointer' }} onClick={() => onOpenSite(r.siteId)}>
                 <Table.Td style={{ whiteSpace: 'normal', minWidth: 240 }}>{r.siteName}</Table.Td>
                 {t.stages.map((s) => (
-                  <Table.Td key={s.code} style={{ maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    <TrackerValue stage={s} value={r.values[s.code]} />
-                  </Table.Td>
+                  <TrackerMatrixCell key={s.code} stage={s} value={r.values[s.code]} planDate={r.planDate} dueDate={r.dueDate} today={today} />
                 ))}
               </Table.Tr>
             ))}

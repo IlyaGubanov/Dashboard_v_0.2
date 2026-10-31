@@ -4,4 +4,6 @@
 .git
 docs
 deploy
+# Видеосервер (mediamtx) собирается из корня проекта и копирует этот скрипт в образ
+!deploy/mediamtx/egress.sh
 scripts

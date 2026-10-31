@@ -10,3 +10,5 @@ export * from './remarks';
 export * from './tasks';
 export * from './contractors';
 export * from './map';
+export * from './ckkb';
+export * from './report-summary';

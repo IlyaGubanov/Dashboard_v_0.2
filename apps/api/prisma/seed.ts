@@ -146,7 +146,7 @@ const APP_SETTINGS: Record<string, Prisma.InputJsonValue> = {
 async function main() {
   for (const d of DIRECTIONS) {
     const { code, ...rest } = d;
-    await prisma.direction.upsert({ where: { code }, create: d, update: rest });
+    await prisma.direction.upsert({ where: { code }, create: d, update: {} });
   }
   const byCode = Object.fromEntries((await prisma.direction.findMany()).map((d) => [d.code, d.id]));
 

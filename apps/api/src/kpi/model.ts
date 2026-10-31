@@ -38,6 +38,7 @@ export interface KItem {
 }
 
 export interface KReport {
+  source?: string;
   periodId: number;
   date: number;
   workers: number | null;
@@ -57,7 +58,7 @@ export interface KSite {
   num: number | null;
   name: string;
   shortName: string;
-  section: { id: number; name: string } | null;
+  section: { id: number; name: string; code?: string } | null;
   status: { code: string; name: string; color: string | null } | null;
   planStart: number | null;
   planEnd: number | null;
@@ -79,6 +80,7 @@ export interface KSite {
 }
 
 export interface KPeriod {
+  summary?: import('@mvs/shared').ReportSummaryStored | null;
   id: number;
   date: number;
   status: PeriodStatus;
@@ -122,7 +124,7 @@ export interface KDirection {
   thrWarn: number;
   thrCrit: number;
   siteUnit: string;
-  settings: { kpis?: KpiTileConfig[]; programs?: Record<string, string>; factLabel?: string };
+  settings: { kpis?: KpiTileConfig[]; programs?: Record<string, string>; factLabel?: string; source?: string };
   periods: KPeriod[];
   sites: KSite[];
   trackers: KTracker[];

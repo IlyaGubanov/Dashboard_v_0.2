@@ -5,7 +5,8 @@ import { peopleView, trackersView, workGrid } from './views';
 import { PrismaService } from '../prisma/prisma.service';
 import { AccessService } from '../auth/access.service';
 import type { AuthUser } from '../common/request';
-import { directionKpi, dynamics, hasFactAt, mainProgram, type DirectionResult } from './engine';
+import { directionKpi, dynamics, hasFactAt, mainProgram, calcSite, toRow, type DirectionResult } from './engine';
+import { objectReportPeriods, reportPrograms } from './report-programs';
 import { loadDirection, loadPeriods } from './loader';
 import { isoDate, parseDate, type KPeriod } from './model';
 import { cardNoFinance, kpiNoFinance, pointNoFinance, rowNoFinance } from './finance';
@@ -61,7 +62,7 @@ export class KpiService {
   /** Показатели с учётом ограничений сотрудника: без денег и без списка замечаний, если они ему скрыты. */
   private forUser(user: AuthUser, k: DirectionKpi): DirectionKpi {
     const r = this.access.has(user, 'finance') ? k : kpiNoFinance(k);
-    return this.access.canSee(user, 'remarks') ? r : { ...r, remarks: undefined };
+    return this.access.canSee(user, 'remarks') ? r : { ...r, remarks: undefined, reportPrograms: r.reportPrograms?.map(p => ({ ...p, aggregate: p.aggregate ? { ...p.aggregate, violations: [] } : p.aggregate, rows: p.rows.map(s => ({ ...s, remarksCount: undefined })) })) };
   }
 
   async sites(user: AuthUser, code: string, date?: string): Promise<SiteKpiRow[]> {
@@ -117,7 +118,7 @@ export class KpiService {
     const needed =
       meta.periodKind === 'REPORT' && !history
         ? [period, prev, ...this.otherProgramLatest(periods, program, until)].filter((p): p is KPeriod => !!p).map((p) => p.id)
-        : own.map((p) => p.id);
+        : (meta.periodKind === 'REPORT' ? periods.filter(p => p.date <= until) : own).map((p) => p.id);
     const dir = await loadDirection(this.prisma, directionId, periods, needed);
     return { dir, own, period, prev, periods, program, until, kind: meta.periodKind, settings };
   }
@@ -165,7 +166,8 @@ export class KpiService {
     const f = await this.full(id, date);
     const ks = f.dir.sites.find((s) => s.id === siteId);
     if (!ks) throw new NotFoundException('Объект не найден');
-    const card = await buildSiteCard(this.prisma, f.dir, ks, f.period, f.own);
+    const own = f.kind === 'REPORT' ? objectReportPeriods(f.dir, ks, f.until) : f.own;
+    const card = await buildSiteCard(this.prisma, f.dir, ks, own.at(-1) ?? null, own);
     card.canEdit = !f.dir.isReadonly && (await this.access.canEditSite(user, siteId));
     card.canManage = await this.access.canManageDirection(user, id);
     return this.access.has(user, 'finance') ? card : cardNoFinance(card);
@@ -182,6 +184,8 @@ export class KpiService {
       res.kpi.prev = { asOf: p.asOf!, fact: p.fact, plan: p.plan };
     }
     if (meta.periodKind === 'REPORT') {
+      res.kpi.reportPrograms = reportPrograms(dir, until);
+      res.rows = dir.sites.map(s => { const p = objectReportPeriods(dir, s, until).at(-1); return p ? toRow(calcSite(dir, s, p, p.date)) : res.rows.find(r => r.id === s.id); }).filter((r): r is SiteKpiRow => !!r);
       const names = settings.programs ?? {};
       res.kpi.extra = this.otherProgramLatest(periods, program, until).map((p) => ({
         label: names[p.program] ?? p.program,

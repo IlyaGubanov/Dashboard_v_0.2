@@ -29,10 +29,12 @@ export const APP_SECTION_GROUPS: { label: string; sections: AppSection[] }[] = [
 ];
 
 /** Отдельные возможности, которые можно отключить сотруднику. */
-export const FEATURES = ['finance', 'remarksCreate', 'export', 'audit'] as const;
+export const FEATURES = ['finance', 'remarksCreate', 'export', 'audit', 'videoView', 'videoManage'] as const;
 export type Feature = (typeof FEATURES)[number];
 
 export const FEATURE_LABELS: Record<Feature, { label: string; description: string }> = {
+  videoView: { label: 'Просмотр камер', description: 'Дополнительно требуется явный доступ к объектам на вкладке «Камеры» сотрудника.' },
+  videoManage: { label: 'Управление видеонаблюдением', description: 'Только явно разрешённые объекты; доступно руководству и кураторам.' },
   finance: { label: 'Видеть финансы', description: 'Стоимость, КС-2, оплата, авансы, лимиты. Без галочки сервер не отдаёт денежные данные.' },
   remarksCreate: { label: 'Создавать замечания', description: 'Заводить новые замечания по объектам (если есть права на объект).' },
   export: { label: 'Выгрузка в Excel', description: 'Кнопки выгрузки реестров в CSV для Excel.' },

@@ -18,6 +18,7 @@ import { TasksModule } from './tasks/tasks.module';
 import { ContractorsModule } from './contractors/contractors.module';
 import { AppearanceModule } from './appearance/appearance.module';
 import { HealthController } from './health.controller';
+import { VideoModule } from './video/video.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { HealthController } from './health.controller';
     TasksModule,
     ContractorsModule,
     AppearanceModule,
+    VideoModule,
   ],
   controllers: [HealthController],
   providers: [

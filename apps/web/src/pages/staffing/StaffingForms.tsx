@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Alert, Button, Group, Modal, MultiSelect, NumberInput, Select, SimpleGrid, Stack, Table, Text, Textarea, TextInput } from '@mantine/core';
+import { Alert, Autocomplete, Button, Group, Modal, MultiSelect, NumberInput, Select, SimpleGrid, Stack, Table, Text, Textarea, TextInput } from '@mantine/core';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { STAFFING_CATEGORIES, staffingPeriodSchema, staffingPayrollSchema, staffingRowSchema, type StaffingEditors, type StaffingPeriod, type StaffingPeriodData, type StaffingPayroll, type StaffingPayrollData, type StaffingRow } from '@mvs/shared';
+import { STAFFING_CATEGORIES, staffingGroupOf, staffingGroups, staffingPeriodSchema, staffingPayrollSchema, staffingRowSchema, type StaffingEditors, type StaffingPeriod, type StaffingPeriodData, type StaffingPayroll, type StaffingPayrollData, type StaffingRow } from '@mvs/shared';
 import { api } from '../../api';
 
 const num = (value: string | number) => value === '' ? null : Number(value);
@@ -22,7 +22,10 @@ export function RowEditor({ row, period, canEdit, onClose, onSave }: { row: Staf
   return <Modal opened onClose={onClose} title={canEdit ? 'Подразделение' : 'Карточка подразделения'} size="lg">
     <Stack gap="sm">
       <TextInput label="Подразделение" value={value.department} onChange={e => change({ department: e.currentTarget.value })} disabled={!canEdit} error={fields.department} required />
-      <Select label="Категория" data={[...STAFFING_CATEGORIES]} value={value.category} onChange={v => change({ category: v as StaffingRow['category'] })} disabled={!canEdit} error={fields.category} allowDeselect={false} />
+      <SimpleGrid cols={{ base: 1, sm: 2 }}>
+        <Select label="Категория" data={[...STAFFING_CATEGORIES]} value={value.category} onChange={v => change({ category: v as StaffingRow['category'] })} disabled={!canEdit} error={fields.category} allowDeselect={false} comboboxProps={{ zIndex: 1000 }} />
+        <Autocomplete label="Группа на диаграмме" description="Пусто — определяется по названию" placeholder={staffingGroupOf({ department: value.department })} data={staffingGroups(period.rows).map(g => g.group)} value={value.group ?? ''} onChange={group => change({ group })} disabled={!canEdit} error={fields.group} comboboxProps={{ zIndex: 1000 }} />
+      </SimpleGrid>
       <SimpleGrid cols={2}>
         <NumberInput label="Штат, ед." value={value.planned ?? ''} onChange={v => change({ planned: num(v) })} min={0} decimalScale={2} disabled={!canEdit} error={fields.planned} />
         <NumberInput label="Факт, чел." value={value.actual ?? ''} onChange={v => change({ actual: num(v) })} min={0} allowDecimal={false} disabled={!canEdit} error={fields.actual} />

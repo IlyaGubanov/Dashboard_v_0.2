@@ -21,3 +21,6 @@
   .staffing-page .mantine-Paper-root { break-inside: avoid; }
   .staffing-page .mantine-ScrollArea-viewport { overflow: visible !important; }
 }
+.staffing-group { display: inline-flex; align-items: flex-start; gap: 8px; }
+.staffing-swatch { flex: none; width: 11px; height: 11px; border-radius: 2px; margin-top: 0.3em; }
+.staffing-nowrap { white-space: nowrap; }

@@ -9,6 +9,8 @@ export const staffingRowSchema = z.object({
   planned: quantity,
   actual: z.number().int('Факт указывается в целых сотрудниках').min(0).max(1_000_000).nullable(),
   note: z.string().max(2000).default(''), function: z.string().max(10000).default(''), isArchived: z.boolean().default(false),
+  /** Группа на диаграмме распределения; пусто — определяется по названию (staffingGroupOf). */
+  group: z.string().trim().max(120, 'Название группы — не длиннее 120 символов').optional(),
 });
 export type StaffingRow = z.infer<typeof staffingRowSchema>;
 export const staffingMonthSchema = z.string().regex(/^20\d{2}-(0[1-9]|1[0-2])$/, 'Укажите месяц');
@@ -51,6 +53,29 @@ export function summarizeStaffing(input: StaffingRow[]) {
     netGap: rows.length && !missingPlan && !missingActual ? round(comparablePlanned - comparableActual) : null,
     occupancy: comparablePlanned > 0 ? comparableActual / comparablePlanned : null,
   };
+}
+/** Блоки как в сводке «СВОД по подразделениям»: РСУ по номеру, затем известные названия, остальное — АУП. */
+export const STAFFING_GROUP_OTHER = 'АУП';
+const groupHints: [RegExp, string][] = [
+  [/эксплуатационная база/i, 'РЭБ (без ТЛС)'],
+  [/^(Строительно-монтажное управление|Ремонтно-строительное управление)$|Транспортно-логистическ/i, 'ГУП МВС (СМУ+РСУ+ТЛС)'],
+  [/от Учредителя/i, 'РСУ СР+УСР от Учредителя'],
+  [/Управление гражданского строительства/i, 'Управление гражданского строительства'],
+  [/Управление обеспечения и эксплуатации производственной базы/i, 'Управление обеспечения и эксплуатации производственной базы'],
+];
+export function staffingGroupOf(row: Pick<StaffingRow, 'department' | 'group'>): string {
+  if (row.group?.trim()) return row.group.trim();
+  const rsu = row.department.match(/РСУ\s*-?\s*(\d+)/i);
+  if (rsu) return `РСУ-${rsu[1]}`;
+  return groupHints.find(([re]) => re.test(row.department.trim()))?.[1] ?? STAFFING_GROUP_OTHER;
+}
+/** Суммы по группам (без архивных строк), от большего факта к меньшему; пропуски не считаются нулём. */
+export function staffingGroups(input: StaffingRow[]) {
+  const map = new Map<string, StaffingRow[]>();
+  for (const r of input.filter(r => !r.isArchived)) map.set(staffingGroupOf(r), [...(map.get(staffingGroupOf(r)) ?? []), r]);
+  const size = (v: number | null) => v ?? -1;
+  return [...map].map(([group, rows]) => ({ group, ...summarizeStaffing(rows) }))
+    .sort((a, b) => size(b.actual) - size(a.actual) || size(b.planned) - size(a.planned) || a.group.localeCompare(b.group, 'ru'));
 }
 export function staffingDelta(row: StaffingRow, previous: StaffingRow[]): number | null {
   const before = previous.find(r => r.id === row.id && !r.isArchived);

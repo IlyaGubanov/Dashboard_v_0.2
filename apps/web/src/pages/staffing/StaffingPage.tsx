@@ -1,13 +1,14 @@
 /** Используем компоненты и иконки действующего приложения (Mantine/Tabler), чтобы раздел наследовал оформление и доступность. */
-import { useMemo, useState } from 'react';
-import { ActionIcon, Alert, Badge, Button, Checkbox, Group, Menu, Modal, Pagination, Paper, Progress, Select, SimpleGrid, Skeleton, Stack, Switch, Table, Tabs, Text, TextInput, Title, Tooltip, UnstyledButton } from '@mantine/core';
+import { useCallback, useMemo, useState } from 'react';
+import { ActionIcon, Alert, Badge, Button, Checkbox, Group, Menu, Modal, Pagination, Paper, Progress, SegmentedControl, Select, SimpleGrid, Skeleton, Stack, Switch, Table, Tabs, Text, TextInput, Title, Tooltip, UnstyledButton } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getRouteApi } from '@tanstack/react-router';
 import { IconArchive, IconCalendar, IconDots, IconDownload, IconEdit, IconFileImport, IconPlus, IconPrinter, IconRefresh, IconSearch, IconSettings, IconUsers } from '@tabler/icons-react';
-import { STAFFING_CATEGORIES, STAFFING_CATEGORY_LABELS, staffingCsvCell, staffingDelta, summarizeStaffing, type StaffingAuditItem, type StaffingPeriod, type StaffingPeriodData, type StaffingPayroll, type StaffingRow } from '@mvs/shared';
+import { STAFFING_CATEGORIES, STAFFING_CATEGORY_LABELS, STAFFING_GROUP_OTHER, staffingCsvCell, staffingDelta, staffingGroupOf, staffingGroups, summarizeStaffing, type StaffingAuditItem, type StaffingPeriod, type StaffingPeriodData, type StaffingPayroll, type StaffingRow } from '@mvs/shared';
 import { api, staffingQuery } from '../../api';
-import { EChart, baseOption } from '../../ui/EChart';
+import type { EChartsOption } from 'echarts';
+import { EChart, baseOption, type ChartColors } from '../../ui/EChart';
 import { useFinanceHidden } from '../../ui/finance';
 import { EditorsDialog, PayrollEditor, PeriodEditor, RowEditor } from './StaffingForms';
 import type { StaffingSearch } from './search';
@@ -58,9 +59,10 @@ export function StaffingPage() {
     const rows = (current?.rows ?? []).filter(r => search.status === 'archived' ? r.isArchived : !r.isArchived)
       .filter(r => !q || `${r.department} ${r.note} ${r.id}`.toLocaleLowerCase('ru').includes(q))
       .filter(r => !search.category || r.category === search.category)
+      .filter(r => !search.group || staffingGroupOf(r) === search.group)
       .filter(r => !search.status || search.status === 'archived' || (search.status === 'missing' ? r.actual === null || r.planned === null : search.status === 'vacant' ? (gap(r) ?? 0) > 0 : (gap(r) ?? 0) < 0));
     return rows.sort((a, b) => search.sort === 'actual' ? (b.actual ?? -1) - (a.actual ?? -1) : search.sort === 'planned' ? (b.planned ?? -1) - (a.planned ?? -1) : search.sort === 'vacancies' ? (gap(b) ?? -Infinity) - (gap(a) ?? -Infinity) : a.department.localeCompare(b.department, 'ru'));
-  }, [current, search.q, search.category, search.status, search.sort]);
+  }, [current, search.q, search.category, search.status, search.sort, search.group]);
   const selectedVisible = selected.filter(id => filtered.some(r => r.id === id));
   const filteredStats = summarizeStaffing(filtered.map(r => ({ ...r, isArchived: false })));
   const canEdit = !!data?.permissions.canEdit;
@@ -87,8 +89,8 @@ export function StaffingPage() {
   function exportRows() {
     if (!current) return;
     download(`Штатная численность ${current.asOf}.csv`, [
-      ['Дата среза', 'Подразделение', 'Категория', 'Штат, ед.', 'Факт, чел.', 'Незакрыто, ед.', 'Превышение, чел.', `Изменение к ${previous?.asOf ?? '—'}`, 'Архив', 'Примечание', 'Функции'],
-      ...filtered.map(r => [current.asOf, r.department, r.category, r.planned, r.actual, gap(r) == null ? null : Math.max(0, gap(r)!), gap(r) == null ? null : Math.max(0, -gap(r)!), staffingDelta(r, previous?.rows ?? []), r.isArchived ? 'Да' : 'Нет', r.note, r.function]),
+      ['Дата среза', 'Подразделение', 'Группа', 'Категория', 'Штат, ед.', 'Факт, чел.', 'Незакрыто, ед.', 'Превышение, чел.', `Изменение к ${previous?.asOf ?? '—'}`, 'Архив', 'Примечание', 'Функции'],
+      ...filtered.map(r => [current.asOf, r.department, staffingGroupOf(r), r.category, r.planned, r.actual, gap(r) == null ? null : Math.max(0, gap(r)!), gap(r) == null ? null : Math.max(0, -gap(r)!), staffingDelta(r, previous?.rows ?? []), r.isArchived ? 'Да' : 'Нет', r.note, r.function]),
     ]);
   }
 
@@ -105,7 +107,7 @@ export function StaffingPage() {
           {data.canExport && <Menu.Item leftSection={<IconPrinter size={16} />} onClick={() => window.print()}>Печать для руководства</Menu.Item>}
           {canEdit && current && <Menu.Item leftSection={<IconSettings size={16} />} onClick={() => { setPeriodBase(current); setPeriodForm('edit'); }}>Настройки среза</Menu.Item>}
           {data.permissions.canManageEditors && <Menu.Item leftSection={<IconUsers size={16} />} onClick={() => setEditors(true)}>Ответственные за данные</Menu.Item>}
-          {canEdit && showFinance && <Menu.Item leftSection={<IconFileImport size={16} />} onClick={() => setConfirm({ title: 'Загрузить 4 исходных среза и ФОТ за 2024–2026 годы? Существующие данные сохранятся.', action: () => api('/staffing/import-source', { method: 'POST' }) })}>Загрузить исходные данные</Menu.Item>}
+          {canEdit && showFinance && <Menu.Item leftSection={<IconFileImport size={16} />} onClick={() => setConfirm({ title: 'Загрузить исходные срезы (01.01.2025 – 26.10.2026) и ФОТ за 2024–2026 годы? Добавятся только отсутствующие, существующие данные сохранятся.', action: () => api('/staffing/import-source', { method: 'POST' }) })}>Загрузить исходные данные</Menu.Item>}
           {canEdit && current && <Menu.Item color={current.isArchived ? undefined : 'red'} leftSection={<IconArchive size={16} />} onClick={() => setConfirm({ title: current.isArchived ? 'Восстановить срез?' : 'Архивировать срез? Данные и история сохранятся.', action: () => savePeriod(current, !current.isArchived) })}>{current.isArchived ? 'Восстановить срез' : 'Архивировать срез'}</Menu.Item>}
         </Menu.Dropdown></Menu>
         {canEdit && <Button leftSection={<IconPlus size={16} />} size="sm" onClick={() => setPeriodForm('new')}>Новый срез</Button>}
@@ -129,15 +131,16 @@ export function StaffingPage() {
         </SimpleGrid>
         <Tabs value={tab} onChange={v => update({ tab: v ?? undefined })}>
           <Tabs.List className="staffing-controls"><Tabs.Tab value="overview">Обзор</Tabs.Tab><Tabs.Tab value="departments">Подразделения</Tabs.Tab>{showFinance && <Tabs.Tab value="payroll">ФОТ по годам</Tabs.Tab>}{data.canAudit && <Tabs.Tab value="journal">Журнал</Tabs.Tab>}</Tabs.List>
-          <Tabs.Panel value="overview" pt="md"><Overview periods={active} current={current} previous={previous} open={setRow} /></Tabs.Panel>
+          <Tabs.Panel value="overview" pt="md"><Overview periods={active} current={current} previous={previous} open={setRow} measure={search.pie ?? 'actual'} onMeasure={m => update({ pie: m === 'planned' ? m : undefined })} openGroup={group => { update({ tab: 'departments', group, q: undefined, category: undefined, status: undefined }); setPage(1); }} /></Tabs.Panel>
           <Tabs.Panel value="departments" pt="md">
             <Stack gap="sm">
               <Group gap="xs" className="staffing-controls">
                 <TextInput aria-label="Поиск подразделения" placeholder="Поиск подразделения" leftSection={<IconSearch size={16} />} value={search.q ?? ''} onChange={e => { update({ q: e.currentTarget.value || undefined }); setPage(1); }} style={{ flex: '1 1 230px' }} />
                 <Select aria-label="Категория" placeholder="Все категории" data={[...STAFFING_CATEGORIES]} value={search.category ?? null} clearable onChange={v => { update({ category: v ?? undefined }); setPage(1); }} w={150} />
+                <Select aria-label="Группа" placeholder="Все группы" data={[...new Set([...staffingGroups(current.rows).map(g => g.group), ...(search.group ? [search.group] : [])])]} value={search.group ?? null} clearable searchable onChange={v => { update({ group: v ?? undefined }); setPage(1); }} w={200} />
                 <Select aria-label="Состояние" placeholder="Все состояния" data={[{ value: 'vacant', label: 'Есть дефицит' }, { value: 'excess', label: 'Превышение' }, { value: 'missing', label: 'Нет данных' }, { value: 'archived', label: 'Архив строк' }]} value={search.status ?? null} clearable onChange={v => { update({ status: v ?? undefined }); setPage(1); }} w={170} />
                 <Select aria-label="Сортировка" data={[{ value: 'name', label: 'По названию' }, { value: 'actual', label: 'По факту ↓' }, { value: 'planned', label: 'По штату ↓' }, { value: 'vacancies', label: 'По дефициту ↓' }]} value={search.sort ?? 'name'} onChange={v => update({ sort: v ?? undefined })} w={170} allowDeselect={false} />
-                {(search.q || search.category || search.status) && <Button variant="subtle" size="xs" onClick={() => update({ q: undefined, category: undefined, status: undefined })}>Сбросить</Button>}
+                {(search.q || search.category || search.status || search.group) && <Button variant="subtle" size="xs" onClick={() => update({ q: undefined, category: undefined, status: undefined, group: undefined })}>Сбросить</Button>}
                 {canEdit && <Button variant="default" leftSection={<IconPlus size={15} />} onClick={() => setRow(emptyRow())}>Подразделение</Button>}
               </Group>
               <Group justify="space-between"><Text size="xs" c="dimmed">Найдено {filtered.length} из {current.rows.length} · сводка выше по всему срезу</Text>{data.canExport && <Button size="xs" variant="subtle" leftSection={<IconDownload size={14} />} onClick={exportRows}>Выгрузить найденное</Button>}</Group>
@@ -148,7 +151,7 @@ export function StaffingPage() {
                   const delta = staffingDelta(r, previous?.rows ?? []); const deficit = gap(r);
                   return <Table.Tr key={r.id} data-selected={selectedVisible.includes(r.id) || undefined}>
                     {canEdit && <Table.Td><Checkbox aria-label={`Выбрать: ${r.department}`} checked={selectedVisible.includes(r.id)} onChange={e => { const checked = e.currentTarget.checked; setSelected(ids => checked ? [...ids, r.id] : ids.filter(id => id !== r.id)); }} /></Table.Td>}
-                    <Table.Td><UnstyledButton className="staffing-department" onClick={() => setRow(r)}>{r.department}</UnstyledButton>{r.note && <Text size="xs" c="dimmed" lineClamp={1}>{r.note}</Text>}</Table.Td>
+                    <Table.Td><UnstyledButton className="staffing-department" onClick={() => setRow(r)}>{r.department}</UnstyledButton><Text size="xs" c="dimmed" lineClamp={1}>{staffingGroupOf(r)}{r.note ? ` · ${r.note}` : ''}</Text></Table.Td>
                     <Table.Td><Badge variant="light" color="gray" size="sm">{r.category}</Badge></Table.Td><Table.Td ta="right">{n(r.planned)}</Table.Td><Table.Td ta="right">{n(r.actual)}</Table.Td>
                     <Table.Td ta="right">{deficit === null ? <Badge variant="outline" color="gray" size="xs">Нет данных</Badge> : deficit > 0 ? <Text size="sm" c="var(--status-warning)" fw={600}>−{n(deficit)}</Text> : deficit < 0 ? <Tooltip label="Превышение штата"><Text size="sm">+{n(-deficit)}</Text></Tooltip> : '0'}</Table.Td>
                     <Table.Td ta="right"><Tooltip label={`К ${previous ? d(previous.asOf) : 'не выбранному периоду'}`}><span>{delta == null ? '—' : `${delta > 0 ? '+' : ''}${n(delta)}`}</span></Tooltip></Table.Td>
@@ -175,7 +178,8 @@ export function StaffingPage() {
   </Stack>;
 }
 
-function Overview({ periods, current, previous, open }: { periods: StaffingPeriod[]; current: StaffingPeriod; previous?: StaffingPeriod; open: (r: StaffingRow) => void }) {
+type Measure = 'actual' | 'planned';
+function Overview({ periods, current, previous, open, measure, onMeasure, openGroup }: { periods: StaffingPeriod[]; current: StaffingPeriod; previous?: StaffingPeriod; open: (r: StaffingRow) => void; measure: Measure; onMeasure: (m: Measure) => void; openGroup: (group: string) => void }) {
   const rows = current.rows.filter(r => !r.isArchived);
   const attention = rows.filter(r => r.planned == null || r.actual == null || gap(r) !== 0).sort((a, b) => (gap(b) ?? -1) - (gap(a) ?? -1));
   return <Stack gap="md">
@@ -189,11 +193,70 @@ function Overview({ periods, current, previous, open }: { periods: StaffingPerio
         return <div key={category}><Group justify="space-between" gap="xs"><Tooltip label={STAFFING_CATEGORY_LABELS[category]}><Text size="sm" fw={600}>{category}</Text></Tooltip><Text size="sm">{n(s.actual)} чел. <Text span c="dimmed" size="xs">/ {n(s.planned)} ед.</Text></Text></Group><Progress value={total && s.actual != null ? s.actual / total * 100 : 0} size={4} mt={8} color="var(--series-1)" aria-label={`Доля ${category} в известном факте`} /><Text size="xs" c="dimmed" mt={5}>{s.count} подразделений · заполнено {s.count - s.missingActual}/{s.count}{s.vacancies ? ` · дефицит ${n(s.vacancies)}` : ''}</Text></div>;
       })}</Stack></Paper>
     </SimpleGrid>
+    <GroupPie period={current} measure={measure} onMeasure={onMeasure} openGroup={openGroup} />
     <div><Group justify="space-between" mb="sm"><Group gap="xs"><Text size="sm" fw={600}>Требуют внимания</Text><Badge variant="light" color="gray" size="sm">{attention.length}</Badge></Group><Text size="xs" c="dimmed">{previous ? `Изменение к ${d(previous.asOf)}` : 'Нет предыдущего среза'}</Text></Group>
       <Table.ScrollContainer minWidth={650}><Table highlightOnHover verticalSpacing="xs"><Table.Thead><Table.Tr><Table.Th>Подразделение</Table.Th><Table.Th ta="right">Штат</Table.Th><Table.Th ta="right">Факт</Table.Th><Table.Th>Состояние</Table.Th><Table.Th ta="right">Изм.</Table.Th></Table.Tr></Table.Thead><Table.Tbody>{attention.map(r => <Table.Tr key={r.id}><Table.Td><UnstyledButton className="staffing-department" onClick={() => open(r)}>{r.department}</UnstyledButton></Table.Td><Table.Td ta="right">{n(r.planned)}</Table.Td><Table.Td ta="right">{n(r.actual)}</Table.Td><Table.Td><Badge variant="light" color={gap(r) == null ? 'gray' : 'orange'} size="sm">{gap(r) == null ? '△ Нет данных' : gap(r)! > 0 ? `Дефицит ${n(gap(r))}` : `Превышение ${n(-gap(r)!)}`}</Badge></Table.Td><Table.Td ta="right">{n(staffingDelta(r, previous?.rows ?? []))}</Table.Td></Table.Tr>)}</Table.Tbody></Table></Table.ScrollContainer>
       {!attention.length && <Text size="sm" c="dimmed" py="md">Отклонений и пропусков нет</Text>}
     </div>
   </Stack>;
+}
+
+/**
+ * Кольцевая диаграмма по группам (РСУ, РЭБ, ГУП МВС…), как в листе «СВОД по подразделениям».
+ * Порядок и цвета задаёт факт, чтобы переключатель «Факт / Штат» не перекрашивал группы:
+ * десять тонов --cat-1…10 по убыванию, соседние группы — разные тона; «АУП» (и группы после десятой) — нейтральный --status-none.
+ */
+function groupTone(groups: { group: string }[], group: string) {
+  const i = groups.filter(g => g.group !== STAFFING_GROUP_OTHER).findIndex(g => g.group === group);
+  return group !== STAFFING_GROUP_OTHER && i < 10 ? i : null;
+}
+function GroupPie({ period, measure, onMeasure, openGroup }: { period: StaffingPeriod; measure: Measure; onMeasure: (m: Measure) => void; openGroup: (group: string) => void }) {
+  const groups = useMemo(() => staffingGroups(period.rows), [period]);
+  const unit = measure === 'actual' ? 'чел.' : 'ед.';
+  const value = (g: (typeof groups)[number]) => g[measure];
+  const gaps = (g: (typeof groups)[number]) => measure === 'actual' ? g.missingActual : g.missingPlan;
+  const known = groups.filter(g => (value(g) ?? 0) > 0);
+  const total = known.reduce((s, g) => s + value(g)!, 0);
+  const missing = groups.reduce((s, g) => s + gaps(g), 0);
+  const share = (v: number | null) => v == null || !total ? '—' : `${(v / total * 100).toLocaleString('ru-RU', { maximumFractionDigits: 1 })} %`;
+  const option = useCallback((c: ChartColors): EChartsOption => {
+    const base = baseOption(c);
+    return {
+      ...base,
+      legend: { show: false },
+      tooltip: { ...(base.tooltip as object), trigger: 'item', formatter: (p: unknown) => { const x = p as { name: string; value: number; percent: number }; return `${x.name}<br/>${n(x.value)} ${unit} · ${x.percent.toLocaleString('ru-RU', { maximumFractionDigits: 1 })} %`; } },
+      title: { text: n(total), subtext: `${unit} всего`, left: 'center', top: 'middle', itemGap: 2, textStyle: { color: c.text, fontSize: Math.round(c.fontSize * 1.6), fontWeight: 600 }, subtextStyle: { color: c.muted, fontSize: c.fontSize } },
+      series: [{
+        type: 'pie', radius: ['56%', '88%'], center: ['50%', '50%'], minAngle: 1, avoidLabelOverlap: false,
+        itemStyle: { borderColor: c.surface, borderWidth: 2 },
+        label: { position: 'inside', fontSize: c.fontSize, fontWeight: 600, formatter: (p: unknown) => { const x = p as { percent: number }; return x.percent >= 5 ? `${Math.round(x.percent)}%` : ''; } },
+        emphasis: { scaleSize: 4 },
+        data: known.map(g => {
+          const t = groupTone(groups, g.group);
+          return { name: g.group, value: value(g)!, itemStyle: { color: t == null ? c.none : c.cat[t] }, label: { color: t == null ? c.surface : c.catInk[t] } };
+        }),
+      }],
+    };
+  }, [groups, known, total, unit]); // eslint-disable-line react-hooks/exhaustive-deps
+  return <Paper withBorder p="md">
+    <Group justify="space-between" mb="sm" gap="xs">
+      <div><Text size="sm" fw={600}>Распределение по РСУ и подразделениям</Text><Text size="xs" c="dimmed">Доля от общей численности на {d(period.asOf)} · групп: {groups.length}</Text></div>
+      <SegmentedControl size="xs" value={measure} onChange={v => onMeasure(v as Measure)} data={[{ value: 'actual', label: 'Факт, чел.' }, { value: 'planned', label: 'Штат, ед.' }]} aria-label="Показатель диаграммы" />
+    </Group>
+    {!known.length ? <Text size="sm" c="dimmed" py="lg" ta="center">△ {measure === 'planned' ? 'Штат по подразделениям в этом срезе не заполнен' : 'Факт в этом срезе не заполнен'}</Text> : <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
+      <EChart height={280} option={option} onClick={p => openGroup(p.name)} ariaLabel={`Распределение, ${unit}: ${known.map(g => `${g.group} — ${share(value(g))}`).join(', ')}`} />
+      <Table.ScrollContainer minWidth={300}><Table verticalSpacing={6} highlightOnHover className="staffing-table">
+        <Table.Thead><Table.Tr><Table.Th>Группа</Table.Th><Table.Th ta="right">{measure === 'actual' ? 'Факт' : 'Штат'}, {unit}</Table.Th><Table.Th ta="right">Доля</Table.Th></Table.Tr></Table.Thead>
+        <Table.Tbody>{groups.map(g => { const t = groupTone(groups, g.group); return <Table.Tr key={g.group}>
+          <Table.Td><UnstyledButton className="staffing-department staffing-group" onClick={() => openGroup(g.group)}><span className="staffing-swatch" style={{ background: t == null ? 'var(--status-none)' : `var(--cat-${t + 1})` }} aria-hidden />{g.group}</UnstyledButton>
+            {(g.count > 1 || gaps(g) > 0) && <Text size="xs" c="dimmed">подразделений: {g.count}{gaps(g) ? ` · △ без данных: ${gaps(g)}` : ''}</Text>}</Table.Td>
+          <Table.Td ta="right" className="staffing-nowrap">{n(value(g))}</Table.Td><Table.Td ta="right" c="dimmed" className="staffing-nowrap">{share(value(g))}</Table.Td>
+        </Table.Tr>; })}</Table.Tbody>
+        <Table.Tfoot><Table.Tr><Table.Td fw={600}>Итого</Table.Td><Table.Td ta="right" fw={600} className="staffing-nowrap">{n(total)}</Table.Td><Table.Td ta="right" c="dimmed" className="staffing-nowrap">100 %</Table.Td></Table.Tr></Table.Tfoot>
+      </Table></Table.ScrollContainer>
+    </SimpleGrid>}
+    <Text size="xs" c="dimmed" mt="xs">{missing ? `△ Без данных: ${missing} подразд. — доли считаются от известной суммы. ` : ''}Нажмите на группу, чтобы открыть её подразделения. Группа задаётся в карточке подразделения, по умолчанию — по названию.</Text>
+  </Paper>;
 }
 
 function Payroll({ years, canEdit, canExport, onEdit }: { years: StaffingPayroll[]; canEdit: boolean; canExport: boolean; onEdit: (p: StaffingPayroll | 'new') => void }) {

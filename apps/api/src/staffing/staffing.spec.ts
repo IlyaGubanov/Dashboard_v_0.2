@@ -31,6 +31,22 @@ describe('штатная численность', () => {
     expect(staffing.staffingDelta(row('b', 3, 2), previous)).toBeNull();
     expect(staffing.staffingDelta(row('new', 3, 2), previous)).toBeNull();
   });
+  it('группирует подразделения по РСУ как лист «СВОД по подразделениям»: явная группа важнее названия', () => {
+    const july = staffing.staffingPeriodSchema.parse(source.periods.find(p => p.month === '2026-07'));
+    const groups = Object.fromEntries(staffing.staffingGroups(july.rows).map(g => [g.group, g.actual]));
+    expect(groups).toMatchObject({ 'РСУ-3': 1488, 'РСУ-1': 684, 'РЭБ (без ТЛС)': 614, 'РСУ-2': 564, 'ГУП МВС (СМУ+РСУ+ТЛС)': 455, 'РСУ-6': 295, 'РСУ СР+УСР от Учредителя': 35, 'Управление гражданского строительства': 39, 'Управление обеспечения и эксплуатации производственной базы': 44, 'РСУ-4': null, АУП: 321 });
+    expect(staffing.staffingGroups(july.rows).reduce((s, g) => s + (g.actual ?? 0), 0)).toBe(4539);
+    expect(staffing.staffingGroupOf({ department: 'Управление строительства / РСУ-2', group: '  Своя группа ' })).toBe('Своя группа');
+    expect(staffing.staffingGroupOf({ department: 'Пресс-служба', group: '' })).toBe('АУП');
+    expect(staffing.staffingGroups([row('a', 1, 1, true)])).toEqual([]);
+  });
+  it('срез на 26.10.2026 совпадает с итогом сводки и не содержит выдуманного штата', () => {
+    const october = staffing.staffingPeriodSchema.parse(source.periods.find(p => p.month === '2026-10'));
+    expect(staffing.summarizeStaffing(october.rows)).toMatchObject({ count: 11, actual: 4484, planned: null, missingPlan: 11 });
+    const groups = staffing.staffingGroups(october.rows);
+    expect(groups[0]).toMatchObject({ group: 'РСУ-3', actual: 1358 });
+    expect(Math.round(groups[0].actual! / 4484 * 10000) / 100).toBe(30.29);
+  });
   it('экранирует формулы при выгрузке в Excel', () => {
     expect(staffing.staffingCsvCell('=1+1')).toBe('"\'=1+1"');
     expect(staffing.staffingCsvCell('Отдел "А"')).toBe('"Отдел ""А"""');

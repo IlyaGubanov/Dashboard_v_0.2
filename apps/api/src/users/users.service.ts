@@ -7,7 +7,7 @@ import { hashPassword } from '../auth/auth.service';
 import type { AuthUser } from '../common/request';
 
 const withMemberships = {
-  memberships: { include: { direction: { select: { name: true } }, sections: true } },
+  memberships: { where:{direction:{code:{not:'reb'}}}, include: { direction: { select: { name: true } }, sections: true } },
   department: { select: { id: true, name: true } },
 } satisfies Prisma.UserInclude;
 

@@ -1,4 +1,5 @@
 import type { PeriodKind, RiskLevel } from './directions';
+import type { ReportSummary } from './report-summary';
 
 /** Состояние объекта относительно графика. */
 export type SiteRisk = 'done' | 'wait' | 'ok' | 'warn' | 'crit' | 'na';
@@ -80,6 +81,7 @@ export interface NetworkLayingKpi {
 }
 
 export interface DirectionKpi {
+  reportPrograms?: ReportProgramSummary[];
   code: string;
   asOf: string | null;
   asOfKind: PeriodKind;
@@ -115,6 +117,15 @@ export interface DirectionKpi {
   extra?: { label: string; sites: number; asOf: string }[];
   /** в данных есть значения-примеры */
   hasExamples: boolean;
+}
+
+export interface ReportProgramSummary {
+  periodId: number;
+  aggregate?: ReportSummary | null;
+  code: string; name: string; asOf: string; source: string | null; sheet: string | null;
+  volumeDone: number; volumeTotal: number; statusDone: number | null; statusTotal: number;
+  volumeMethod: string; statusMethod: string;
+  rows: { id: number; name: string; volumeDone: boolean | null; statusDone: boolean | null; statusText: string | null; remarksCount?: number | null; source: string | null }[];
 }
 
 /** Строка реестра объектов. */

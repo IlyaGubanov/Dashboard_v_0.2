@@ -19,6 +19,7 @@ import { TasksModule } from './tasks/tasks.module';
 import { ContractorsModule } from './contractors/contractors.module';
 import { AppearanceModule } from './appearance/appearance.module';
 import { HealthController } from './health.controller';
+import { FleetModule } from './fleet/fleet.module';
 import { VideoModule } from './video/video.module';
 import { StaffingModule } from './staffing/staffing.module';
 import { EconomicsModule } from './economics/economics.module';
@@ -26,6 +27,7 @@ import { EconomicsModule } from './economics/economics.module';
 @Module({
   imports: [
     ObjectsMapModule,
+    FleetModule,
     // общий лимит запросов; для входа — строже (см. AuthController)
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 600 }]),
     PrismaModule,

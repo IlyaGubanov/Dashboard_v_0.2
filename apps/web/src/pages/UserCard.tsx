@@ -47,6 +47,7 @@ import {
   type UserListItem,
 } from '@mvs/shared';
 import { api, ApiError, departmentsQuery, directionsQuery, usersQuery } from '../api';
+import { FleetRolePanel } from './fleet/FleetRolePanel';
 import { zodValidate } from '../ui/zodValidate';
 import { VideoAccessPanel } from '../video/VideoAccessPanel';
 
@@ -319,7 +320,7 @@ export function UserCard({ userId, tab: initialTab, onClose }: { userId: number;
       <Tabs value={tab} onChange={(v) => setTab((v as UserCardTab) ?? 'profile')} keepMounted={false}>
         <Tabs.List mb="md">
           <Tabs.Tab value="profile">Личные данные</Tabs.Tab>
-          <Tabs.Tab value="roles">Роли в направлениях</Tabs.Tab>
+          <Tabs.Tab value="roles">Роли и доступ к РЭБ</Tabs.Tab>
           <Tabs.Tab value="access">Разделы и возможности</Tabs.Tab>
           <Tabs.Tab value="video">Камеры</Tabs.Tab>
         </Tabs.List>
@@ -405,6 +406,7 @@ function RolesPanel({ user }: { user: UserListItem }) {
           {GLOBAL_ROLE_LABELS[user.globalRole]} видит все направления. Роли ниже нужны, чтобы назначить куратором или ответственным за ввод.
         </Text>
       )}
+      <FleetRolePanel user={user}/>
       {directions.map((d) => {
         const r = rows[d.id] ?? { role: '', scope: 'ALL', sectionIds: [] };
         const set = (patch: Partial<RoleRow>) => setRows({ ...rows, [d.id]: { ...r, ...patch } });

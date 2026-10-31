@@ -32,6 +32,7 @@ export class DirectionsAdminService {
   ) {}
 
   private async byCode(code: string) {
+    if (code === 'reb') throw new NotFoundException('РЭБ управляется в самостоятельном разделе');
     const d = await this.prisma.direction.findUnique({ where: { code } });
     if (!d) throw new NotFoundException('Направление не найдено');
     return d;
@@ -42,7 +43,7 @@ export class DirectionsAdminService {
   }
 
   async list() {
-    const rows = await this.prisma.direction.findMany({
+    const rows = await this.prisma.direction.findMany({ where: {code: {not: 'reb'}},
       orderBy: [{ sort: 'asc' }, { name: 'asc' }],
       include: { _count: { select: { sites: { where: { isArchived: false } }, members: true, trackers: true, fieldDefs: { where: { isArchived: false } } } } },
     });
@@ -107,6 +108,7 @@ export class DirectionsAdminService {
   }
 
   async create(user: AuthUser, b: DirectionData, ip: string | null) {
+    if(b.code==='reb')throw new BadRequestException('РЭБ — самостоятельный раздел');
     if (await this.prisma.direction.findUnique({ where: { code: b.code } })) {
       throw new ConflictException({ message: 'Направление с таким кодом уже есть', fields: { code: 'Код занят' } });
     }

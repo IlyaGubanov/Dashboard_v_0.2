@@ -6,6 +6,6 @@ export default defineConfig({
   server: {
     port: 5173,
     // при разработке запросы /api уходят на локальный API (127.0.0.1: на Windows localhost сначала идёт в IPv6, а API слушает IPv4)
-    proxy: { '/api': 'http://127.0.0.1:3000' },
+    proxy: { '/api': process.env.VITE_API_PROXY ?? 'http://127.0.0.1:3000' },
   },
 });

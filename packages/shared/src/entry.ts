@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { PeriodKind } from './directions';
+import type { ReportSummary } from './report-summary';
 
 const money = z.number().min(0, 'Не может быть отрицательным').max(1e13).nullable().optional();
 const count = z.number().int('Целое число').min(0, 'Не может быть отрицательным').max(100_000).nullable().optional();
@@ -22,6 +23,8 @@ export const entryReportSchema = z.object({
   siteId: z.number().int().positive(),
   workers: count,
   machines: count,
+  statusText: z.string().trim().max(200).nullable().optional(),
+  remarksCount: count,
   workersBlocked: count,
   machinesBlocked: count,
   ks: money,
@@ -58,6 +61,8 @@ export interface EntryValue {
 }
 
 export interface EntryReportValue {
+  statusText: string | null;
+  remarksCount: number | null;
   workers: number | null;
   machines: number | null;
   workersBlocked: number | null;
@@ -69,8 +74,9 @@ export interface EntryReportValue {
 
 /** Лист ввода за отчётную точку: действующие значения (свои или перенесённые с прошлых точек) и права. */
 export interface EntrySheet {
+  aggregate?: { version: number; value: ReportSummary | null; canEdit: boolean };
   direction: { code: string; name: string; periodKind: PeriodKind };
-  period: { id: number; date: string; status: 'OPEN' | 'CLOSED' | 'LOCKED'; label: string | null };
+  period: { id: number; date: string; status: 'OPEN' | 'CLOSED' | 'LOCKED'; label: string | null; program: string };
   permissions: {
     /** роль пользователя в направлении (ADMIN — администратор) */
     role: string | null;
@@ -84,6 +90,8 @@ export interface EntrySheet {
     reason: string | null;
   };
   fields: {
+    reportStatus: boolean;
+    reportRemarks: boolean;
     status: boolean;
     pct: boolean;
     factQty: boolean;

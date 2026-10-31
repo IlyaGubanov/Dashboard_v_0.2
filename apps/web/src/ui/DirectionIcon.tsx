@@ -1,5 +1,5 @@
 import { ThemeIcon } from '@mantine/core';
-import { IconBuildingCommunity, IconFolder, IconPipeline, IconRoad, IconSchool } from '@tabler/icons-react';
+import { IconBuildingCommunity, IconFolder, IconPipeline, IconRoad, IconSchool,IconTruck } from '@tabler/icons-react';
 
 /** Иконки направлений по коду из настроек направления (direction.icon). */
 const ICONS = {
@@ -7,6 +7,7 @@ const ICONS = {
   building: IconBuildingCommunity,
   pipe: IconPipeline,
   road: IconRoad,
+  truck:IconTruck,
 } as const;
 
 export function DirectionIcon({ icon, color, size = 28 }: { icon: string | null; color: string | null; size?: number }) {

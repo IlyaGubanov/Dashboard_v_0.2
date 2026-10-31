@@ -18,7 +18,7 @@ import {
 import { useDisclosure } from '@mantine/hooks';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
-import { IconAdjustments, IconBuildingFactory2, IconMap, IconChartBar, IconCoins, IconCurrencyRubel, IconEyeOff, IconHelp, IconLogout, IconMoon, IconPalette, IconSun, IconUsers } from '@tabler/icons-react';
+import { IconTruck, IconCoins, IconAdjustments, IconBuildingFactory2, IconMap, IconChartBar, IconCurrencyRubel, IconEyeOff, IconHelp, IconLogout, IconMoon, IconPalette, IconSun, IconUsers } from '@tabler/icons-react';
 import { GLOBAL_ROLE_LABELS } from '@mvs/shared';
 import { api, directionsQuery, economicsAccessQuery, meQuery, staffingAccessQuery } from '../api';
 import { DirectionIcon } from '../ui/DirectionIcon';
@@ -117,22 +117,9 @@ export function AppLayout() {
               onClick={close}
             />
           )}
-          {canSee(me, 'contractors') && (
-            <NavLink
-              component={Link}
-              to="/contractors"
-              label="Подрядчики"
-              leftSection={<IconBuildingFactory2 size={18} />}
-              active={path.startsWith('/contractors')}
-              onClick={close}
-            />
-          )}
-          {canSee(me, 'map') && <NavLink component={Link} to="/map" label="Карта" leftSection={<IconMap size={18} />} active={path === '/map'} onClick={close} />}
-          {me?.videoAccess?.view && <NavLink component={Link} to="/video" label="Видеонаблюдение" leftSection={<IconVideo size={18} />} active={path === '/video'} onClick={close} />}
-          {staffingAccess?.canView && <NavLink component={Link} to="/staffing" label="Штатная численность" leftSection={<IconUsers size={18} />} active={path.startsWith('/staffing')} onClick={close} />}
-          {economicsAccess?.canView && <NavLink component={Link} to="/economics" label="Экономика" leftSection={<IconCoins size={18} />} active={path.startsWith('/economics')} onClick={close} />}
+          {canSee(me, 'map') && <NavLink component={Link} to="/map" label="Карта объектов" leftSection={<IconMap size={18} />} active={path === '/map'} onClick={close} />}
           <Text size="xs" c="dimmed" tt="uppercase" fw={600} px="sm" mt="md" mb={4}>
-            Направления
+            Направления работ
           </Text>
           {directions.map((d) => (
             <NavLink
@@ -145,6 +132,20 @@ export function AppLayout() {
               onClick={close}
             />
           ))}
+          {me?.fleetRole&&canSee(me,'fleet')?<NavLink component={Link} to="/reb" label="РЭБ" leftSection={<IconTruck size={18}/>} active={path==='/reb'} onClick={close} mt="md"/>:null}
+          {canSee(me, 'contractors') && (
+            <NavLink
+              component={Link}
+              to="/contractors"
+              label="Подрядчики"
+              leftSection={<IconBuildingFactory2 size={18} />}
+              active={path.startsWith('/contractors')}
+              onClick={close}
+            />
+          )}
+          {me?.videoAccess?.view && <NavLink component={Link} to="/video" label="Видеонаблюдение" leftSection={<IconVideo size={18} />} active={path === '/video'} onClick={close} />}
+          {staffingAccess?.canView && <NavLink component={Link} to="/staffing" label="Штатная численность" leftSection={<IconUsers size={18} />} active={path.startsWith('/staffing')} onClick={close} />}
+          {economicsAccess?.canView && <NavLink component={Link} to="/economics" label="Экономика" leftSection={<IconCoins size={18} />} active={path.startsWith('/economics')} onClick={close} />}
           {me?.globalRole === 'ADMIN' && (
             <>
               <Text size="xs" c="dimmed" tt="uppercase" fw={600} px="sm" mt="md" mb={4}>

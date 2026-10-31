@@ -22,6 +22,8 @@ export class ObjectsMapService {
       where: { directionId: { in: directions.map((d) => d.id) }, isArchived: false },
       orderBy: [{ sort: 'asc' }, { id: 'asc' }],
       select: { id: true, directionId: true, name: true, lat: true, lon: true, section: { select: { id: true, name: true } },
+        attachments:{where:{entity:'site',materialType:'PANORAMA360',isArchived:false,capturedOn:{not:null}},orderBy:[{capturedOn:'desc'},{createdAt:'desc'},{id:'desc'}],take:1,select:{id:true,capturedOn:true}},
+        _count:{select:{attachments:{where:{entity:'site',materialType:'PANORAMA360',isArchived:false,capturedOn:{not:null}}}}},
         workItems: { where: { isArchived: false, workType: { isArchived: false } }, select: { workTypeId: true, workType: { select: { directionId: true } } } },
         // Не подменяем ответственного куратором, вводящим данные или прорабом.
         // Поля пользователя уже доступны в SiteCard после проверки просмотра направления.
@@ -42,6 +44,7 @@ export class ObjectsMapService {
       directions: directions.map((d) => ({ id: d.id, code: d.code, name: d.shortName, color: d.color })),
       workTypes: directions.flatMap((d) => d.workTypes.map((w) => ({ ...w, directionCode: d.code }))),
       sites: sites.map((s) => ({ id: s.id, directionCode: byId.get(s.directionId)!.code, name: s.name, section: s.section,
+        panorama:s.attachments[0]?.capturedOn?{id:s.attachments[0].id,capturedOn:s.attachments[0].capturedOn.toISOString().slice(0,10),count:s._count.attachments}:null,
         lat: s.lat == null ? null : Number(s.lat), lon: s.lon == null ? null : Number(s.lon),
         people: resources.get(s.directionId)?.get(s.id)?.people ?? null, tech: resources.get(s.directionId)?.get(s.id)?.tech ?? null,
         workTypeIds: [...new Set(s.workItems.filter((w) => w.workType.directionId === s.directionId).map((w) => w.workTypeId))],

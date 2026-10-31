@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { CKKB_GROUPS, CKKB_TYPES, type CkkbGroup } from './ckkb';
 
 /**
  * Замечания по объектам.
@@ -50,6 +51,14 @@ const isoDate = z
   .or(z.literal('').transform(() => null));
 
 export const remarkSchema = z.object({
+  violationGroup: z.enum(CKKB_GROUPS).nullable().optional(),
+  violationType: z.string().max(64).nullable().optional(),
+  sourceName: z.string().trim().max(100).nullable().optional(),
+  sourceRef: z.string().trim().max(300).nullable().optional(),
+  detectedOn: isoDate.refine(v => !v || (Number.isFinite(Date.parse(`${v}T00:00:00Z`)) && new Date(`${v}T00:00:00Z`).toISOString().slice(0, 10) === v), 'Неверная дата'),
+  typeName: z.string().trim().max(300).nullable().optional(),
+  location: z.string().trim().max(120).nullable().optional(),
+  responsibleId: z.number().int().positive().nullable().optional(),
   siteId: z.number().int().positive({ message: 'Выберите объект' }),
   workItemId: z.number().int().positive().nullable().optional(),
   text: z.string().trim().min(3, 'Опишите замечание').max(5000),
@@ -65,6 +74,11 @@ export const remarkSchema = z.object({
   assigneeId: z.number().int().positive().nullable().optional(),
   /** при правке — номер версии, которую видел пользователь */
   version: z.number().int().positive().optional(),
+}).superRefine((v, ctx) => {
+  if (v.violationGroup || v.violationType) {
+    if (!v.violationGroup) ctx.addIssue({ code: 'custom', path: ['violationGroup'], message: 'Выберите группу нарушений ЦККБ' });
+    if (!CKKB_TYPES.some(t => t.code === v.violationType && t.group === v.violationGroup)) ctx.addIssue({ code: 'custom', path: ['violationType'], message: 'Выберите тип из выбранной группы' });
+  }
 });
 export type RemarkInput = z.input<typeof remarkSchema>;
 export type RemarkData = z.output<typeof remarkSchema>;
@@ -86,6 +100,14 @@ export interface PersonRef {
 }
 
 export interface RemarkRow {
+  violationGroup?: CkkbGroup | null;
+  violationType?: string | null;
+  sourceName?: string | null;
+  sourceRef?: string | null;
+  detectedOn?: string | null;
+  typeName?: string | null;
+  location?: string | null;
+  responsible?: PersonRef | null;
   id: number;
   num: number;
   site: { id: number; name: string };
@@ -105,6 +127,9 @@ export interface RemarkRow {
 }
 
 export interface Attachment {
+  materialType?: 'FILE' | 'PANORAMA360';
+  capturedOn?: string | null;
+  description?: string | null;
   id: number;
   fileName: string;
   mimeType: string;
@@ -113,6 +138,7 @@ export interface Attachment {
   uploadedBy: string | null;
   createdAt: string;
   canArchive: boolean;
+  visibility?: 'GENERAL' | 'FINANCE' | 'LIABILITY';
 }
 
 export interface RemarkEvent {
@@ -151,4 +177,4 @@ export interface RemarkList {
 export const ATTACHMENT_MAX_MB = 25;
 export const ATTACHMENT_EXT = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv', 'zip', 'rar', '7z', 'dwg'] as const;
 export const ATTACHMENT_ACCEPT = ATTACHMENT_EXT.map((e) => `.${e}`).join(',');
-export type AttachmentEntity = 'site' | 'remark_event';
+export type AttachmentEntity = 'site' | 'remark_event' | 'fleet_vehicles' | 'fleet_incidents' | 'fleet_fines' | 'fleet_tolls' | 'fleet_requests' | 'fleet_liability';

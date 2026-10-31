@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { CKKB_GROUP_LABELS, ckkbTypeLabel } from '@mvs/shared';
 import { Alert, Button, Card, Checkbox, Group, SegmentedControl, Select, SimpleGrid, Skeleton, Stack, Table, Text, TextInput } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { IconPaperclip, IconPlus, IconSearch } from '@tabler/icons-react';
@@ -39,7 +40,7 @@ export function RemarksTab({ code, onOpen, initial }: { code: string; onOpen: (i
       .filter((r) => !sev || r.severity === sev)
       .filter((r) => !cat || r.category === cat)
       .filter((r) => !site || r.site.id === Number(site))
-      .filter((r) => !s || `${r.num} ${r.text} ${r.site.name} ${r.assignee?.fullName ?? ''}`.toLowerCase().includes(s))
+      .filter((r) => !s || `${r.num} ${r.text} ${r.site.name} ${r.assignee?.fullName ?? ''} ${r.sourceName ?? ''} ${ckkbTypeLabel(r.violationType)}`.toLowerCase().includes(s))
       .sort((a, b) => Number(b.overdue) - Number(a.overdue) || SEV_ORDER[a.severity] - SEV_ORDER[b.severity] || b.num - a.num);
   }, [data, view, overdue, mine, sev, cat, site, q, me]);
 
@@ -124,6 +125,7 @@ export function RemarksTab({ code, onOpen, initial }: { code: string; onOpen: (i
                     <Text size="sm" fw={500} lineClamp={2}>
                       {r.text}
                     </Text>
+                    {(r.sourceName || r.violationGroup) && <Text size="xs" c="dimmed">{[r.sourceName, r.violationGroup ? CKKB_GROUP_LABELS[r.violationGroup] : null, ckkbTypeLabel(r.violationType), r.detectedOn ? date(r.detectedOn) : null].filter(Boolean).join(' · ')}</Text>}
                     <Group gap={6} wrap="nowrap">
                       <Text size="xs" c="dimmed" truncate>
                         {r.site.name}

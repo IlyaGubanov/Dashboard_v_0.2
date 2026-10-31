@@ -124,7 +124,7 @@ export class AuthService {
   async me(userId: number): Promise<Me> {
     const u = await this.prisma.user.findUniqueOrThrow({
       where: { id: userId },
-      include: { memberships: { include: { direction: { select: { code: true } }, sections: true } } },
+      include: { fleetMemberships: {where:{registry:{code:'reb'}}}, memberships: { include: { direction: { select: { code: true } }, sections: true } } },
     });
     const videoUser = { id: u.id, globalRole: u.globalRole, ...restrictionsOf(u) } as AuthUser;
     const [viewSites, manageSites] = await Promise.all([this.access.videoSiteIds(videoUser, 'view'), this.access.videoSiteIds(videoUser, 'manage')]);
@@ -137,7 +137,8 @@ export class AuthService {
       globalRole: u.globalRole,
       mustChangePassword: u.mustChangePassword,
       ...restrictionsOf(u),
-      directions: u.memberships.map((m) => ({
+      fleetRole: u.globalRole === 'ADMIN' ? 'ADMIN' : u.globalRole === 'MANAGEMENT' ? 'VIEWER' : u.fleetMemberships[0]?.role ?? null,
+        directions: u.memberships.filter(m => m.direction.code !== 'reb').map((m) => ({
         directionId: m.directionId,
         code: m.direction.code,
         role: m.role,

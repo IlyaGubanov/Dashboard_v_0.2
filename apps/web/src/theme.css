@@ -275,3 +275,6 @@ button, a, input, select, textarea { touch-action: manipulation; }
 .ol-control button:hover { background: var(--selected); }
 :root { --brand-on-solid: #ffffff; }
 [data-mantine-color-scheme='dark'] { --brand-on-solid: #101b2b; }
+
+/* Уведомление MIT поставляется в /licenses/pannellum.txt; рабочий просмотрщик не показывает about-плашку. */
+.panorama-viewer .pnlm-about-msg { display: none !important; }

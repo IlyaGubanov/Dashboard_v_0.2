@@ -1,0 +1,31 @@
+import { Alert,Anchor,Badge,Button,Card,Group,SimpleGrid,Skeleton,Stack,Text,Title } from '@mantine/core';
+import { useQuery } from '@tanstack/react-query';
+import { IconArrowUpRight,IconTruck } from '@tabler/icons-react';
+import type { FleetKind } from '@mvs/shared';
+import { EChart,baseOption } from '../../ui/EChart';
+import { useFinanceHidden } from '../../ui/finance';
+import { fleetQueries,type Filters } from './api';
+import { decimal } from './display';
+
+export function FleetOverview({filters,onSection}:{filters:Filters;onSection:(k:FleetKind,filters?:Record<string,string>)=>void}) {
+ const {data,error,isPending}=useQuery(fleetQueries.overview(filters)),hidden=useFinanceHidden();
+ const distribution=useQuery(fleetQueries.analytics('assignments',filters));
+ if(isPending)return <Skeleton h={280}/>;
+ if(error)return <Alert color="red">{error.message}</Alert>;
+ const c=data.counts;
+ const tiles=[{label:'Всего техники',value:c?.total,ownership:''},{label:'Собственная',value:c?.own,ownership:'OWN'},{label:'Арендуемая',value:c?.rented,ownership:'RENTED'}];
+ const assigned=distribution.data?.distribution.filter(r=>r.group==='direction')??[];
+ return <Stack gap="md">
+  <Group justify="space-between"><Text size="sm" c="dimmed">Актуальность: {data.asOf?new Date(data.asOf).toLocaleString('ru-RU',{timeZone:'Europe/Moscow'}):'данных пока нет'}</Text>{c?.unknown?<Badge color="gray" variant="light">Принадлежность не установлена: {c.unknown}</Badge>:null}</Group>
+  <SimpleGrid cols={{base:1,xs:3}}>{tiles.map(t=><Card key={t.label} withBorder><Anchor component="button" onClick={()=>onSection('vehicles',{ownership:t.ownership})} ta="left" c="inherit" underline="never"><Text size="sm" c="dimmed">{t.label}</Text><Group justify="space-between"><Text className="kpi-value">{decimal(t.value)}</Text><IconArrowUpRight size={16}/></Group></Anchor></Card>)}</SimpleGrid>
+  <SimpleGrid cols={{base:1,lg:2}}><Card withBorder><Title order={4}>Использование техники</Title>{c?<><EChart ariaLabel="Использование техники: используется и не используется" height={230} option={colors=>({...baseOption(colors),tooltip:{trigger:'item',confine:true},legend:{bottom:0,textStyle:{color:colors.text}},series:[{type:'pie',radius:['40%','65%'],center:['50%','43%'],label:{show:false},data:[{name:'Используется',value:c.used,itemStyle:{color:colors.series[0]}},{name:'Не используется',value:c.unused,itemStyle:{color:colors.series[1]}}]}]})}/><Group justify="space-between"><Button variant="subtle" size="xs" onClick={()=>onSection('assignments')}>Используется: {c.used}</Button><Button variant="subtle" size="xs" onClick={()=>onSection('downtime')}>Не используется: {c.unused}</Button></Group><Text size="sm">В ремонте: {c.repair} · в резерве: {c.reserve}</Text></>:<Text c="dimmed" mt="md">Техника пока не внесена</Text>}</Card>
+  <Card withBorder><Group justify="space-between"><Title order={4}>Распределение по направлениям</Title><Button variant="subtle" size="xs" onClick={()=>onSection('assignments')}>Подробнее</Button></Group>{distribution.error?<Alert color="red">{distribution.error.message}</Alert>:assigned.length?<EChart ariaLabel="Количество техники по направлениям работ" height={Math.min(440,Math.max(230,assigned.length*42))} option={colors=>({...baseOption(colors),grid:{left:8,right:30,top:16,bottom:8,containLabel:true},tooltip:{trigger:'axis',confine:true},xAxis:{type:'value',minInterval:1,splitLine:{lineStyle:{color:colors.grid}},axisLabel:{color:colors.muted}},yAxis:{type:'category',inverse:true,data:assigned.map(r=>r.label),axisLabel:{width:140,overflow:'truncate',color:colors.text}},series:[{type:'bar',data:assigned.map(r=>r.quantity),barMaxWidth:24,color:colors.series[0],label:{show:true,position:'right',color:colors.text}}]})}/>:<Text c="dimmed" size="sm" mt="md">Действующих назначений за выбранный период нет</Text>}</Card></SimpleGrid>
+  <SimpleGrid cols={{base:1,sm:2}}><Card withBorder><Title order={4}>Происшествия и потребности</Title><Group mt="sm"><Button variant="light" onClick={()=>onSection('incidents')}>ДТП: {decimal(data.incidents)}</Button><Button variant="light" onClick={()=>onSection('requests')}>Открытые потребности: {decimal(data.openRequests)}</Button></Group></Card><Card withBorder><Title order={4}>Расходы за выбранный период</Title>{hidden?<Text c="dimmed" size="sm" mt="sm">Финансовые показатели скрыты</Text>:<Stack gap={4} mt="sm"><Anchor component="button" ta="left" onClick={()=>onSection('fines')}>Штрафы: {data.fines?.count??'—'} · {decimal(data.fines?.charged,'₽')} · остаток {decimal(data.fines?.balance,'₽')}</Anchor><Anchor component="button" ta="left" onClick={()=>onSection('tolls')}>Платные дороги: {data.tolls?.count??'—'} · {decimal(data.tolls?.charged,'₽')}</Anchor></Stack>}</Card></SimpleGrid>
+  <Card withBorder><Group justify="space-between"><div><Title order={4}>Топливо · {data.fuel.period??'нет месячных данных'}</Title><Text size="sm" mt={4}>{decimal(data.fuel.liters,'л')}{!hidden?' · '+decimal(data.fuel.cost,'₽'):''}</Text></div><Button variant="subtle" onClick={()=>onSection('fuel')}>Месячный учёт</Button></Group>{data.fuel.monthly.length>1?<EChart ariaLabel="Расход топлива по отчётным месяцам, литры" height={240} option={colors=>({...baseOption(colors),tooltip:{trigger:'axis',confine:true,valueFormatter:v=>decimal(v,'л')},xAxis:{type:'category',data:data.fuel.monthly.map(r=>r.period),axisLabel:{color:colors.muted}},yAxis:{type:'value',min:0,axisLabel:{color:colors.muted},splitLine:{lineStyle:{color:colors.grid}}},series:[{type:'bar',barMaxWidth:40,color:colors.series[0],data:data.fuel.monthly.map(r=>r.liters==null?null:Number(r.liters))}]})}/>:null}</Card>
+ </Stack>;
+}
+
+export function FleetSummaryCard(){
+ const {data,error}=useQuery(fleetQueries.overview({}));
+ return <Card withBorder><Group justify="space-between"><Group><IconTruck size={22}/><Title order={4}>РЭБ · техника и эксплуатация</Title></Group><Button component="a" href="/reb" variant="light" size="xs">Открыть РЭБ</Button></Group>{error?<Text c="red" size="sm">{error.message}</Text>:<Text mt="xs" size="sm">Всего техники: {data?.counts?.total??'—'} · в ремонте: {data?.counts?.repair??'—'} · открытых потребностей: {data?.openRequests??'—'}</Text>}</Card>;
+}

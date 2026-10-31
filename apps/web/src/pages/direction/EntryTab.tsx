@@ -46,10 +46,10 @@ const STATUS_VIEW = {
 } as const;
 
 /** Ввод данных за отчётную точку: факт по позициям и показатели объектов. Сохраняется одной кнопкой. */
-export function EntryTab({ code, periodKind }: { code: string; periodKind: string }) {
+export function EntryTab({ code, periodKind, program = '', onDirty }: { code: string; periodKind: string; program?: string; onDirty?: (dirty: boolean) => void }) {
   const qc = useQueryClient();
   const { data: periods } = useQuery(directionQueries.periods(code));
-  const own = (periods ?? []).filter((p) => p.program === '');
+  const own = (periods ?? []).filter((p) => p.program === program);
   const [periodId, setPeriodId] = useState<number | null>(null);
   const current = periodId ?? own.find((p) => p.status === 'OPEN')?.id ?? own[0]?.id ?? null;
   const {
@@ -70,6 +70,7 @@ export function EntryTab({ code, periodKind }: { code: string; periodKind: strin
   const [opened, setOpened] = useState<string[] | null>(null);
 
   const dirtyCount = Object.keys(draft.items).length + Object.keys(draft.reports).length;
+  useEffect(() => { onDirty?.(dirtyCount > 0); }, [dirtyCount, onDirty]);
   // не потерять несохранённое при закрытии вкладки браузера
   useEffect(() => {
     if (!dirtyCount) return;
@@ -83,6 +84,7 @@ export function EntryTab({ code, periodKind }: { code: string; periodKind: strin
     Promise.all([
       qc.invalidateQueries({ queryKey: ['dir', code] }),
       qc.invalidateQueries({ queryKey: ['overview'] }),
+      qc.invalidateQueries({ queryKey: ['map'] }),
       qc.invalidateQueries({ queryKey: ['me', 'tasks'] }),
     ]);
 
@@ -111,12 +113,13 @@ export function EntryTab({ code, periodKind }: { code: string; periodKind: strin
     if (!sheet) return [];
     const ql = q.trim().toLowerCase();
     return sheet.sites
-      .filter((s) => scope === 'all' || s.canEdit)
+      .filter((s) => !sheet.permissions.canEdit || scope === 'all' || s.canEdit)
       .filter((s) => !ql || s.name.toLowerCase().includes(ql) || s.items.some((i) => i.name.toLowerCase().includes(ql)))
       .filter((s) => !notUpdated || !s.updated);
   }, [sheet, scope, q, notUpdated]);
 
   if (error) return <Alert color="red">{(error as Error).message}</Alert>;
+  if (periods && !own.length) return <Alert color="gray">Отчётных периодов пока нет.</Alert>;
   if (!periods || !sheet) return <Skeleton h={400} />;
   const shownOpen = opened ?? sites.slice(0, narrow ? 1 : 3).map((s) => String(s.id));
 
@@ -138,10 +141,12 @@ export function EntryTab({ code, periodKind }: { code: string; periodKind: strin
   });
 
   const submit = () => {
-    const all = sheet.sites.flatMap((s) => s.items);
+    // REPORT — полный снимок объекта. Сохраняем показанные перенесённые значения его ещё не внесённых строк,
+    // иначе правка только людей/техники создаёт отчёт без объёмов. Другие объекты не подтверждаем автоматически.
+    const touched = (s: Site) => !!draft.reports[s.id] || s.items.some(i => !!draft.items[i.id]);
     save.mutate({
-      items: all.filter((i) => draft.items[i.id]).map(itemBody),
-      reports: sheet.sites.filter((s) => draft.reports[s.id]).map(reportBody),
+      items: sheet.sites.flatMap(s => s.items.filter(i => draft.items[i.id] || (periodKind === 'REPORT' && touched(s) && i.version == null))).map(itemBody),
+      reports: sheet.sites.filter(s => draft.reports[s.id] || (periodKind === 'REPORT' && touched(s) && s.report.version == null)).map(reportBody),
     });
   };
   /** «Без изменений»: перенести действующие значения в эту точку — объект отмечается как обновлённый. */
@@ -277,14 +282,14 @@ function PeriodBar({
   const [newDate, setNewDate] = useState('');
   const perm = sheet.permissions;
   const label = (p: PeriodItem) => (periodKind === 'WEEK' ? weekLabel(p.date) : date(p.date));
-  const unit = periodKind === 'WEEK' ? 'неделю' : 'день';
+  const unit = periodKind === 'WEEK' ? 'неделю' : periodKind === 'REPORT' ? 'отчёт' : 'день';
 
   const run = useMutation({
     mutationFn: async () => {
       if (action === 'new')
         return api<{ id: number }>(`/directions/${code}/periods`, {
           method: 'POST',
-          body: { date: newDate },
+          body: { date: newDate, program: sheet.period.program },
         });
       return api(`/directions/${code}/periods/${sheet.period.id}/status`, {
         method: 'POST',
@@ -358,7 +363,7 @@ function PeriodBar({
                 setAction('new');
               }}
             >
-              Открыть новую {unit}
+              {periodKind === 'WEEK' ? 'Открыть новую неделю' : periodKind === 'REPORT' ? 'Открыть новый отчёт' : 'Открыть новый день'}
             </Button>
           )}
         </Group>
@@ -502,6 +507,10 @@ function SiteEntry({
       <Accordion.Panel>
         {open && (
           <Stack gap="sm">
+            {f.reportStatus && <Group align="flex-end">
+              <TextInput label="Отчётный статус объекта" value={rv.statusText ?? ''} disabled={ro} maxLength={200} styles={dirtyStyle(rDirty('statusText'))} onChange={e => setReport({ statusText: e.currentTarget.value || null })} />
+              {f.reportRemarks && <NumberInput label="Замечаний по отчёту" value={rv.remarksCount ?? ''} disabled={ro} min={0} allowDecimal={false} styles={dirtyStyle(rDirty('remarksCount'))} onChange={v => setReport({ remarksCount: numOrNull(v) })} />}
+            </Group>}
             {(f.workers || f.reportKs || f.reportPaid) && (
               <Group gap="sm" align="flex-end">
                 {f.workers && (
@@ -606,7 +615,7 @@ function SiteEntry({
                     {site.items.map((i) => {
                       const v = { ...i.value, ...draft.items[i.id] };
                       const d = (k: keyof EntryValue) => draft.items[i.id]?.[k] !== undefined;
-                      const byQty = i.planQty != null;
+                      const byQty = i.planQty != null || i.value.factQty != null;
                       return (
                         <Table.Tr key={i.id}>
                           <Table.Td style={{ whiteSpace: 'normal', minWidth: 200 }}>
@@ -614,7 +623,7 @@ function SiteEntry({
                               {i.name}
                             </Text>
                             <Text size="xs" c="dimmed">
-                              {[i.group, i.planEnd ? `до ${date(i.planEnd)}` : null, byQty ? `проект ${i.planQty} ${i.unit ?? ''}` : null]
+                              {[i.group, i.planEnd ? `до ${date(i.planEnd)}` : null, byQty ? (i.planQty == null ? 'проектный объём не указан' : `проект ${i.planQty} ${i.unit ?? ''}`) : null]
                                 .filter(Boolean)
                                 .join(' · ')}
                               {i.version == null && i.from ? ` · значение с ${date(i.from)}` : ''}
@@ -636,8 +645,9 @@ function SiteEntry({
                           )}
                           <Table.Td>
                             {byQty ? (
-                              <Tooltip label={`из ${i.planQty} ${i.unit ?? ''}`}>
+                              <Tooltip label={i.planQty == null ? 'Проектный объём не указан' : `из ${i.planQty} ${i.unit ?? ''}`}>
                                 <NumberInput
+                                  aria-label={`Факт: ${i.name}`}
                                   size="xs"
                                   min={0}
                                   disabled={ro}
@@ -754,7 +764,7 @@ function ItemCard({
 }) {
   const [note, setNote] = useState(!!v.note);
   const num = (x: string | number) => (x === '' || x == null ? null : Number(x));
-  const byQty = i.planQty != null;
+  const byQty = i.planQty != null || i.value.factQty != null;
   const bump = (d: number) =>
     set({
       pct: Math.min(100, Math.max(0, Math.round(((v.pct ?? 0) + d) * 10) / 10)),
@@ -763,7 +773,7 @@ function ItemCard({
     <Paper withBorder p="sm" radius="md">
       <Text fw={600}>{i.name}</Text>
       <Text size="xs" c="dimmed" mb={6}>
-        {[i.group, i.planEnd ? `до ${date(i.planEnd)}` : null, byQty ? `проект ${i.planQty} ${i.unit ?? ''}` : null].filter(Boolean).join(' · ')}
+        {[i.group, i.planEnd ? `до ${date(i.planEnd)}` : null, byQty ? (i.planQty == null ? 'проектный объём не указан' : `проект ${i.planQty} ${i.unit ?? ''}`) : null].filter(Boolean).join(' · ')}
         {i.version == null && i.from ? ` · значение с ${date(i.from)}` : ''}
       </Text>
       <Stack gap={8}>
@@ -782,7 +792,7 @@ function ItemCard({
         {byQty ? (
           <NumberInput
             size="md"
-            label={`Факт из ${i.planQty} ${i.unit ?? ''}`}
+            label={i.planQty == null ? 'Факт (проектный объём не указан)' : `Факт из ${i.planQty} ${i.unit ?? ''}`}
             inputMode="decimal"
             min={0}
             disabled={ro}

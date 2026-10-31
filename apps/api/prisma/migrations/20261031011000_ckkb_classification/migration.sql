@@ -1,0 +1,3 @@
+ALTER TABLE `remark`
+  ADD COLUMN `violation_group` ENUM('DOCUMENTATION','CULTURE','TECHNOLOGY') NULL,
+  ADD COLUMN `violation_type` VARCHAR(64) NULL;

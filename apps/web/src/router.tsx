@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { QueryClient } from '@tanstack/react-query';
 import { createRootRouteWithContext, createRoute, createRouter, lazyRouteComponent, Outlet, redirect } from '@tanstack/react-router';
 import { Alert } from '@mantine/core';
@@ -9,7 +10,7 @@ import { ChangePasswordPage } from './pages/ChangePasswordPage';
 import { OverviewPage } from './pages/OverviewPage';
 import { MapPage, parseMapSearch } from './pages/MapPage';
 import { DirectionPage } from './pages/DirectionPage';
-import { parseDirectionSearch } from './pages/direction/search';
+import { parseDirectionSearch, type DirectionSearch } from './pages/direction/search';
 import { UsersPage } from './pages/UsersPage';
 import { AdminDirectionsPage } from './pages/admin/AdminDirectionsPage';
 import { DirectionEditorPage } from './pages/admin/DirectionEditorPage';
@@ -82,6 +83,7 @@ const overviewRoute = createRoute({
   beforeLoad: async ({ context }) => {
     if (canSee(context.me, 'overview')) return;
     const dirs = await context.queryClient.ensureQueryData(directionsQuery);
+    if (!dirs[0]&&context.me.fleetRole&&canSee(context.me,'fleet'))throw redirect({to:'/reb',search:{}});
     if (dirs[0]) throw redirect({ to: '/d/$code', params: { code: dirs[0].code }, search: {} });
   },
   component: HomePage,
@@ -97,11 +99,16 @@ const objectsMapRoute = createRoute({
   beforeLoad: ({ context }) => { if (!canSee(context.me, 'map')) throw redirect({ to: '/' }); },
 });
 
+const FleetPage=lazy(()=>import('./pages/fleet/FleetPage'));
+const fleetRoute=createRoute({getParentRoute:()=>appRoute,path:'/reb',validateSearch:parseFleetSearch,component:()=> <Suspense fallback={<div>Загрузка РЭБ…</div>}><FleetPage/></Suspense>});
+function parseFleetSearch(s:Record<string,unknown>):Pick<DirectionSearch,'fleet'|'fr'|'ff'>{const v=parseDirectionSearch(s);return {fleet:v.fleet==='snapshots'?undefined:v.fleet,fr:v.fr,ff:v.ff};}
+
 const directionRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/d/$code',
   // вкладка, дата и открытый объект — в адресе: ссылкой можно поделиться, «назад» работает
   validateSearch: parseDirectionSearch,
+  beforeLoad:({params,search})=>{if(params.code==='reb')throw redirect({to:'/reb',search:parseFleetSearch(search)});},
   component: DirectionPage,
 });
 
@@ -152,7 +159,7 @@ const videoAdminRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   loginRoute,
   changePasswordRoute,
-  appRoute.addChildren([overviewRoute, objectsMapRoute, directionRoute, usersRoute, adminDirectionsRoute, directionEditorRoute, appearanceRoute, contractorsRoute, helpRoute, staffingRoute, economicsRoute, videoRoute, videoAdminRoute]),
+  appRoute.addChildren([overviewRoute, objectsMapRoute, fleetRoute, directionRoute, usersRoute, adminDirectionsRoute, directionEditorRoute, appearanceRoute, contractorsRoute, helpRoute, staffingRoute, economicsRoute, videoRoute, videoAdminRoute]),
 ]);
 
 export const router = createRouter({ routeTree, context: { queryClient }, defaultPreload: 'intent' });

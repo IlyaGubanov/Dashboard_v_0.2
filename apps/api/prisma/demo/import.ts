@@ -17,6 +17,7 @@
  * Нужен сначала базовый сид (npm run db:seed): он создаёт направления.
  */
 import fs from 'node:fs';
+import { Prisma } from '@prisma/client';
 import path from 'node:path';
 import { cleanupExampleUsers, prisma, wipeDirection, type Tx } from './lib';
 import { importMkd } from './mkd';
@@ -75,7 +76,8 @@ async function main() {
     // защита реальных данных: --force и --clear удаляют всё в направлении, включая внесённое людьми
     const manual =
       (await prisma.progressEntry.count({ where: { source: 'MANUAL', workItem: { site: { directionId: dir.id } } } })) +
-      (await prisma.siteReport.count({ where: { source: 'MANUAL', site: { directionId: dir.id } } }));
+      (await prisma.siteReport.count({ where: { source: 'MANUAL', site: { directionId: dir.id } } })) +
+      (await prisma.reportingPeriod.count({ where: { directionId: dir.id, summary: { not: Prisma.DbNull } } }));
     if ((clear || (force && sites)) && manual && !args.includes('--delete-manual-data')) {
       console.log(
         `${dir.shortName}: есть ${manual} записей, внесённых вручную, — пропущено. ` +

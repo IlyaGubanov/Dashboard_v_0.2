@@ -17,6 +17,7 @@ import { DynamicsTab } from './direction/DynamicsTab';
 import { SettingsTab } from './direction/SettingsTab';
 import { SiteDrawer } from './direction/SiteDrawer';
 import { EntryTab } from './direction/EntryTab';
+import { ReportEntry } from './direction/ReportEntry';
 import { JournalTab } from './direction/JournalTab';
 import { ManageTab } from './direction/ManageTab';
 import { RemarksTab } from './direction/RemarksTab';
@@ -24,12 +25,16 @@ import { RemarkDrawer } from './direction/RemarkDrawer';
 
 const route = getRouteApi('/app/d/$code');
 
+
 /**
  * Страница направления. Набор вкладок зависит от данных: «График работ» — если есть плановые сроки,
  * «Надстройки» — если они заведены. Единая карта находится в отдельном разделе меню.
  * Вкладки, скрытые в карточке сотрудника, не показываются (их данные сервер и не отдаёт).
  */
 export function DirectionPage() {
+  return <ConstructionDirectionPage/>;
+}
+function ConstructionDirectionPage() {
   const { code } = route.useParams();
   const search = route.useSearch();
   const navigate = route.useNavigate();
@@ -141,7 +146,7 @@ export function DirectionPage() {
           <ManageTab code={code} editId={search.edit} onEdit={(id) => set({ edit: id })} />
         </Tabs.Panel>
         <Tabs.Panel value="entry" pt="md">
-          {d && <EntryTab code={code} periodKind={d.periodKind} />}
+          {d && (d.periodKind === 'REPORT' ? <ReportEntry code={code} /> : <EntryTab code={code} periodKind={d.periodKind} />)}
         </Tabs.Panel>
         <Tabs.Panel value="journal" pt="md">
           <JournalTab code={code} />

@@ -14,7 +14,7 @@ import { dirname, join, resolve, sep } from 'node:path';
 import { Transform, type Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import type { Attachment as AttachmentRow } from '@prisma/client';
-import { ATTACHMENT_EXT, ATTACHMENT_MAX_MB, attachmentMaterialSchema, type AttachmentMaterial, type Attachment, type AttachmentEntity } from '@mvs/shared';
+import { ATTACHMENT_EXT, ATTACHMENT_MAX_MB, PANORAMA_MAX_MB, attachmentMaterialSchema, type AttachmentMaterial, type Attachment, type AttachmentEntity } from '@mvs/shared';
 import { preparePanorama } from './panorama';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
@@ -146,12 +146,14 @@ export class AttachmentsService {
     const full = join(FILES_DIR, rel);
     await mkdir(dirname(full), { recursive: true });
 
-    const max = ATTACHMENT_MAX_MB * 1024 * 1024;
+    const maxMb = material.materialType === 'PANORAMA360' ? PANORAMA_MAX_MB : ATTACHMENT_MAX_MB;
+    const max = maxMb * 1024 * 1024;
+    let storedRel = rel, storedFull = full, storedName = fileName, storedMime = MIME[ext];
     let size = 0;
     const limit = new Transform({
       transform(chunk: Buffer, _e, cb) {
         size += chunk.length;
-        if (size > max) cb(new PayloadTooLargeException(`Файл больше ${ATTACHMENT_MAX_MB} МБ`));
+        if (size > max) cb(new PayloadTooLargeException(`Файл больше ${maxMb} МБ`));
         else cb(null, chunk);
       },
     });
@@ -159,19 +161,27 @@ export class AttachmentsService {
       await pipeline(body, limit, createWriteStream(full, { flags: 'wx' }));
       if (size === 0) throw new BadRequestException('Пустой файл');
       await this.checkMagic(full, ext);
-      if(material.materialType==='PANORAMA360')await preparePanorama(full);
+      if(material.materialType==='PANORAMA360') {
+        const optimized = await preparePanorama(full);
+        storedFull = optimized.path; storedRel = `${rel}.panorama.jpg`;
+        storedName = fileName.replace(/\.[^.]+$/, '.jpg'); storedMime = 'image/jpeg'; size = optimized.size;
+        await unlink(full);
+      }
     } catch (e) {
       await unlink(full).catch(() => undefined);
-      await Promise.all(['preview','viewer'].map(v=>unlink(`${full}.${v}.webp`).catch(()=>undefined)));
+      await Promise.all([storedFull,`${storedFull}.preview.webp`,`${storedFull}.viewer.webp`].map(v=>unlink(v).catch(()=>undefined)));
       throw e;
     }
 
-    const row = await this.prisma.attachment.create({
-      data: { siteId: t.siteId, entity, entityId, fileName, mimeType: MIME[ext], size, storagePath: rel.replace(/\\/g, '/'), uploadedById: user.id,
+    const row = await this.prisma.$transaction(async tx => {
+      const created = await tx.attachment.create({
+      data: { siteId: t.siteId, entity, entityId, fileName: storedName, mimeType: storedMime, size, storagePath: storedRel.replace(/\\/g, '/'), uploadedById: user.id,
         materialType:material.materialType,...(material.materialType==='PANORAMA360'?{capturedOn:new Date(`${material.capturedOn}T00:00:00Z`),description:material.description||null}:{}) },
       include: { uploadedBy: { select: { fullName: true } } },
-    }).catch(async e=>{await Promise.all([full,`${full}.preview.webp`,`${full}.viewer.webp`].map(p=>unlink(p).catch(()=>undefined)));throw e;});
-    await this.audit.write({ userId: user.id, action: 'CREATE', entity: 'attachment', entityId: row.id, directionId: t.directionId, siteId: t.siteId, ip, comment: `файл «${fileName}» (${t.label})`, after: { file: fileName, ...material } });
+      });
+      await this.audit.write({ userId: user.id, action: 'CREATE', entity: 'attachment', entityId: created.id, directionId: t.directionId, siteId: t.siteId, ip, comment: `файл «${storedName}» (${t.label})`, after: { file: storedName, ...material } }, tx);
+      return created;
+    }).catch(async e=>{await Promise.all([storedFull,`${storedFull}.preview.webp`,`${storedFull}.viewer.webp`].map(p=>unlink(p).catch(()=>undefined)));throw e;});
     return toAttachment(row, true);
   }
 

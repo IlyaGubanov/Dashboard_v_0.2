@@ -1,6 +1,6 @@
 import { BadRequestException, Controller, Get, HttpCode, Param, ParseIntPipe, PayloadTooLargeException, Post, Query, Req, Res } from '@nestjs/common';
 import type { Response } from 'express';
-import { ATTACHMENT_MAX_MB, attachmentMaterialSchema, type Attachment, type AttachmentEntity } from '@mvs/shared';
+import { ATTACHMENT_MAX_MB, PANORAMA_MAX_MB, attachmentMaterialSchema, type Attachment, type AttachmentEntity } from '@mvs/shared';
 import { clientIp, type AuthRequest, type AuthUser } from '../common/request';
 import { CurrentUser } from '../auth/decorators';
 import { AttachmentsService } from './attachments.service';
@@ -30,9 +30,10 @@ export class AttachmentsController {
     @Query('materialType') materialType:string|undefined,@Query('capturedOn')capturedOn:string|undefined,@Query('description')description:string|undefined,@Req() r: AuthRequest): Promise<Attachment> {
     try {
       if ((r.headers['content-type'] ?? '').startsWith('application/json')) throw new BadRequestException('Файл передаётся как application/octet-stream');
-      if (Number(r.headers['content-length'] ?? 0) > ATTACHMENT_MAX_MB * 1024 * 1024) throw new PayloadTooLargeException(`Файл больше ${ATTACHMENT_MAX_MB} МБ`);
       const material=attachmentMaterialSchema.safeParse({materialType:materialType??'FILE',capturedOn,description});
       if(!material.success)throw new BadRequestException(material.error.issues[0].message);
+      const max = material.data.materialType === 'PANORAMA360' ? PANORAMA_MAX_MB : ATTACHMENT_MAX_MB;
+      if (Number(r.headers['content-length'] ?? 0) > max * 1024 * 1024) throw new PayloadTooLargeException(`Файл больше ${max} МБ`);
       return await this.s.upload(u, ...target(entity, entityId), String(name ?? ''), r, clientIp(r),material.data);
     } catch (e) {
       // тело запроса могло быть прочитано не до конца — соединение повторно не используем

@@ -42,11 +42,13 @@ describe.skipIf(!url)('панорамы: исходники, права, ист�
   });
   const upload=(date:string,description='Сферическая панорама')=>service.upload(admin,'site',siteId,'panorama.jpg',Readable.from(original),null,{materialType:'PANORAMA360',capturedOn:date,description});
   const bytes=async(stream:Readable)=>{const chunks:Buffer[]=[];for await(const part of stream)chunks.push(Buffer.from(part));return Buffer.concat(chunks);};
-  it('сохраняет исходник побайтно и отделяет дату съёмки от загрузки',async()=>{
+  it('сохраняет JPEG без увеличения и отделяет дату съёмки от загрузки',async()=>{
     const f=await upload('2026-01-01');
     expect(f).toMatchObject({materialType:'PANORAMA360',capturedOn:'2026-01-01',description:'Сферическая панорама',uploadedBy:'QA администратор'});
     expect(f.createdAt.slice(0,10)).not.toBe(f.capturedOn);
-    expect(await bytes((await service.open(admin,f.id)).stream)).toEqual(original);
+    const saved=await bytes((await service.open(admin,f.id)).stream);
+    expect(await sharp(saved).metadata()).toMatchObject({format:'jpeg',width:1024,height:512});
+    expect(f.size).toBe(saved.length);
     const preview=await service.open(admin,f.id,'preview');
     expect(preview.headers['Content-Type']).toBe('image/webp');
     expect((await sharp(await bytes(preview.stream)).metadata()).width).toBeLessThanOrEqual(1200);
@@ -73,8 +75,8 @@ describe.skipIf(!url)('панорамы: исходники, права, ист�
     await expect(service.upload(viewer,'site',siteId,'denied.jpg',Readable.from(original),null,{materialType:'PANORAMA360',capturedOn:'2026-01-01'})).rejects.toThrow();
     await service.archive(admin,f.id,null);await expect(service.open(viewer,f.id)).rejects.toThrow();
   });
-  it('соблюдает существующий лимит 25 МБ и убирает недописанные файлы',async()=>{
-    await expect(service.upload(admin,'site',siteId,'large.jpg',Readable.from(Buffer.alloc(26*1024*1024)),null,{materialType:'PANORAMA360',capturedOn:'2026-01-01'})).rejects.toThrow();
+  it('ограничивает панорамы 50 МБ и убирает недописанные файлы',async()=>{
+    await expect(service.upload(admin,'site',siteId,'large.jpg',Readable.from(Buffer.alloc(51*1024*1024)),null,{materialType:'PANORAMA360',capturedOn:'2026-01-01'})).rejects.toThrow();
     const rows=await db!.attachment.count({where:{siteId}});
     const files=await readdir(root,{recursive:true});
     const originals=files.filter(p=>String(p).endsWith('.jpg'));
@@ -85,6 +87,37 @@ describe.skipIf(!url)('панорамы: исходники, права, ист�
     const animated=apng(png);
     expect((await sharp(animated).metadata()).pages).toBeUndefined();
     await expect(service.upload(admin,'site',siteId,'animated.png',Readable.from(animated),null,{materialType:'PANORAMA360',capturedOn:'2026-01-01'})).rejects.toThrow();
+  });
+  it('принимает 11904 × 5952, сохраняет три оптимизированные версии и прежнюю дату съёмки',async()=>{
+    const large=await sharp({create:{width:11904,height:5952,channels:3,background:'#426886'}}).jpeg().toBuffer();
+    const f=await service.upload(admin,'site',siteId,'camera.jpg',Readable.from(large),null,{materialType:'PANORAMA360',capturedOn:'2026-10-15'});
+    const saved=await bytes((await service.open(admin,f.id)).stream);
+    expect(f).toMatchObject({capturedOn:'2026-10-15',mimeType:'image/jpeg',size:saved.length});
+    expect(await sharp(saved).metadata()).toMatchObject({format:'jpeg',width:8192,height:4096});
+    expect(await sharp(await bytes((await service.open(admin,f.id,'viewer')).stream)).metadata()).toMatchObject({width:4096,height:2048});
+    expect(await sharp(await bytes((await service.open(admin,f.id,'preview')).stream)).metadata()).toMatchObject({width:1200,height:600});
+    const stored=await db!.attachment.findUniqueOrThrow({where:{id:f.id}});
+    const files=(await readdir(root,{recursive:true})).map(String);
+    expect(files.filter(p=>p.includes(basename(stored.storagePath).split('.')[0]))).toHaveLength(3);
+  },30000);
+  it('преобразует PNG в JPEG и не оставляет файл исходного формата',async()=>{
+    const png=await sharp(original).png().toBuffer();
+    const f=await service.upload(admin,'site',siteId,'small.png',Readable.from(png),null,{materialType:'PANORAMA360',capturedOn:'2026-10-16'});
+    expect(f).toMatchObject({fileName:'small.jpg',mimeType:'image/jpeg'});
+    expect(await sharp(await bytes((await service.open(admin,f.id)).stream)).metadata()).toMatchObject({format:'jpeg',width:1024,height:512});
+  });
+  it('откатывает запись и удаляет все файлы при ошибке сохранения в БД',async()=>{
+    const beforeRows=await db!.attachment.count({where:{siteId}});
+    const beforeFiles=(await readdir(root,{recursive:true})).map(String).sort();
+    await expect(service.upload({...admin,id:2147483647},'site',siteId,'rollback.jpg',Readable.from(original),null,{materialType:'PANORAMA360',capturedOn:'2026-10-17'})).rejects.toThrow();
+    expect(await db!.attachment.count({where:{siteId}})).toBe(beforeRows);
+    expect((await readdir(root,{recursive:true})).map(String).sort()).toEqual(beforeFiles);
+  });
+  it('принимает панораму больше прежнего лимита 25 МБ и сохраняет только оптимизированные файлы',async()=>{
+    const padded=Buffer.concat([original,Buffer.alloc(26*1024*1024)]);
+    const file=await service.upload(admin,'site',siteId,'large.jpg',Readable.from(padded),null,{materialType:'PANORAMA360',capturedOn:'2026-02-01'});
+    expect(file.size).toBeLessThan(1024*1024);
+    expect(await sharp(await bytes((await service.open(admin,file.id)).stream)).metadata()).toMatchObject({format:'jpeg',width:1024,height:512});
   });
 });
 

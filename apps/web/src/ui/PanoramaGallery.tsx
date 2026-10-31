@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState } from 'react';
-import { ActionIcon, Alert, Badge, Button, FileButton, Group, Image, Modal, Select, SimpleGrid, Skeleton, Stack, Text, Textarea, TextInput, UnstyledButton } from '@mantine/core';
+import { ActionIcon, Alert, Button, FileButton, Group, Image, Modal, Select, SimpleGrid, Skeleton, Stack, Text, Textarea, TextInput, UnstyledButton } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { IconArchive, IconView360 } from '@tabler/icons-react';
 import { attachmentMaterialSchema, type Attachment } from '@mvs/shared';
@@ -37,12 +37,12 @@ export function PanoramaGallery({ files, siteId, canUpload, onChanged }: { files
     {!files.length && <Text size="sm" c="dimmed">Панорам пока нет. Снимки сохраняются в истории объекта независимо от отчётного периода.</Text>}
     <SimpleGrid cols={{ base: 2, sm: 3 }} spacing="xs">{ordered.slice(0,page*18).map(f => <UnstyledButton key={f.id} onClick={() => setSelected(f.id)} aria-label={`Открыть панораму ${date(f.capturedOn)}: ${f.description || f.fileName}`}>
       <Image src={`/api/attachments/${f.id}/file?variant=preview`} alt="Сферическая панорама" fit="contain" h={90} loading="lazy" bg="var(--surface-muted)" radius="sm" />
-      <Group gap={6} mt={4}><Badge size="xs" variant="light">360°</Badge><Text size="xs" fw={500}>{date(f.capturedOn)}</Text></Group>
+      <Text mt={4} size="xs" fw={500}>{date(f.capturedOn)}</Text>
       <Text size="xs" c="dimmed" lineClamp={2}>{f.description || f.fileName}</Text>
     </UnstyledButton>)}</SimpleGrid>
     {ordered.length > page*18 && <Button variant="subtle" size="xs" onClick={() => setPage(p=>p+1)}>Показать ещё снимки</Button>}
     <Modal opened={uploading} onClose={() => { if (!busy) setUploading(false); }} title="Добавить панорамы 360°" zIndex={400} closeOnClickOutside={!busy} closeOnEscape={!busy} withCloseButton={!busy}>
-      <Stack><Text size="sm" c="dimmed">Сферическое изображение 2:1 (equirectangular), JPEG, PNG или WebP. От 1024 × 512 до 64 Мп, не более 25 МБ на файл. Оригинал сохраняется без уменьшения.</Text>
+      <Stack><Text size="sm" c="dimmed">Панорамный снимок JPEG, PNG или WebP с соотношением сторон 2:1, до 50 МБ. Изображение автоматически оптимизируется.</Text>
         <TextInput label="Дата съёмки" type="date" required value={capturedOn} onChange={e=>setCapturedOn(e.currentTarget.value)} disabled={busy} />
         <Textarea label="Описание" maxLength={1000} value={description} onChange={e=>setDescription(e.currentTarget.value)} disabled={busy} />
         <FileButton accept="image/jpeg,image/png,image/webp" multiple onChange={setPending}>{p=><Button {...p} variant="default" disabled={busy}>Выбрать снимки</Button>}</FileButton>
@@ -56,7 +56,7 @@ export function PanoramaGallery({ files, siteId, canUpload, onChanged }: { files
         <Suspense fallback={<Skeleton h={420} />}><PanoramaViewer key={current.id} file={current} /></Suspense>
         <Text size="sm">{date(current.capturedOn)}{current.description ? ` · ${current.description}` : ''}</Text>
         <Group justify="space-between"><Text size="xs" c="dimmed">Загрузил: {current.uploadedBy || 'Не указан'} · {new Intl.DateTimeFormat('ru-RU',{dateStyle:'short',timeStyle:'short'}).format(new Date(current.createdAt))}</Text><Group gap="xs">
-          <Button component="a" href={`/api/attachments/${current.id}/file?download=1`} size="xs" variant="default">Скачать оригинал</Button>
+          <Button component="a" href={`/api/attachments/${current.id}/file?download=1`} size="xs" variant="default">Скачать панораму</Button>
           {current.canArchive && <ActionIcon aria-label="Убрать панораму в архив" color="orange" variant="light" onClick={()=>archive(current)}><IconArchive size={16} /></ActionIcon>}
         </Group></Group>
       </Stack>}

@@ -375,3 +375,95 @@ export function econMonthEnd(month: string): string {
   const d = new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0));
   return d.toISOString().slice(0, 10);
 }
+
+// ── Этап 3: движение денежных средств (ДДС), суммы с НДС ──
+
+export const ECON_CASH_KINDS = ['IN', 'OUT'] as const;
+export type EconCashKind = (typeof ECON_CASH_KINDS)[number];
+/** Таблица ДДС: «C» — общие по компании, «D<id>» — направление. */
+export const ECON_CASH_COMPANY = 'C';
+export const econCashScope = (directionId: number | null | undefined) => (directionId ? `D${directionId}` : ECON_CASH_COMPANY);
+/** Куда по умолчанию подставлять оплату заказчика из дашборда: направление → статья поступлений. */
+export const ECON_CASH_INFLOW_BY_DIRECTION: Record<string, string> = { schools: 'in_subsidy', streets: 'in_subsidy', networks: 'in_special', mkd: 'in_commercial' };
+
+export interface EconCashArticle {
+  id: number;
+  code: string;
+  name: string;
+  kind: EconCashKind;
+  sort: number;
+  isArchived: boolean;
+}
+export interface EconCashValue {
+  month: string;
+  articleId: number;
+  plan: number | null;
+  fact: number | null;
+}
+export interface EconCashSheet {
+  scope: string;
+  directionId: number | null;
+  year: number;
+  opening: number | null;
+  /** 0 — таблицы за год ещё нет */
+  version: number;
+  updatedAt: string | null;
+  updatedBy: string | null;
+  entries: EconCashValue[];
+}
+export interface EconCashHints {
+  /** оплата заказчика по дашборду за месяц, с НДС (разница нарастающих итогов) */
+  paid: Record<string, number>;
+  /** факт расходов ПЭО за месяц × (1 + НДС): статья ДДС → сумма */
+  costs: Record<string, Record<string, number>>;
+  /** лимиты центров затрат направления × (1 + НДС): статья ДДС → сумма */
+  limits: Record<string, number>;
+  /** дебиторская задолженность заказчика по дашборду: КС-2 − оплачено, с НДС (на последний срез) */
+  receivable: number | null;
+}
+export interface EconCashView {
+  year: number;
+  articles: EconCashArticle[];
+  scopes: { scope: string; directionId: number | null; title: string }[];
+  sheets: EconCashSheet[];
+  monthStatus: Record<string, EconMonthStatus>;
+  hints: Record<string, EconCashHints>;
+}
+
+const cashCell = z.number({ error: 'Укажите число' }).finite().min(0, 'Сумма не может быть отрицательной').max(1e13, 'Слишком большая сумма').nullable();
+export const econCashSaveSchema = z.object({
+  version: z.number().int().min(0),
+  opening: z.number({ error: 'Укажите число' }).finite().min(-1e13).max(1e13).nullable().optional(),
+  entries: z
+    .array(z.object({ month: econMonthSchema, articleId: id, plan: cashCell, fact: cashCell }))
+    .max(5000)
+    .refine((rows) => new Set(rows.map((r) => `${r.month}:${r.articleId}`)).size === rows.length, 'Статья за месяц указана дважды'),
+  comment: text(300),
+});
+export type EconCashSave = z.infer<typeof econCashSaveSchema>;
+
+/** Месяцы года «ГГГГ-01»…«ГГГГ-12». */
+export const econYearMonths = (year: number) => Array.from({ length: 12 }, (_, i) => `${year}-${String(i + 1).padStart(2, '0')}`);
+
+export interface EconCashMonth {
+  month: string;
+  inPlan: number;
+  outPlan: number;
+  inFact: number;
+  outFact: number;
+}
+/**
+ * Остаток денег по месяцам: до последнего месяца с фактом — по факту, дальше — по плану (прогноз).
+ * Кассовый разрыв — месяц с наименьшим отрицательным остатком.
+ */
+export function econCashBalance(opening: number | null, months: EconCashMonth[], lastFact: string | null) {
+  let balance = opening ?? 0;
+  const series = months.map((m) => {
+    const actual = lastFact != null && m.month <= lastFact;
+    const net = actual ? m.inFact - m.outFact : m.inPlan - m.outPlan;
+    balance = round2(balance + net);
+    return { month: m.month, net: round2(net), balance, actual };
+  });
+  const min = series.reduce<(typeof series)[number] | null>((a, x) => (a == null || x.balance < a.balance ? x : a), null);
+  return { series, gap: min && min.balance < 0 ? { month: min.month, value: min.balance } : null, min };
+}

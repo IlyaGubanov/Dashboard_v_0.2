@@ -3,6 +3,7 @@ import {
   econArticleSchema,
   econBudgetCreateSchema,
   econBudgetSaveSchema,
+  econCashSaveSchema,
   econEditorsSchema,
   econMonthSaveSchema,
   econMonthSchema,
@@ -11,6 +12,7 @@ import {
   type EconArticleInput,
   type EconBudgetCreate,
   type EconBudgetSave,
+  type EconCashSave,
   type EconMonthSave,
   type EconMonthStatus,
   type EconSettings,
@@ -20,7 +22,12 @@ import { clientIp, type AuthRequest, type AuthUser } from '../common/request';
 import { ZodPipe } from '../common/zod.pipe';
 import { EconomicsService } from './economics.service';
 import { EconomicsDemoService } from './economics-demo.service';
+import { EconomicsCashService } from './economics-cash.service';
 
+const year = (v: number) => {
+  if (v < 2020 || v > 2099) throw new BadRequestException('Год — от 2020 до 2099');
+  return v;
+};
 const month = (v: string) => {
   if (!econMonthSchema.safeParse(v).success) throw new BadRequestException('Месяц указывается в формате ГГГГ-ММ');
   return v;
@@ -28,7 +35,7 @@ const month = (v: string) => {
 
 @Controller('economics')
 export class EconomicsController {
-  constructor(private readonly s: EconomicsService, private readonly demo: EconomicsDemoService) {}
+  constructor(private readonly s: EconomicsService, private readonly demo: EconomicsDemoService, private readonly cash: EconomicsCashService) {}
   @Get('access') access(@CurrentUser() u: AuthUser) { return this.s.permissions(u); }
   @Get() setup(@CurrentUser() u: AuthUser) { return this.s.setup(u); }
   @Post('budgets') createBudget(@CurrentUser() u: AuthUser, @Body(new ZodPipe(econBudgetCreateSchema)) b: EconBudgetCreate, @Req() r: AuthRequest) { return this.s.createBudget(u, b, clientIp(r)); }
@@ -44,5 +51,7 @@ export class EconomicsController {
   @Put('editors') setEditors(@CurrentUser() u: AuthUser, @Body(new ZodPipe(econEditorsSchema)) b: { userIds: number[] }, @Req() r: AuthRequest) { return this.s.setEditors(u, b.userIds, clientIp(r)); }
   @Post('demo') loadDemo(@CurrentUser() u: AuthUser, @Req() r: AuthRequest) { return this.demo.load(u, clientIp(r)); }
   @Delete('demo') clearDemo(@CurrentUser() u: AuthUser, @Req() r: AuthRequest) { return this.demo.clear(u, clientIp(r)); }
+  @Get('cash/:year') cashView(@CurrentUser() u: AuthUser, @Param('year', ParseIntPipe) y: number) { return this.cash.view(u, year(y)); }
+  @Put('cash/:year/:scope') cashSave(@CurrentUser() u: AuthUser, @Param('year', ParseIntPipe) y: number, @Param('scope') scope: string, @Body(new ZodPipe(econCashSaveSchema)) b: EconCashSave, @Req() r: AuthRequest) { return this.cash.save(u, year(y), scope, b, clientIp(r)); }
   @Get('journal') journal(@CurrentUser() u: AuthUser) { return this.s.journal(u); }
 }

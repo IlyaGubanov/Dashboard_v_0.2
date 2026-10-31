@@ -1,6 +1,6 @@
 import { ConflictException, ForbiddenException, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { econIsOwnOrg, econNet, econScopeKey, type EconScope } from '@mvs/shared';
+import { ECON_CASH_COMPANY, ECON_CASH_INFLOW_BY_DIRECTION, econCashScope, econIsOwnOrg, econNet, econScopeKey, econYearMonths, type EconScope } from '@mvs/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { AccessService } from '../auth/access.service';
@@ -62,7 +62,7 @@ export class EconomicsDemoService {
 
   private async marker() {
     const s = await this.prisma.appSetting.findUnique({ where: { key: DEMO_KEY } });
-    return (s?.value ?? null) as { budgetIds: number[]; months: string[]; companyMonths: string[] } | null;
+    return (s?.value ?? null) as { budgetIds: number[]; months: string[]; companyMonths: string[]; cashSheetIds?: number[] } | null;
   }
 
   /** Центры затрат для демо: школы — по объекту, МКД — по лотам и крупнейший объект, Сети — СР-лоты и остальное направление, Благоустройство — всё направление. */
@@ -226,7 +226,9 @@ export class EconomicsDemoService {
             create: { key: SETTINGS_KEY, value: { vatRate: vat, laborRate: LABOR_RATE, machineRate: MACHINE_RATE } },
             update: { value: { vatRate: vat, laborRate: settings.laborRate ?? LABOR_RATE, machineRate: settings.machineRate ?? MACHINE_RATE } },
           });
-        await tx.appSetting.upsert({ where: { key: DEMO_KEY }, create: { key: DEMO_KEY, value: { budgetIds, months, companyMonths } }, update: { value: { budgetIds, months, companyMonths } } });
+        const cashSheetIds = await this.demoCash(tx, budgetIds, vat);
+        const marker = { budgetIds, months, companyMonths, cashSheetIds };
+        await tx.appSetting.upsert({ where: { key: DEMO_KEY }, create: { key: DEMO_KEY, value: marker }, update: { value: marker } });
         await this.audit.write({ userId: user.id, action: 'IMPORT', entity: 'econ_demo', entityId: 'demo', after: { budgets: budgetIds.length, months }, comment: `Загружены демо-данные экономики: центров затрат ${budgetIds.length}, месяцев ${months.length}`, ip }, tx);
         return { budgets: budgetIds.length, months: months.length, skipped: plans.length - todo.length };
       },
@@ -234,13 +236,130 @@ export class EconomicsDemoService {
     );
   }
 
-  /** Удаляет только созданное демо-загрузкой: центры затрат (с лимитами и фактом) и общие расходы демо-месяцев. */
+  /**
+   * ДДС за 2026 год (с НДС): выплаты — факт расходов ПЭО с НДС (75% в месяце, 25% в следующем), план — близко к расходам,
+   * на ноябрь–декабрь — средний темп; поступления — с задержками оплаты заказчиком; общие по компании — общие расходы и НДС.
+   * Остаток на начало года подобран так, чтобы в факте разрыва не было, а в прогнозе он появлялся (для наглядности).
+   * Таблицы создаются только там, где их ещё нет.
+   */
+  private async demoCash(tx: Prisma.TransactionClient, budgetIds: number[], vat: number): Promise<number[]> {
+    const YEAR = 2026;
+    const ym = econYearMonths(YEAR);
+    const k = 1 + vat / 100;
+    const arts = new Map((await tx.econCashArticle.findMany()).map((a) => [a.code, a]));
+    if (!arts.size || !budgetIds.length) return [];
+    const factMonths = new Set(MONTHS);
+    const lastFact = MONTHS[MONTHS.length - 1];
+    const future = ym.filter((m) => m > lastFact);
+    const OUT = ['fot', 'materials', 'machinery', 'subcontract', 'waste'] as const;
+    /** доля плановых поступлений, реально полученная в месяце (задержки оплаты заказчиком) */
+    const PAY_IN: Record<string, number> = { '2026-04': 0.7, '2026-05': 0.9, '2026-06': 1, '2026-07': 1.05, '2026-08': 0.55, '2026-09': 0.85, '2026-10': 1.3 };
+    const costs = await tx.econFact.findMany({
+      where: { row: { month: { in: ym }, budgetId: { in: budgetIds } } },
+      select: { amount: true, article: { select: { code: true } }, row: { select: { month: true, budget: { select: { directionId: true } } } } },
+    });
+    const company = await tx.econCompanyFact.findMany({ where: { month: { in: ym } }, select: { month: true, amount: true, article: { select: { code: true } } } });
+    const dirs = await tx.direction.findMany({ where: { id: { in: [...new Set(costs.map((c) => c.row.budget.directionId))] } }, select: { id: true, code: true } });
+    type Cell = { plan: number | null; fact: number | null };
+    const sheets = new Map<string, { directionId: number | null; cells: Map<string, Cell> }>();
+    const put = (scope: string, directionId: number | null, month: string, code: string, v: Cell) => {
+      const sh = sheets.get(scope) ?? { directionId, cells: new Map<string, Cell>() };
+      sheets.set(scope, sh);
+      sh.cells.set(`${month}|${code}`, { plan: v.plan == null ? null : r2(v.plan), fact: v.fact == null ? null : r2(v.fact) });
+    };
+    const avg = (list: number[]) => (list.length ? list.reduce((a, x) => a + x, 0) / list.length : 0);
+    for (const d of dirs) {
+      const scope = econCashScope(d.id);
+      const cost = (m: string | undefined, code: string) =>
+        m ? costs.filter((c) => c.row.budget.directionId === d.id && c.row.month === m && c.article.code === code).reduce((a, c) => a + Number(c.amount), 0) * k : 0;
+      const outPlan = new Map<string, number>();
+      for (const [ci, code] of OUT.entries()) {
+        const recent = MONTHS.slice(-3).map((m) => cost(m, code));
+        for (const [i, m] of ym.entries()) {
+          let cell: Cell | null = null;
+          if (factMonths.has(m)) cell = { plan: cost(m, code) * (1 + 0.06 * jitter(d.id * 17 + i * 5 + ci)), fact: 0.75 * cost(m, code) + 0.25 * cost(ym[i - 1], code) };
+          else if (m > lastFact) cell = { plan: avg(recent) * 1.05, fact: null };
+          if (!cell || (!cell.plan && !cell.fact)) continue;
+          put(scope, d.id, m, code, cell);
+          outPlan.set(m, (outPlan.get(m) ?? 0) + (cell.plan ?? 0));
+        }
+      }
+      const inCode = ECON_CASH_INFLOW_BY_DIRECTION[d.code] ?? 'in_commercial';
+      for (const m of ym) {
+        const plan = (outPlan.get(m) ?? 0) * 1.2;
+        if (plan) put(scope, d.id, m, inCode, { plan, fact: factMonths.has(m) ? plan * (PAY_IN[m] ?? 1) : null });
+      }
+    }
+    // общие по компании: общепроизводственные и административные расходы, НДС к уплате
+    const totals = (m: string, kind: 'plan' | 'fact', dir: 'in' | 'out') => {
+      let sum = 0;
+      for (const sh of sheets.values())
+        for (const [key, c] of sh.cells) {
+          const [month, code] = key.split('|');
+          if (month === m && (dir === 'in') === code.startsWith('in_')) sum += c[kind] ?? 0;
+        }
+      return sum;
+    };
+    for (const code of ['overhead', 'admin']) {
+      const amount = (m: string) => company.filter((c) => c.month === m && c.article.code === code).reduce((a, c) => a + Number(c.amount), 0) * k;
+      const recent = MONTHS.slice(-3).map(amount);
+      for (const [i, m] of ym.entries()) {
+        const v = amount(m);
+        if (factMonths.has(m) && v) put(ECON_CASH_COMPANY, null, m, code, { plan: v * (1 + 0.04 * jitter(i + code.length)), fact: v });
+        else if (m > lastFact) put(ECON_CASH_COMPANY, null, m, code, { plan: avg(recent), fact: null });
+      }
+    }
+    for (const m of ym) {
+      const vatOf = (kind: 'plan' | 'fact') => Math.max(0, (totals(m, kind, 'in') - totals(m, kind, 'out')) * (vat / (100 + vat)) * 0.8);
+      const plan = vatOf('plan');
+      if (plan || factMonths.has(m)) put(ECON_CASH_COMPANY, null, m, 'vat', { plan, fact: factMonths.has(m) ? vatOf('fact') : null });
+    }
+    // остаток на начало года: в факте не ниже 80 млн; если прогноз не уходит в минус — предоплата материалов в ноябре
+    const net = (m: string, kind: 'plan' | 'fact') => totals(m, kind, 'in') - totals(m, kind, 'out');
+    let cum = 0;
+    let minFact = 0;
+    for (const m of ym.filter((x) => x <= lastFact)) {
+      cum += net(m, 'fact');
+      minFact = Math.min(minFact, cum);
+    }
+    const opening = r2(80_000_000 - minFact);
+    let bal = opening + cum;
+    let minFuture = Infinity;
+    for (const m of future) {
+      bal += net(m, 'plan');
+      minFuture = Math.min(minFuture, bal);
+    }
+    if (future.length && minFuture >= 0) {
+      const biggest = [...sheets.entries()].filter(([sc]) => sc !== ECON_CASH_COMPANY).sort((a, b) => b[1].cells.size - a[1].cells.size)[0];
+      if (biggest) {
+        const key = `${future[0]}|materials`;
+        const cur = biggest[1].cells.get(key) ?? { plan: 0, fact: null };
+        biggest[1].cells.set(key, { plan: r2((cur.plan ?? 0) + minFuture + 120_000_000), fact: null });
+      }
+    }
+    const ids: number[] = [];
+    for (const [scope, sh] of sheets) {
+      if (await tx.econCashSheet.findUnique({ where: { scope_year: { scope, year: YEAR } } })) continue;
+      const sheet = await tx.econCashSheet.create({ data: { scope, directionId: sh.directionId, year: YEAR, opening: scope === ECON_CASH_COMPANY ? new Prisma.Decimal(opening) : null } });
+      ids.push(sheet.id);
+      await tx.econCashEntry.createMany({
+        data: [...sh.cells].map(([key, c]) => {
+          const [month, code] = key.split('|');
+          return { sheetId: sheet.id, month, articleId: arts.get(code)!.id, plan: c.plan == null ? null : new Prisma.Decimal(c.plan), fact: c.fact == null ? null : new Prisma.Decimal(c.fact) };
+        }),
+      });
+    }
+    return ids;
+  }
+
+  /** Удаляет только созданное демо-загрузкой: центры затрат (с лимитами и фактом), ДДС и общие расходы демо-месяцев. */
   async clear(user: AuthUser, ip: string | null) {
     await this.assertAdmin(user);
     const m = await this.marker();
     if (!m) return { budgets: 0 };
     return this.prisma.$transaction(async (tx) => {
       const removed = await tx.econBudget.deleteMany({ where: { id: { in: m.budgetIds } } });
+      if (m.cashSheetIds?.length) await tx.econCashSheet.deleteMany({ where: { id: { in: m.cashSheetIds } } });
       await tx.econCompanyFact.deleteMany({ where: { month: { in: m.companyMonths } } });
       for (const month of m.months) {
         const left = await tx.econBudgetMonth.count({ where: { month } });

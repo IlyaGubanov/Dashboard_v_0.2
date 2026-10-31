@@ -3,11 +3,12 @@ import { ActionIcon, Alert, Button, Group, Menu, Modal, Skeleton, Stack, Tabs, T
 import { notifications } from '@mantine/notifications';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getRouteApi } from '@tanstack/react-router';
-import { IconChartBar, IconCoins, IconReportMoney, IconDatabaseImport, IconDots, IconHistory, IconTrash, IconListDetails, IconReceipt, IconRefresh, IconSettings, IconTargetArrow, IconUsers } from '@tabler/icons-react';
+import { IconCash, IconChartBar, IconCoins, IconReportMoney, IconDatabaseImport, IconDots, IconHistory, IconTrash, IconListDetails, IconReceipt, IconRefresh, IconSettings, IconTargetArrow, IconUsers } from '@tabler/icons-react';
 import { api, economicsQuery } from '../../api';
 import { EconLimits } from './EconLimits';
 import { EconOverview } from './EconOverview';
 import { EconPnL } from './EconPnL';
+import { EconCash } from './EconCash';
 import { EconFacts } from './EconFacts';
 import { EconArticles } from './EconArticles';
 import { EconEditorsDialog, EconJournal, EconSettingsDialog } from './EconDialogs';
@@ -89,6 +90,7 @@ export function EconomicsPage() {
         <Tabs.List>
           <Tabs.Tab value="overview" leftSection={<IconChartBar size={16} />}>Обзор</Tabs.Tab>
           <Tabs.Tab value="pnl" leftSection={<IconReportMoney size={16} />}>Доходы и расходы</Tabs.Tab>
+          <Tabs.Tab value="cash" leftSection={<IconCash size={16} />}>Движение денег</Tabs.Tab>
           <Tabs.Tab value="limits" leftSection={<IconTargetArrow size={16} />}>Лимиты</Tabs.Tab>
           <Tabs.Tab value="fact" leftSection={<IconReceipt size={16} />}>Факт за месяц</Tabs.Tab>
           <Tabs.Tab value="articles" leftSection={<IconListDetails size={16} />}>Статьи</Tabs.Tab>
@@ -96,6 +98,7 @@ export function EconomicsPage() {
         </Tabs.List>
         <Tabs.Panel value="overview" pt="md"><EconOverview data={data} search={search} update={update} /></Tabs.Panel>
         <Tabs.Panel value="pnl" pt="md"><EconPnL data={data} search={search} update={update} /></Tabs.Panel>
+        <Tabs.Panel value="cash" pt="md"><EconCash data={data} search={search} update={update} /></Tabs.Panel>
         <Tabs.Panel value="limits" pt="md"><EconLimits data={data} search={search} update={update} /></Tabs.Panel>
         <Tabs.Panel value="fact" pt="md"><EconFacts data={data} search={search} update={update} /></Tabs.Panel>
         <Tabs.Panel value="articles" pt="md"><EconArticles data={data} /></Tabs.Panel>

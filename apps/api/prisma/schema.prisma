@@ -366,6 +366,7 @@ model Direction {
   fleetTollTargetDirectionId       FleetToll[]        @relation("FleetTollTargetDirectionId")
   fleetRequestTargetDirectionId    FleetRequest[]     @relation("FleetRequestTargetDirectionId")
   econBudgets EconBudget[]
+  econCashSheets EconCashSheet[]
 
   @@map("direction")
 }
@@ -1779,4 +1780,61 @@ model EconEditor {
   user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("econ_editor")
+}
+
+// ── Экономика, этап 3: движение денежных средств (ДДС), суммы с НДС ──
+
+enum EconCashKind {
+  IN // поступления
+  OUT // выплаты
+}
+
+/// Статья ДДС (часть 3 таблицы ПЭО). Коды выплат совпадают с кодами статей расходов — для подсказок из факта ПЭО.
+model EconCashArticle {
+  id         Int          @id @default(autoincrement())
+  code       String       @unique @db.VarChar(40)
+  name       String       @db.VarChar(200)
+  kind       EconCashKind
+  sort       Int          @default(0)
+  isArchived Boolean      @default(false) @map("is_archived")
+
+  entries EconCashEntry[]
+
+  @@map("econ_cash_article")
+}
+
+/// План и факт ДДС направления (или общие по компании) за год. Версия — на всю таблицу года.
+model EconCashSheet {
+  id          Int       @id @default(autoincrement())
+  /// C — общие по компании, D<id> — направление
+  scope       String    @db.VarChar(12)
+  directionId Int?      @map("direction_id")
+  year        Int
+  /// остаток денег на начало года (только общие по компании)
+  opening     Decimal?  @db.Decimal(18, 2)
+  version     Int       @default(1)
+  updatedById Int?      @map("updated_by_id")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  direction Direction?      @relation(fields: [directionId], references: [id], onDelete: Cascade)
+  entries   EconCashEntry[]
+
+  @@unique([scope, year])
+  @@map("econ_cash_sheet")
+}
+
+/// План и факт по статье ДДС за месяц, с НДС.
+model EconCashEntry {
+  sheetId   Int      @map("sheet_id")
+  month     String   @db.Char(7)
+  articleId Int      @map("article_id")
+  plan      Decimal? @db.Decimal(18, 2)
+  fact      Decimal? @db.Decimal(18, 2)
+
+  sheet   EconCashSheet   @relation(fields: [sheetId], references: [id], onDelete: Cascade)
+  article EconCashArticle @relation(fields: [articleId], references: [id], onDelete: Restrict)
+
+  @@id([sheetId, month, articleId])
+  @@index([articleId])
+  @@map("econ_cash_entry")
 }

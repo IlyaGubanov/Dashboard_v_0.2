@@ -14,6 +14,7 @@ import {
   REMARK_ACTIVE,
   REMARK_SEVERITY_LABELS,
   REMARK_STATUS_LABELS,
+  remarkSchema,
   type Attachment,
   type RemarkAction,
   type RemarkActionData,
@@ -46,6 +47,7 @@ const FLOW: Record<Exclude<RemarkAction, 'comment'>, { from: RemarkStatus[]; to:
 };
 
 const include = {
+  responsible: { select: { id: true, fullName: true } },
   site: { select: { id: true, name: true, shortName: true } },
   workItem: { select: { id: true, label: true, workType: { select: { name: true } } } },
   author: { select: { id: true, fullName: true } },
@@ -100,6 +102,7 @@ export class RemarksService {
   private row(r: RemarkFull, photos: number): RemarkRow {
     const overdue = REMARK_ACTIVE.includes(r.status) && r.dueDate != null && r.dueDate < today();
     return {
+      sourceName: r.sourceName, sourceRef: r.sourceRef, detectedOn: day(r.detectedOn), typeName: r.typeName, location: r.location, responsible: r.responsible, violationGroup: r.violationGroup, violationType: r.violationType,
       id: r.id,
       num: r.num,
       site: { id: r.site.id, name: r.site.shortName ?? r.site.name },
@@ -200,7 +203,22 @@ export class RemarksService {
   }
 
   /** Проверка ссылок: позиция с того же объекта, исполнитель существует. */
+  private checkClassification(b: RemarkData, previous?: Pick<Remark, 'sourceName' | 'violationGroup' | 'violationType'>) {
+    const parsed = remarkSchema.safeParse({ ...b,
+      sourceName: b.sourceName !== undefined ? b.sourceName : previous?.sourceName,
+      violationGroup: b.violationGroup !== undefined ? b.violationGroup : previous?.violationGroup,
+      violationType: b.violationType !== undefined ? b.violationType : previous?.violationType,
+    });
+    if (!parsed.success) throw new BadRequestException({ message: 'Проверьте поля нарушения', fields: Object.fromEntries(parsed.error.issues.map(i => [i.path.join('.'), i.message])) });
+  }
+
+  /** Проверка ссылок: позиция с того же объекта, исполнитель существует. */
   private async checkRefs(siteId: number, b: RemarkData) {
+    if (b.responsibleId) {
+      const site = await this.prisma.site.findUniqueOrThrow({ where: { id: siteId }, select: { directionId: true } });
+      const person = await this.prisma.user.findFirst({ where: { id: b.responsibleId, isActive: true, OR: [{ memberships: { some: { directionId: site.directionId } } }, { siteAssignments: { some: { site: { directionId: site.directionId } } } }] }, select: { id: true } });
+      if (!person) throw new BadRequestException({ message: 'Ответственный не назначен в направление', fields: { responsibleId: 'Выберите сотрудника направления' } });
+    }
     if (b.workItemId) {
       const it = await this.prisma.workItem.findUnique({ where: { id: b.workItemId }, select: { siteId: true } });
       if (!it || it.siteId !== siteId) throw new BadRequestException({ message: 'Позиция не с этого объекта', fields: { workItemId: 'Не с этого объекта' } });
@@ -224,6 +242,7 @@ export class RemarksService {
     const can = await this.creatable(user, d.id);
     if (!can.all && !can.ids.has(site.id)) throw new ForbiddenException('Нет прав выставлять замечания по этому объекту');
     await this.checkRefs(site.id, b);
+    this.checkClassification(b);
     const assignee = await this.names(b);
 
     const res = await this.prisma.$transaction(async (tx) => {
@@ -238,6 +257,8 @@ export class RemarksService {
           siteId: site.id,
           workItemId: b.workItemId ?? null,
           text: b.text,
+          sourceName: b.sourceName || null, sourceRef: b.sourceRef || null, detectedOn: toDate(b.detectedOn), typeName: b.typeName || null, location: b.location || null, responsibleId: b.responsibleId ?? null,
+          violationGroup: b.violationGroup ?? null, violationType: b.violationType ?? null,
           category: b.category ?? null,
           severity: b.severity,
           dueDate: toDate(b.dueDate),
@@ -250,7 +271,7 @@ export class RemarksService {
         {
           userId: user.id, action: 'CREATE', entity: 'remark', entityId: r.id, directionId: d.id, siteId: site.id, ip,
           comment: `замечание № ${r.num}`,
-          after: { text: b.text, category: b.category, severity: REMARK_SEVERITY_LABELS[b.severity], dueDate: b.dueDate, assignee },
+          after: { text: b.text, category: b.category, severity: REMARK_SEVERITY_LABELS[b.severity], dueDate: b.dueDate, assignee, sourceName: b.sourceName, sourceRef: b.sourceRef, detectedOn: b.detectedOn, typeName: b.typeName, location: b.location, responsibleId: b.responsibleId, violationGroup: b.violationGroup, violationType: b.violationType },
         },
         tx,
       );
@@ -266,11 +287,20 @@ export class RemarksService {
     if (!(await this.actions(user, r)).canEdit) throw new ForbiddenException('Править замечание может автор или куратор, пока оно не закрыто');
     if (b.siteId !== r.siteId) throw new BadRequestException({ message: 'Объект замечания не меняется', fields: { siteId: 'Не меняется' } });
     await this.checkRefs(r.siteId, b);
+    this.checkClassification(b, r);
     const n = await this.prisma.remark.updateMany({
       where: { id, version: b.version ?? r.version },
       data: {
         workItemId: b.workItemId ?? null,
         text: b.text,
+        sourceName: b.sourceName !== undefined ? b.sourceName || null : r.sourceName,
+        sourceRef: b.sourceRef !== undefined ? b.sourceRef || null : r.sourceRef,
+        detectedOn: b.detectedOn !== undefined ? toDate(b.detectedOn) : r.detectedOn,
+        typeName: b.typeName !== undefined ? b.typeName || null : r.typeName,
+        location: b.location !== undefined ? b.location || null : r.location,
+        responsibleId: b.responsibleId !== undefined ? b.responsibleId : r.responsibleId,
+        violationGroup: b.violationGroup !== undefined ? b.violationGroup : r.violationGroup,
+        violationType: b.violationType !== undefined ? b.violationType : r.violationType,
         category: b.category ?? null,
         severity: b.severity,
         dueDate: toDate(b.dueDate),
@@ -281,11 +311,11 @@ export class RemarksService {
     if (!n.count) throw new ConflictException('Замечание уже изменил другой пользователь — обновите карточку');
     const itemName = (w: { label: string | null; workType: { name: string } } | null) => (w ? (w.label ?? w.workType.name) : null);
     const item = b.workItemId ? await this.prisma.workItem.findUnique({ where: { id: b.workItemId }, select: { label: true, workType: { select: { name: true } } } }) : null;
-    const before = { text: r.text, category: r.category, severity: REMARK_SEVERITY_LABELS[r.severity], dueDate: day(r.dueDate), assignee: r.assignee?.fullName ?? null, workItem: itemName(r.workItem) };
-    const after = { text: b.text, category: b.category ?? null, severity: REMARK_SEVERITY_LABELS[b.severity], dueDate: b.dueDate ?? null, assignee: await this.names(b), workItem: itemName(item) };
+    const before = { text: r.text, category: r.category, severity: REMARK_SEVERITY_LABELS[r.severity], dueDate: day(r.dueDate), assignee: r.assignee?.fullName ?? null, workItem: itemName(r.workItem), sourceName:r.sourceName,sourceRef:r.sourceRef,detectedOn:day(r.detectedOn),typeName:r.typeName,location:r.location,responsibleId:r.responsibleId,violationGroup:r.violationGroup,violationType:r.violationType };
+    const after = { text: b.text, category: b.category ?? null, severity: REMARK_SEVERITY_LABELS[b.severity], dueDate: b.dueDate ?? null, assignee: await this.names(b), workItem: itemName(item), sourceName:b.sourceName!==undefined?b.sourceName||null:r.sourceName,sourceRef:b.sourceRef!==undefined?b.sourceRef||null:r.sourceRef,detectedOn:b.detectedOn!==undefined?b.detectedOn||null:day(r.detectedOn),typeName:b.typeName!==undefined?b.typeName||null:r.typeName,location:b.location!==undefined?b.location||null:r.location,responsibleId:b.responsibleId!==undefined?b.responsibleId:r.responsibleId,violationGroup:b.violationGroup!==undefined?b.violationGroup:r.violationGroup,violationType:b.violationType!==undefined?b.violationType:r.violationType };
     const changed = (Object.keys(after) as (keyof typeof after)[]).filter((k) => (before[k] ?? null) !== (after[k] ?? null));
     if (changed.length) {
-      const what: Record<string, string> = { text: 'текст', category: 'категория', severity: 'важность', dueDate: 'срок', assignee: 'исполнитель', workItem: 'позиция' };
+      const what: Record<string, string> = { text: 'текст', category: 'категория', severity: 'важность', dueDate: 'срок', assignee: 'исполнитель', workItem: 'позиция', sourceName:'источник',sourceRef:'документ',detectedOn:'дата выявления',typeName:'тип',location:'место',responsibleId:'ответственный',violationGroup:'группа ЦККБ',violationType:'тип ЦККБ' };
       await this.prisma.remarkEvent.create({ data: { remarkId: id, kind: 'EDIT', authorId: user.id, text: `Изменено: ${changed.map((k) => what[k]).join(', ')}` } });
       await this.audit.write({ userId: user.id, action: 'UPDATE', entity: 'remark', entityId: id, directionId: d.id, siteId: r.siteId, ip, comment: `замечание № ${r.num}`, before, after });
     }

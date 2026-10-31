@@ -1,5 +1,6 @@
 /** Загрузка направления из БД в модель расчёта. Без декораторов — используется и сервисом, и тестами. */
 import type { Prisma, PrismaClient } from '@prisma/client';
+import { reportSummaryStoredSchema } from '@mvs/shared';
 import { parseDate, toMs, type KDirection, type KPeriod, type KpiTileConfig } from './model';
 
 const num = (v: Prisma.Decimal | number | null | undefined) => (v == null ? null : Number(v));
@@ -9,7 +10,7 @@ type Db = Pick<PrismaClient, 'direction' | 'reportingPeriod' | 'site' | 'tracker
 /** Отчётные точки направления по возрастанию даты. */
 export async function loadPeriods(db: Db, directionId: number): Promise<KPeriod[]> {
   const rows = await db.reportingPeriod.findMany({ where: { directionId }, orderBy: [{ date: 'asc' }, { id: 'asc' }] });
-  return rows.map((p) => ({ id: p.id, date: p.date.getTime(), status: p.status, program: p.program, label: p.label }));
+  return rows.map((p) => ({ id: p.id, date: p.date.getTime(), status: p.status, program: p.program, label: p.label, summary: reportSummaryStoredSchema.safeParse(p.summary).data ?? null }));
 }
 
 /**
@@ -26,7 +27,7 @@ export async function loadDirection(db: Db, directionId: number, periods: KPerio
     where: { directionId, isArchived: false },
     orderBy: [{ sort: 'asc' }, { id: 'asc' }],
     include: {
-      section: { select: { id: true, name: true } },
+      section: { select: { id: true, name: true, code: true } },
       contractor: { select: { id: true, name: true } },
       status: { select: { code: true, name: true, color: true } },
       contracts: { select: { amount: true, advanceAmount: true } },
@@ -127,6 +128,7 @@ export async function loadDirection(db: Db, directionId: number, periods: KPerio
           paid: num(r.paidAmount),
           statusText: r.statusText,
           remarks: r.remarksCount,
+          source: r.source,
         }))
         .sort((a, b) => a.date - b.date),
       items: s.workItems.map((it) => ({

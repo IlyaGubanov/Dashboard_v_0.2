@@ -11,6 +11,7 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, type PeriodStatus } from '@prisma/client';
 import type { AuditPage, EntryReportValue, EntrySaveData, EntrySaveResult, EntrySheet, EntryValue } from '@mvs/shared';
+import { reportSummaryStoredSchema, type ReportSummarySave } from '@mvs/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { AccessService } from '../auth/access.service';
@@ -23,7 +24,7 @@ const day = (d: Date | null | undefined) => (d ? d.toISOString().slice(0, 10) : 
 const parse = (s: string) => new Date(`${s}T00:00:00Z`);
 
 const ITEM_FIELDS = ['statusCode', 'pct', 'factQty', 'ks', 'paid', 'note'] as const;
-const REPORT_FIELDS = ['workers', 'machines', 'workersBlocked', 'machinesBlocked', 'ks', 'paid', 'note'] as const;
+const REPORT_FIELDS = ['workers', 'machines', 'workersBlocked', 'machinesBlocked', 'ks', 'paid', 'note', 'statusText', 'remarksCount'] as const;
 const FIELD_LABEL: Record<string, string> = {
   status: 'статус точки',
   statusCode: 'статус',
@@ -45,6 +46,7 @@ const FIELD_LABEL: Record<string, string> = {
   object: 'объект',
   workItem: 'позиция',
   file: 'файл',
+  source: 'источник', program: 'программа отчёта', date: 'дата отчёта', sheet: 'лист источника', attrs: 'исходные атрибуты отчёта', statusText: 'отчётный статус', remarksCount: 'замечаний по отчёту',
 };
 
 @Injectable()
@@ -67,6 +69,10 @@ export class EntryService {
     const p = await this.prisma.reportingPeriod.findUnique({ where: { id: periodId } });
     if (!p || p.directionId !== directionId) throw new NotFoundException('Отчётная точка не найдена');
     return p;
+  }
+
+  private programScope(program: string, periodId: number): Prisma.SiteWhereInput {
+    return { OR: [{ section: { code: program } }, { reports: { some: { periodId } } }, { workItems: { some: { progress: { some: { periodId } } } } }, { sectionId: null, reports: { some: { period: { program } } } }] };
   }
 
   /** Может ли роль править данные при этом статусе точки. */
@@ -95,10 +101,10 @@ export class EntryService {
     const d = await this.direction(user, code);
     const p = await this.period(d.id, periodId);
     const ed = await this.access.editableSites(user, d.id);
-    const allowed = !d.isReadonly && this.statusAllows(ed.role, p.status);
+    const allowed = !d.isReadonly && this.statusAllows(ed.role, p.status) && (d.periodKind !== 'REPORT' || p.status === 'OPEN');
 
     const sites = await this.prisma.site.findMany({
-      where: { directionId: d.id, isArchived: false },
+      where: { directionId: d.id, isArchived: false, ...(d.periodKind === 'REPORT' ? this.programScope(p.program, p.id) : {}) },
       orderBy: [{ sort: 'asc' }, { id: 'asc' }],
       include: {
         section: { select: { name: true } },
@@ -135,7 +141,9 @@ export class EntryService {
 
     return {
       direction: { code: d.code, name: d.name, periodKind: d.periodKind },
-      period: { id: p.id, date: day(p.date)!, status: p.status, label: p.label },
+      period: { id: p.id, date: day(p.date)!, status: p.status, label: p.label, program: p.program },
+      ...(d.periodKind === 'REPORT' ? { aggregate: { version: reportSummaryStoredSchema.safeParse(p.summary).data?.version ?? 0,
+        value: (() => { const v = reportSummaryStoredSchema.safeParse(p.summary).data?.value; return v ? { ...v, violations: this.access.canSee(user, 'remarks') ? v.violations : [] } : null; })(), canEdit: allowed && (ed.role === 'CURATOR' || ed.role === 'ADMIN') } } : {}),
       permissions: {
         role: ed.role,
         canEdit: allowed && (ed.all || ed.ids.size > 0),
@@ -143,7 +151,7 @@ export class EntryService {
         canReopen: !d.isReadonly && ((p.status === 'CLOSED' && (ed.role === 'CURATOR' || ed.role === 'ADMIN')) || (p.status === 'LOCKED' && ed.role === 'ADMIN')),
         canLock: !d.isReadonly && p.status !== 'LOCKED' && ed.role === 'ADMIN',
         canOpenNew: !d.isReadonly && (ed.role === 'CURATOR' || ed.role === 'ADMIN'),
-        reason: allowed ? null : this.reasonClosed(ed.role, p.status, d.isReadonly),
+        reason: allowed ? null : (d.periodKind === 'REPORT' && !d.isReadonly && p.status !== 'OPEN' ? 'Исторический отчёт закрыт. Уполномоченный сотрудник должен явно вернуть его в работу.' : this.reasonClosed(ed.role, p.status, d.isReadonly)),
       },
       fields: {
         status: d.statusDefs.length > 0,
@@ -151,7 +159,9 @@ export class EntryService {
         factQty: items.some((i) => i.planQty != null),
         ks: d.moneySource === 'WORK_ITEMS',
         paid: d.moneySource === 'WORK_ITEMS',
-        workers: (anyReport?.workers ?? null) != null,
+        workers: d.periodKind === 'REPORT' || (anyReport?.workers ?? null) != null,
+        reportStatus: d.periodKind === 'REPORT',
+        reportRemarks: d.periodKind === 'REPORT' && this.access.canSee(user, 'remarks'),
         blocked: anyBlocked > 0,
         reportKs: d.moneySource === 'CONTRACTS',
         reportPaid: d.moneySource === 'SITE_LIMIT',
@@ -176,6 +186,8 @@ export class EntryService {
               ks: num(r?.ksAmount),
               paid: num(r?.paidAmount),
               note: ownReport ? (r?.note ?? null) : null,
+              statusText: r?.statusText ?? null,
+              remarksCount: this.access.canSee(user, 'remarks') ? r?.remarksCount ?? null : null,
             },
             version: ownReport ? r!.version : null,
             from: r ? day(r.period.date) : null,
@@ -188,7 +200,7 @@ export class EntryService {
               name: w.label ?? w.workType.name,
               group: w.workType.group?.name ?? null,
               unit: w.unit,
-              planQty: num(w.planQty),
+              planQty: d.periodKind === 'REPORT' ? num(e ? (e.attrs as { p?: number } | null)?.p : w.planQty) : num(w.planQty),
               planCost: num(w.planCost),
               planStart: day(w.planStart),
               planEnd: day(w.planEnd),
@@ -215,15 +227,18 @@ export class EntryService {
     const d = await this.direction(user, code);
     if (d.isReadonly) throw new ForbiddenException('Данные направления приходят отчётами — ручной ввод не предусмотрен');
     const p = await this.period(d.id, periodId);
+    if (d.periodKind === 'REPORT' && p.status !== 'OPEN') throw new ForbiddenException('Исторический отчёт необходимо явно вернуть в работу');
     const ed = await this.access.editableSites(user, d.id);
     if (!this.statusAllows(ed.role, p.status)) throw new ForbiddenException(this.reasonClosed(ed.role, p.status, false) ?? 'Нет прав');
-    const canSite = (siteId: number) => ed.all || ed.ids.has(siteId);
+    const programSites = d.periodKind === 'REPORT' ? new Set((await this.prisma.site.findMany({ where: { directionId: d.id, ...this.programScope(p.program, p.id) }, select: { id: true } })).map(s => s.id)) : null;
+    const canSite = (siteId: number) => (ed.all || ed.ids.has(siteId)) && (!programSites || programSites.has(siteId));
     const status = new Map(d.statusDefs.map((s) => [s.code, s.id]));
     // без доступа к финансам денежные значения не принимаются — остаются прежними
     if (!this.access.has(user, 'finance')) {
       body = { items: body.items.map(({ ks: _k, paid: _p, ...i }) => i), reports: body.reports.map(({ ks: _k, paid: _p, ...r }) => r) };
     }
     const dateLabel = day(p.date)!.split('-').reverse().join('.');
+    if (!this.access.canSee(user, 'remarks')) body = { ...body, reports: body.reports.map(({ remarksCount: _r, ...r }) => r) };
 
     const itemIds = body.items.map((i) => i.workItemId);
     const siteIds = body.reports.map((r) => r.siteId);
@@ -233,7 +248,7 @@ export class EntryService {
     const [items, sites] = await Promise.all([
       this.prisma.workItem.findMany({
         where: { id: { in: itemIds } },
-        include: { site: { select: { id: true, directionId: true, isArchived: true, shortName: true, name: true } }, workType: { select: { name: true } } },
+        include: { site: { select: { id: true, directionId: true, isArchived: true, shortName: true, name: true } }, workType: { select: { name: true } }, progress: { where: { period: { program: p.program, date: { lte: p.date } } }, orderBy: { period: { date: 'desc' } }, take: 1 } },
       }),
       this.prisma.site.findMany({ where: { id: { in: siteIds } }, select: { id: true, directionId: true, isArchived: true, shortName: true, name: true } }),
     ]);
@@ -281,6 +296,10 @@ export class EntryService {
     let savedItems = 0, savedReports = 0, unchanged = 0;
     await this.prisma.$transaction(
       async (tx) => {
+        await tx.$queryRaw`SELECT id FROM reporting_period WHERE id = ${periodId} FOR UPDATE`;
+        const livePeriod = await tx.reportingPeriod.findUniqueOrThrow({ where: { id: periodId } });
+        if ((await tx.direction.findUniqueOrThrow({ where: { id: d.id }, select: { isReadonly: true } })).isReadonly) throw new ForbiddenException('Ручной ввод направления отключён');
+        if (!this.statusAllows(ed.role, livePeriod.status) || (d.periodKind === 'REPORT' && livePeriod.status !== 'OPEN')) throw new ForbiddenException('Отчётная точка закрыта — обновите лист ввода');
         for (const i of body.items) {
           const it = itemById.get(i.workItemId)!;
           const e = exItem.get(i.workItemId);
@@ -299,7 +318,10 @@ export class EntryService {
             unchanged++;
             continue;
           }
+          const origin = e ?? it.progress[0];
           const data = {
+            // Отсутствующий p в существующем отчёте — неизвестный объём, а не глобальный план другого среза.
+            ...(d.periodKind === 'REPORT' ? { attrs: { ...((origin?.attrs ?? {}) as Record<string, Prisma.InputJsonValue>), p: num(origin ? (origin.attrs as { p?: number } | null)?.p : it.planQty) } as Prisma.InputJsonValue } : {}),
             statusId: after.statusCode ? status.get(after.statusCode)! : null,
             pct: after.pct,
             factQty: after.factQty,
@@ -310,9 +332,8 @@ export class EntryService {
             isExample: false,
             updatedById: user.id,
           };
-          const row = e
-            ? await tx.progressEntry.update({ where: { id: e.id }, data: { ...data, version: { increment: 1 } } })
-            : await tx.progressEntry.create({ data: { ...data, workItemId: it.id, periodId, enteredById: user.id } });
+          if (e && !(await tx.progressEntry.updateMany({ where: { id: e.id, version: e.version }, data: { ...data, version: { increment: 1 } } })).count) throw new ConflictException('Данные уже изменены — обновите лист ввода');
+          const row = e ? await tx.progressEntry.findUniqueOrThrow({ where: { id: e.id } }) : await tx.progressEntry.create({ data: { ...data, workItemId: it.id, periodId, enteredById: user.id } });
           await this.audit.write(
             {
               userId: user.id,
@@ -321,8 +342,8 @@ export class EntryService {
               entityId: row.id,
               directionId: d.id,
               siteId: it.siteId,
-              before,
-              after,
+              before: before ? { ...before, source: e!.source, attrs: e!.attrs, program: p.program, date: day(p.date), sheet: p.label } : null,
+              after: { ...after, source: row.source, attrs: row.attrs, program: p.program, date: day(p.date), sheet: p.label },
               comment: `${it.label ?? it.workType.name} · ${dateLabel}`,
               ip,
             },
@@ -337,28 +358,31 @@ export class EntryService {
             ? {
                 workers: e.workers, machines: e.machines, workersBlocked: e.workersBlocked, machinesBlocked: e.machinesBlocked,
                 ks: num(e.ksAmount), paid: num(e.paidAmount), note: e.note,
+                statusText: e.statusText, remarksCount: e.remarksCount,
               }
             : null;
           const pick = <K extends keyof EntryReportValue>(k: K) => (r[k] !== undefined ? (r[k] as EntryReportValue[K]) : (before?.[k] ?? null));
           const after: EntryReportValue = {
             workers: pick('workers'), machines: pick('machines'), workersBlocked: pick('workersBlocked'), machinesBlocked: pick('machinesBlocked'),
             ks: pick('ks'), paid: pick('paid'), note: (pick('note') as string | null) || null,
+            statusText: r.statusText !== undefined ? r.statusText : e?.statusText ?? null,
+            remarksCount: r.remarksCount !== undefined ? r.remarksCount : e?.remarksCount ?? null,
           };
           if (before && REPORT_FIELDS.every((f) => before[f] === after[f])) {
             unchanged++;
             continue;
           }
           const data = {
+            statusText: after.statusText, remarksCount: after.remarksCount,
             workers: after.workers, machines: after.machines, workersBlocked: after.workersBlocked, machinesBlocked: after.machinesBlocked,
             ksAmount: after.ks, paidAmount: after.paid, note: after.note, source: 'MANUAL' as const, isExample: false, updatedById: user.id,
           };
-          const row = e
-            ? await tx.siteReport.update({ where: { id: e.id }, data: { ...data, version: { increment: 1 } } })
-            : await tx.siteReport.create({ data: { ...data, siteId: r.siteId, periodId, enteredById: user.id } });
+          if (e && !(await tx.siteReport.updateMany({ where: { id: e.id, version: e.version }, data: { ...data, version: { increment: 1 } } })).count) throw new ConflictException('Данные уже изменены — обновите лист ввода');
+          const row = e ? await tx.siteReport.findUniqueOrThrow({ where: { id: e.id } }) : await tx.siteReport.create({ data: { ...data, siteId: r.siteId, periodId, enteredById: user.id } });
           await this.audit.write(
             {
               userId: user.id, action: e ? 'UPDATE' : 'CREATE', entity: 'site_report', entityId: row.id,
-              directionId: d.id, siteId: r.siteId, before, after, comment: `показатели объекта · ${dateLabel}`, ip,
+              directionId: d.id, siteId: r.siteId, before: before ? { ...before, source: e!.source, attrs: e!.attrs, program: p.program, date: day(p.date), sheet: p.label } : null, after: { ...after, source: row.source, attrs: row.attrs, program: p.program, date: day(p.date), sheet: p.label }, comment: `показатели объекта · ${dateLabel}`, ip,
             },
             tx,
           );
@@ -366,27 +390,53 @@ export class EntryService {
         }
       },
       { timeout: 60_000 },
-    );
+    ).catch((e) => { if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') throw new ConflictException('Данные уже созданы другим сотрудником — обновите лист'); throw e; });
 
     this.kpi.invalidate(d.id);
     return { savedItems, savedReports, unchanged };
   }
 
   /** Открыть новую отчётную точку (неделя — с понедельника). Куратор или администратор. */
-  async openPeriod(user: AuthUser, code: string, dateStr: string, ip: string | null) {
+  async saveSummary(user: AuthUser, code: string, periodId: number, body: ReportSummarySave, ip: string | null) {
+    const d = await this.direction(user, code);
+    if (d.periodKind !== 'REPORT' || d.isReadonly || !(await this.access.canManageDirection(user, d.id))) throw new ForbiddenException('Сводку отчёта заполняет куратор доступного для ввода направления');
+    await this.period(d.id, periodId);
+    await this.prisma.$transaction(async tx => {
+      await tx.$queryRaw`SELECT id FROM reporting_period WHERE id = ${periodId} FOR UPDATE`;
+      const p = await tx.reportingPeriod.findUniqueOrThrow({ where: { id: periodId } });
+      if (p.status !== 'OPEN') throw new ForbiddenException('Сначала явно верните отчёт в работу');
+      const before = reportSummaryStoredSchema.safeParse(p.summary).data;
+      if ((before?.version ?? 0) !== body.version) throw new ConflictException('Сводка уже изменена — обновите отчёт');
+      const value = this.access.canSee(user, 'remarks') ? body.value : { ...body.value, violations: before?.value.violations ?? [] };
+      const after = { version: body.version + 1, value };
+      await tx.reportingPeriod.update({ where: { id: periodId }, data: { summary: after } });
+      await this.audit.write({ userId: user.id, action: 'UPDATE', entity: 'reporting_period', entityId: periodId, directionId: d.id, before, after, comment: `сводка источника · ${p.program} · ${day(p.date)}`, ip }, tx);
+    });
+    this.kpi.invalidate(d.id);
+    return { ok: true };
+  }
+
+  /** Открыть новую отчётную точку (неделя — с понедельника). Куратор или администратор. */
+  async openPeriod(user: AuthUser, code: string, dateStr: string, ip: string | null, requestedProgram?: string) {
     const d = await this.direction(user, code);
     if (d.isReadonly) throw new ForbiddenException('Отчётные точки направления создаются загрузкой отчётов');
     if (!(await this.access.canManageDirection(user, d.id))) throw new ForbiddenException('Открывать отчётные точки может куратор направления');
     let date = parse(dateStr);
-    if (Number.isNaN(date.getTime())) throw new BadRequestException('Неверная дата');
+    if (Number.isNaN(date.getTime()) || day(date) !== dateStr) throw new BadRequestException('Неверная дата');
+    const program = d.periodKind === 'REPORT' ? (requestedProgram ?? '') : '';
+    if (d.periodKind === 'REPORT') {
+      const settings = (d.settings ?? {}) as { programs?: Record<string, string> };
+      const known = new Set([...Object.keys(settings.programs ?? {}), ...(await this.prisma.reportingPeriod.findMany({ where: { directionId: d.id }, distinct: ['program'], select: { program: true } })).map(p => p.program)]);
+      if (!program || !known.has(program)) throw new BadRequestException('Выберите существующую программу отчёта');
+    }
     if (d.periodKind === 'WEEK') {
       const wd = (date.getUTCDay() + 6) % 7; // 0 = понедельник
       date = new Date(date.getTime() - wd * 86_400_000);
     }
-    const exists = await this.prisma.reportingPeriod.findFirst({ where: { directionId: d.id, program: '', date } });
+    const exists = await this.prisma.reportingPeriod.findFirst({ where: { directionId: d.id, program, date } });
     if (exists) throw new ConflictException(`Отчётная точка ${day(date)!.split('-').reverse().join('.')} уже есть`);
     const p = await this.prisma.$transaction(async (tx) => {
-      const created = await tx.reportingPeriod.create({ data: { directionId: d.id, date, status: 'OPEN', openedById: user.id } });
+      const created = await tx.reportingPeriod.create({ data: { directionId: d.id, date, program, status: 'OPEN', openedById: user.id } });
       await this.audit.write(
         { userId: user.id, action: 'PERIOD_OPEN', entity: 'reporting_period', entityId: created.id, directionId: d.id, comment: `открыта точка ${day(date)}`, ip },
         tx,

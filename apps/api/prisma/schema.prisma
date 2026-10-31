@@ -66,6 +66,7 @@ model User {
   periodsClosed    ReportingPeriod[] @relation("PeriodClosedBy")
   remarksAuthored  Remark[]          @relation("RemarkAuthor")
   remarksAssigned  Remark[]          @relation("RemarkAssignee")
+  remarksResponsible Remark[]        @relation("RemarkResponsible")
   remarksResolved  Remark[]          @relation("RemarkResolvedBy")
   remarkEvents     RemarkEvent[]
   trackerValues    TrackerValue[]
@@ -545,6 +546,7 @@ model ReportingPeriod {
   directionId Int          @map("direction_id")
   date        DateTime     @db.Date
   label       String?      @db.VarChar(100)
+  summary     Json?
   status      PeriodStatus @default(OPEN)
   /// для REPORT: программа отчёта (kbu, current…)
   program     String       @default("") @db.VarChar(32)
@@ -659,6 +661,12 @@ enum RemarkStatus {
 }
 
 /// Замечание по объекту (с жизненным циклом: открыто → устранено → принято).
+enum ViolationGroup {
+  DOCUMENTATION
+  CULTURE
+  TECHNOLOGY
+}
+
 model Remark {
   id           Int            @id @default(autoincrement())
   directionId  Int            @map("direction_id")
@@ -670,6 +678,14 @@ model Remark {
   text         String         @db.Text
   /// «Качество работ», «ОТ и ТБ», «Документация»… — свободный список направления
   category     String?        @db.VarChar(100)
+  sourceName   String?        @map("source_name") @db.VarChar(100)
+  sourceRef    String?        @map("source_ref") @db.VarChar(300)
+  detectedOn   DateTime?      @map("detected_on") @db.Date
+  typeName     String?        @map("type_name") @db.VarChar(300)
+  violationGroup ViolationGroup? @map("violation_group")
+  violationType String?       @map("violation_type") @db.VarChar(64)
+  location     String?        @db.VarChar(120)
+  responsibleId Int?         @map("responsible_id")
   severity     RemarkSeverity @default(MEDIUM)
   status       RemarkStatus   @default(OPEN)
   dueDate      DateTime?      @map("due_date") @db.Date
@@ -690,6 +706,7 @@ model Remark {
   period     ReportingPeriod? @relation(fields: [periodId], references: [id], onDelete: SetNull)
   author     User?            @relation("RemarkAuthor", fields: [authorId], references: [id], onDelete: SetNull)
   assignee   User?            @relation("RemarkAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  responsible User?           @relation("RemarkResponsible", fields: [responsibleId], references: [id], onDelete: SetNull)
   resolvedBy User?            @relation("RemarkResolvedBy", fields: [resolvedById], references: [id], onDelete: SetNull)
   events     RemarkEvent[]
 

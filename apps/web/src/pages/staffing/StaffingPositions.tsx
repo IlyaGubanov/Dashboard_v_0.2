@@ -51,7 +51,7 @@ export function PositionsEditor({ positions, saved, target, canEdit, errors, onC
       {archived > 0 && <Switch size="xs" label={`Архив (${archived})`} checked={archive} onChange={e => setArchive(e.currentTarget.checked)} />}
     </Group>
     <Collapse in={paste}><PasteBox onCancel={() => setPaste(false)} onTable={incoming => { const merged = staffingMergePositions(positions, incoming, target, uuid); onChange(merged.positions); return `Добавлено должностей: ${merged.added}, обновлено: ${merged.updated}. Сохраните карточку.`; }} /></Collapse>
-    {shown.length > 0 && <Table.ScrollContainer minWidth={440} mah={420}><Table verticalSpacing={4} stickyHeader className="staffing-editor">
+    {shown.length > 0 && <Table.ScrollContainer minWidth={440} maxHeight={420} scrollAreaProps={{ type: 'auto' }}><Table verticalSpacing={4} stickyHeader className="staffing-editor">
       <Table.Thead><Table.Tr><Table.Th>Должность</Table.Th><Table.Th w={78} ta="right">План, ед.</Table.Th><Table.Th w={78} ta="right">Факт, чел.</Table.Th><Table.Th w={60} ta="right">Нужно</Table.Th>{canEdit && <Table.Th w={38} />}</Table.Tr></Table.Thead>
       <Table.Tbody>{shown.map(p => <Table.Tr key={p.id}>
         <Table.Td><TextInput size="xs" aria-label="Название должности" list="staffing-titles" autoFocus={p.id === focus} value={p.title} onChange={e => set(p.id, { title: e.currentTarget.value })} disabled={!canEdit || p.isArchived} error={errors[p.id]} /></Table.Td>
@@ -287,7 +287,7 @@ function TableImportDialog({ period, onClose, onSave }: { period: StaffingPeriod
       {error && <Alert color="red">{error}</Alert>}
       <Group justify="flex-end"><Button variant="default" onClick={onClose}>Отмена</Button><Button disabled={!text.trim()} onClick={check}>Проверить</Button></Group>
     </Stack> : <Stack gap="sm">
-      <Table.ScrollContainer minWidth={640} mah={360}><Table verticalSpacing={4} stickyHeader className="staffing-editor">
+      <Table.ScrollContainer minWidth={640} maxHeight={360} scrollAreaProps={{ type: 'auto' }}><Table verticalSpacing={4} stickyHeader className="staffing-editor">
         <Table.Thead><Table.Tr><Table.Th>В таблице</Table.Th><Table.Th w={260}>В подразделение</Table.Th><Table.Th w={80} ta="right">Строк</Table.Th><Table.Th w={110} ta="right">Сумма / итог</Table.Th></Table.Tr></Table.Thead>
         <Table.Tbody>{table.blocks.map((b, i) => {
           const sum = blockSum(b).actual ?? blockSum(b).planned;

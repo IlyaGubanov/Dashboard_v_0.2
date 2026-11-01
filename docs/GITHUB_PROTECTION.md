@@ -58,8 +58,8 @@ Allow squash merging и Allow rebase merging, не включать автома
 - `ci.yml`: один набор Quality для PR в dev/main и push в эти ветки. Одноразовый MySQL,
   без production-секретов; CI не выполняет deploy. PR-код выполняется с contents:read,
   checkout без сохранения credentials. Не использовать self-hosted production-runner.
-- `pr-direction.yml`: `pull_request_target`, checkout только точного base.sha,
-  исполняется только доверенный скрипт базы. Никаких зависимостей, секретов, checkout/head,
+- `pr-direction.yml`: `pull_request_target`, checkout только точного github.workflow_sha,
+  исполняется доверенный скрипт ревизии workflow из default branch. Никаких зависимостей, секретов, checkout/head,
   артефактов PR или shell-интерполяции названия ветки. Проверяет base/head и ID + полное имя
   обеих сторон: main принимает только dev этого репозитория; dev — только mvsst-[1-9][0-9]*.
 
@@ -74,8 +74,15 @@ Required checks без branch protection не запрещают merge. Прив
 2. Интегрировать организационный PR mvsst-1 → dev после зелёного Quality и независимого review.
    Текущее прямое поручение на миграцию разрешает этот bootstrap в dev. До него в dev нет
    доверенного gate: Quality проверяет направление из PR; полный diff проверяется отдельно.
-3. Когда gate появился в dev, открыть/переоткрыть проверочный PR в dev, получить check PR direction,
-   убедиться, что неверная исходная ветка даёт failure. Применить полную защиту dev владельцем.
+3. pull_request_target берёт workflow из default branch. Пока default=main без workflow,
+   наличие файла только в dev не активирует gate. Владелец после проверки интеграций может
+   согласованно переключить default на dev; тогда доверенная ревизия workflow из dev проверяет
+   PR в обе системные ветки, даже пока main не содержит новых файлов. Открыть/переоткрыть
+   проверочный PR в dev, получить PR direction, проверить failure неверного источника и применить
+   полную защиту dev/main. CODEOWNERS из main начнёт требовать именно владельца после первого
+   организационного выпуска; до него согласование владельца проверяется вручную.
+   Если default остаётся main, сначала нужен отдельный bootstrap следующими пунктами, а полный
+   required gate до этого будет ожидать отсутствующую проверку. Не утверждать, что он уже работает.
 4. До включения main gate **не считать main защищённой этим workflow**: в исходной main файла нет.
    Не ставить обязательный PR direction и затем снимать его ради разблокировки.
    Безопасный вариант ожидания: владелец временно включает **Lock branch** main и запрет bypass

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Alert, Badge, Group, Select, Stack, Tabs, Text, Title } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { getRouteApi } from '@tanstack/react-router';
@@ -54,7 +55,9 @@ function ConstructionDirectionPage() {
   const canManage = me?.globalRole === 'ADMIN' || myRole === 'CURATOR';
 
   const set = (patch: Partial<DirectionSearch>) => navigate({ search: (s: DirectionSearch) => ({ ...s, ...patch }) });
-  const openSite = (id: number) => set({ site: id });
+  const openSite = (id: number, workItemId?: number) => set({ site: id, work: workItemId });
+  // «Причины и ответственные» — один переключатель на матрицу и карточку объекта; по умолчанию выключен
+  const [showReasons, setShowReasons] = useState(false);
 
   const available: Record<DirectionTab, boolean> = {
     overview: true,
@@ -162,7 +165,7 @@ function ConstructionDirectionPage() {
           <SitesTab code={code} date={search.date} contractor={search.contractor} onContractor={(v) => set({ contractor: v })} onOpenSite={openSite} />
         </Tabs.Panel>
         <Tabs.Panel value="matrix" pt="md">
-          <MatrixTab code={code} date={search.date} onOpenSite={openSite} />
+          <MatrixTab code={code} date={search.date} onOpenSite={openSite} showReasons={showReasons} onShowReasons={setShowReasons} />
         </Tabs.Panel>
         <Tabs.Panel value="schedule" pt="md">
           <ScheduleTab code={code} date={search.date} onOpenSite={openSite} />
@@ -188,11 +191,14 @@ function ConstructionDirectionPage() {
         code={code}
         date={search.date}
         siteId={search.site}
-        onClose={() => set({ site: undefined })}
-        onEditSite={(id) => set({ site: undefined, tab: 'manage', edit: id })}
+        workItemId={search.work}
+        showReasons={showReasons}
+        onShowReasons={setShowReasons}
+        onClose={() => set({ site: undefined, work: undefined })}
+        onEditSite={(id) => set({ site: undefined, work: undefined, tab: 'manage', edit: id })}
         onOpenRemark={(id) => set({ remark: id })}
       />
-      <RemarkDrawer code={code} remarkId={search.remark} onClose={() => set({ remark: undefined })} onOpenSite={(id) => set({ site: id, remark: undefined })} />
+      <RemarkDrawer code={code} remarkId={search.remark} onClose={() => set({ remark: undefined })} onOpenSite={(id) => set({ site: id, work: undefined, remark: undefined })} />
     </Stack>
   );
 }

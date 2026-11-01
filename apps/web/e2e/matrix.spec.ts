@@ -92,7 +92,7 @@ test('фильтры, историческая дата, подсказки, к�
   await expect(page.getByRole('tooltip')).toBeVisible();
   await critical.press('Enter');
   await expect(page.getByRole('dialog')).toBeVisible();
-  await expect(page).toHaveURL(/site=/);
+  await expect(page).toHaveURL(/site=.*work=|work=.*site=/);
   await page.goto('/d/schools?tab=trackers');
   await expect(page.locator('td[data-risk]').first()).toBeVisible();
   const controls = page.locator('.mantine-SegmentedControl-root').first();

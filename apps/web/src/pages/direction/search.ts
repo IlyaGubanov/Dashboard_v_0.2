@@ -12,6 +12,8 @@ export interface DirectionSearch {
   date?: string;
   /** открытая карточка объекта */
   site?: number;
+  /** работа, к которой прокручена карточка объекта (переход из матрицы) */
+  work?: number;
   /** объект, открытый в редакторе (вкладка «Управление») */
   edit?: number;
   /** открытое замечание */
@@ -30,6 +32,7 @@ export function parseDirectionSearch(s: Record<string, unknown>): DirectionSearc
     tab: DIRECTION_TABS.includes(s.tab as DirectionTab) ? (s.tab as DirectionTab) : undefined,
     date: typeof s.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s.date) ? s.date : undefined,
     site: Number.isInteger(Number(s.site)) && Number(s.site) > 0 ? Number(s.site) : undefined,
+    work: Number.isInteger(Number(s.work)) && Number(s.work) > 0 ? Number(s.work) : undefined,
     edit: Number.isInteger(Number(s.edit)) && Number(s.edit) > 0 ? Number(s.edit) : undefined,
     contractor: typeof s.contractor === 'string' && /^(\d{1,9}|none)$/.test(s.contractor) ? s.contractor : typeof s.contractor === 'number' ? String(s.contractor) : undefined,
     rv: s.rv === 'check' || s.rv === 'mine' ? s.rv : undefined,

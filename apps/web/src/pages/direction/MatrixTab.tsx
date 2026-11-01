@@ -11,14 +11,19 @@ import { delayState, useDelayReasons } from './DelayReasonField';
 
 /**
  * Матрица «объект × вид работ»: процент — средняя готовность, цвет — состояние наиболее проблемной позиции,
- * красная метка — срок прошёл, а работа не выполнена. Щелчок по строке — карточка объекта.
+ * красная метка — срок прошёл, а работа не выполнена. Щелчок по строке — карточка объекта, по ячейке — сразу к этой работе в карточке.
  */
-export function MatrixTab({ code, date, onOpenSite }: { code: string; date?: string; onOpenSite: (id: number) => void }) {
+export function MatrixTab({ code, date, onOpenSite, showReasons, onShowReasons }: {
+  code: string;
+  date?: string;
+  onOpenSite: (id: number, workItemId?: number) => void;
+  showReasons: boolean;
+  onShowReasons: (v: boolean) => void;
+}) {
   const { data, error } = useQuery(directionQueries.grid(code, date));
   const reasons = useDelayReasons(code, date);
   const [section, setSection] = useState<string | null>(null);
   const [lagOnly, setLagOnly] = useState(false);
-  const [showReasons, setShowReasons] = useState(true);
 
   const sections = useMemo(() => [...new Set((data?.sites ?? []).map((s) => s.section).filter(Boolean))] as string[], [data]);
   if (error) return <Alert color="red">{(error as Error).message}</Alert>;
@@ -43,7 +48,7 @@ export function MatrixTab({ code, date, onOpenSite }: { code: string; date?: str
         {sections.length > 1 && <Select aria-label="Все разделы" placeholder="Все разделы" clearable data={sections} value={section} onChange={setSection} w={220} />}
         {data.planDate && <Switch label="Только отстающие объекты" checked={lagOnly} onChange={(e) => setLagOnly(e.currentTarget.checked)} />}
         <MatrixLegend />
-        <Switch label="Причины и ответственные" checked={showReasons} onChange={e => setShowReasons(e.currentTarget.checked)} />
+        <Switch label="Причины и ответственные" checked={showReasons} onChange={e => onShowReasons(e.currentTarget.checked)} />
       </Group>
       {reasons.error && <Alert color="red">Не удалось загрузить причины: {reasons.error.message}</Alert>}
 
@@ -63,11 +68,9 @@ export function MatrixTab({ code, date, onOpenSite }: { code: string; date?: str
             <tr>
               <th style={{ ...stickyCol, textAlign: 'left', padding: 6 }}>Объект</th>
               {types.map((t) => (
-                <th key={t.id} style={{ width: 64, minWidth: 64, padding: '4px 2px', verticalAlign: 'bottom', fontWeight: 500 }}>
+                <th key={t.id} className="matrix-head">
                   <Tooltip label={`${t.name}${t.unit ? `, ${t.unit}` : ''}`}>
-                    <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', maxHeight: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', margin: '0 auto' }}>
-                      {t.name}
-                    </div>
+                    <div>{t.name}</div>
                   </Tooltip>
                 </th>
               ))}
@@ -132,6 +135,8 @@ export function MatrixTab({ code, date, onOpenSite }: { code: string; date?: str
                   return (
                     <Tooltip key={t.id} label={tip} multiline w={280} withArrow events={{ hover: true, focus: true, touch: true }}>
                       <td className="matrix-status-cell" data-risk={c.risk} tabIndex={0}
+                        onClick={(e) => { e.stopPropagation(); onOpenSite(s.id, c.focus.id); }}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); onOpenSite(s.id, c.focus.id); } }}
                         aria-label={`${t.name}: ${pct(c.fact)}, ${statusLabel}${c.overdue ? ', срок прошёл' : ''}`}
                         style={{ ...matrixStatusStyle(c.risk), textAlign: 'center', borderRadius: 3, position: 'relative', height: 34, minWidth: 64 }}>
                         <span className="matrix-value"><RiskIcon risk={c.risk} />{Math.round(c.fact * 100)}</span>

@@ -147,9 +147,29 @@ test('карточка, ввод, матрица и оба режима граф
   await page.screenshot({ path: info.outputPath('entry-phone.png'), fullPage: false });
   await page.setViewportSize({ width: 1366, height: 900 });
   await page.goto('/d/mkd?tab=matrix');
+  // по умолчанию причины скрыты и в матрице, и в карточке
+  await expect(page.getByRole('switch', { name: 'Причины и ответственные' })).not.toBeChecked();
+  await expect(page.locator('.matrix-status-cell').first()).toBeVisible();
+  await expect(page.locator('.delay-reason-preview')).toHaveCount(0);
+  await page.getByRole('switch', { name: 'Причины и ответственные' }).check();
   await expect(page.locator('.delay-reason-preview').first()).toContainText(names[0]);
-  await page.locator('.matrix-status-cell').first().click();
-  await expect(page.getByRole('dialog').locator('.delay-reason').first()).toContainText(names[0]);
+  // в другом направлении переключатель снова выключен
+  await page.getByRole('link', { name: /^Школы/ }).click();
+  await expect(page).toHaveURL(/\/d\/schools/);
+  await page.getByRole('tab', { name: 'Матрица', exact: true }).click();
+  await expect(page.getByRole('switch', { name: 'Причины и ответственные' })).not.toBeChecked();
+  await page.goto('/d/mkd?tab=matrix');
+  await expect(page.locator('.matrix-status-cell').first()).toBeVisible();
+  // ячейка ведёт к своей работе: строка выделена и видна в карточке, поле причины показано и при выключенном переключателе
+  await page.locator('.matrix-status-cell[data-risk="crit"]').last().click();
+  await expect(page).toHaveURL(/work=/);
+  const dialog = page.getByRole('dialog');
+  const focused = dialog.locator('tr.site-work-focus');
+  await expect(focused).toBeInViewport();
+  await expect(focused.locator('.delay-reason')).toContainText(names[0]);
+  await expect(dialog.locator('.delay-reason')).toHaveCount(1);
+  await dialog.getByRole('switch', { name: 'Причины и ответственные' }).check();
+  await expect.poll(() => dialog.locator('.delay-reason').count()).toBeGreaterThan(1);
   await page.screenshot({ path: info.outputPath('site-card-desktop.png'), fullPage: false });
   await page.goto('/d/mkd?tab=schedule');
   await page.getByRole('button', { name: 'Показать работы' }).first().click();

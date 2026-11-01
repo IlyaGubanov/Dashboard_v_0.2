@@ -7,9 +7,9 @@
 import { Fragment, useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Button, Group, Paper, SegmentedControl, Table, Text, UnstyledButton } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
-import { IconChevronDown, IconChevronRight, IconListDetails } from '@tabler/icons-react';
+import { IconChevronDown, IconChevronRight, IconEdit, IconListDetails } from '@tabler/icons-react';
 import type { EChartsOption } from 'echarts';
-import { STAFFING_GROUP_OTHER, staffingGroupPositions, staffingGroups, staffingMovementByGroup, type StaffingMovementDay, type StaffingPeriod } from '@mvs/shared';
+import { STAFFING_GROUP_OTHER, staffingActivePositions, staffingGroupPositions, staffingGroups, staffingMovementByGroup, type StaffingMovementDay, type StaffingPeriod } from '@mvs/shared';
 import { EChart, baseOption, type ChartColors } from '../../ui/EChart';
 
 export type Measure = 'actual' | 'planned';
@@ -28,7 +28,7 @@ const toneVar = (t: number | null) => t == null ? 'var(--status-none)' : `var(--
 interface Line { group: string; color: string; points: string; x0: number; y0: number; x1: number; y1: number }
 const CHART_H = 460;
 
-export function GroupPie({ period, measure, onMeasure, openGroup, movements }: { period: StaffingPeriod; measure: Measure; onMeasure: (m: Measure) => void; openGroup: (group: string) => void; movements: StaffingMovementDay[] }) {
+export function GroupPie({ period, measure, onMeasure, openGroup, editGroup, movements }: { period: StaffingPeriod; measure: Measure; onMeasure: (m: Measure) => void; openGroup: (group: string) => void; editGroup?: (group: string) => void; movements: StaffingMovementDay[] }) {
   const wide = useMediaQuery('(min-width: 62em)') ?? false;
   const [expanded, setExpanded] = useState<string | null>(null);
   const groups = useMemo(() => staffingGroups(period.rows), [period]);
@@ -131,7 +131,7 @@ export function GroupPie({ period, measure, onMeasure, openGroup, movements }: {
                     {(g.count > 1 || gaps(g) > 0) && <Text size="sm" c="dimmed" ml={22}>подразделений: {g.count}{gaps(g) ? ` · △ без данных: ${gaps(g)}` : ''}</Text>}</Table.Td>
                   <Table.Td ta="right" className="staffing-nowrap">{n(value(g))}</Table.Td><Table.Td ta="right" c="dimmed" className="staffing-nowrap">{share(value(g))}</Table.Td>
                 </Table.Tr>
-                {open && <Table.Tr className="staffing-group-details"><Table.Td colSpan={3}><GroupDetails period={period} group={g.group} movement={recent[g.group]} lastDay={lastDay} openGroup={openGroup} /></Table.Td></Table.Tr>}
+                {open && <Table.Tr className="staffing-group-details"><Table.Td colSpan={3}><GroupDetails period={period} group={g.group} movement={recent[g.group]} lastDay={lastDay} openGroup={openGroup} editGroup={editGroup} /></Table.Td></Table.Tr>}
               </Fragment>;
             })}</Table.Tbody>
             <Table.Tfoot><Table.Tr><Table.Td fw={650}>Итого</Table.Td><Table.Td ta="right" fw={650} className="staffing-nowrap">{n(total)}</Table.Td><Table.Td ta="right" c="dimmed" className="staffing-nowrap">100 %</Table.Td></Table.Tr></Table.Tfoot>
@@ -147,9 +147,9 @@ export function GroupPie({ period, measure, onMeasure, openGroup, movements }: {
 }
 
 /** Раскрытая группа: должности (план = факт + вакансии) и приём/увольнение за 4 недели. */
-function GroupDetails({ period, group, movement, lastDay, openGroup }: { period: StaffingPeriod; group: string; movement?: { hired: number; dismissed: number; net: number }; lastDay?: string; openGroup: (group: string) => void }) {
+function GroupDetails({ period, group, movement, lastDay, openGroup, editGroup }: { period: StaffingPeriod; group: string; movement?: { hired: number; dismissed: number; net: number }; lastDay?: string; openGroup: (group: string) => void; editGroup?: (group: string) => void }) {
   const [all, setAll] = useState(false);
-  const pos = staffingGroupPositions(period.positions, group);
+  const pos = staffingGroupPositions(staffingActivePositions(period), group);
   const shown = all ? pos.items : pos.items.slice(0, 12);
   return <div className="staffing-details">
     <Group gap="lg" mb="xs" wrap="wrap">
@@ -168,6 +168,7 @@ function GroupDetails({ period, group, movement, lastDay, openGroup }: { period:
     <Group gap="xs" mt="xs">
       {pos.items.length > 12 && <Button size="xs" variant="subtle" onClick={() => setAll(a => !a)}>{all ? 'Свернуть' : `Показать все должности (${pos.items.length})`}</Button>}
       <Button size="xs" variant="default" leftSection={<IconListDetails size={14} />} onClick={() => openGroup(group)}>Подразделения группы</Button>
+      {editGroup && <Button size="xs" variant="default" leftSection={<IconEdit size={14} />} onClick={() => editGroup(group)}>Редактировать должности</Button>}
     </Group>
   </div>;
 }

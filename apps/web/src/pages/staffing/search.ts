@@ -4,8 +4,8 @@ export function parseStaffingSearch(s: Record<string, unknown>): StaffingSearch 
   return { month: month(s.month), compare: month(s.compare), q: typeof s.q === 'string' ? s.q.slice(0, 300) : undefined,
     category: ['АУП', 'ВП', 'ОП'].includes(String(s.category)) ? String(s.category) : undefined,
     status: ['vacant', 'excess', 'missing', 'archived'].includes(String(s.status)) ? String(s.status) : undefined,
-    sort: ['name', 'actual', 'planned', 'vacancies'].includes(String(s.sort)) ? String(s.sort) : undefined,
-    tab: ['overview', 'departments', 'movements', 'payroll', 'journal'].includes(String(s.tab)) ? String(s.tab) : undefined,
+    sort: ['name', 'order', 'actual', 'planned', 'vacancies'].includes(String(s.sort)) ? String(s.sort) : undefined,
+    tab: ['overview', 'departments', 'positions', 'movements', 'payroll', 'journal'].includes(String(s.tab)) ? String(s.tab) : undefined,
     archive: s.archive === true || s.archive === 'true' || undefined,
     group: typeof s.group === 'string' && s.group.trim() ? s.group.slice(0, 120) : undefined, pie: s.pie === 'planned' ? 'planned' : undefined };
 }

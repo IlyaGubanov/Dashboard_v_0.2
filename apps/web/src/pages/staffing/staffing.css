@@ -11,6 +11,10 @@
 .staffing-table tr[data-selected] { background: var(--mantine-primary-color-light); }
 .staffing-bulk { background: var(--mantine-primary-color-light); border-radius: 6px; }
 .staffing-source { overflow-wrap: anywhere; }
+.staffing-editor td, .staffing-editor th { font-size: 13px; }
+.staffing-editor td { padding-inline: 4px; }
+.staffing-paste { padding: 10px; border: 1px solid var(--line); border-radius: 8px; }
+.staffing-journal-change { min-width: 240px; overflow-wrap: anywhere; }
 @media (max-width: 600px) {
   .staffing-header { align-items: flex-start; }
   .staffing-stats .staffing-stat { padding: 10px; }

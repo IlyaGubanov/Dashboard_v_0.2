@@ -27,6 +27,7 @@ export function MapPage() {
   const search = route.useSearch(), navigate = route.useNavigate();
   const [choices, setChoices] = useState<MapSite[]>([]);
   const [infoKey, setInfoKey] = useState<string | null>(null);
+  const [showReasons, setShowReasons] = useState(false);
   const touch = useMediaQuery('(hover: none)');
   const filters = useMemo(() => normalizeMapFilters(data, search), [data, search]);
   const rows = useMemo(() => filterMapSites(data.sites, filters), [data.sites, filters]);
@@ -93,7 +94,7 @@ export function MapPage() {
     <Modal opened={!!info} onClose={()=>setInfoKey(null)} title="Объект на карте" zIndex={400}>
       {info && <Stack><MapSiteInfo site={info}/><Button onClick={()=>open(info)}>Открыть карточку объекта</Button></Stack>}
     </Modal>
-    <SiteDrawer key={drawerCode ?? ''} code={drawerCode ?? ''} siteId={selected?.id}
+    <SiteDrawer key={drawerCode ?? ''} code={drawerCode ?? ''} siteId={selected?.id} showReasons={showReasons} onShowReasons={setShowReasons}
       onClose={() => set({ code: undefined, site: undefined, remark: undefined })}
       onEditSite={(id) => { if (drawerCode) navigate({ to: '/d/$code', params: { code: drawerCode }, search: { tab: 'manage', edit: id } }); }}
       onOpenRemark={(remark) => set({ remark })} />

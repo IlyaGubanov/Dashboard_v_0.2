@@ -22,6 +22,15 @@ describe('поле причины отставания', () => {
     expect(html).toContain('Обязательно при отставании');
     expect(html).toMatch(/readonly/i);
   });
+  it('красный блок — только при отставании; по графику — спокойное поле', () => {
+    expect(render()).toContain('data-state="delayed"');
+    const calm = render({ delayed: false, required: false, text: '' });
+    expect(calm).toContain('data-state="calm"');
+    expect(calm).toContain('Работа идёт по графику');
+    const resolved = render({ delayed: false, required: false });
+    expect(resolved).toContain('data-state="resolved"');
+    expect(resolved).toContain('Отставание устранено');
+  });
   it('сообщает об отсутствии назначенных сотрудников', () => {
     expect(render({ responsibles: [] })).toContain('Ответственные не назначены');
   });

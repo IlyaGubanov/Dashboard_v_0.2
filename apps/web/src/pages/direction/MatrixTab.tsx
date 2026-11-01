@@ -7,7 +7,7 @@ import { RiskBadge, RiskIcon } from '../../ui/RiskBadge';
 import { MatrixLegend, matrixCell, matrixStatusStyle } from '../../ui/MatrixStatus';
 import { int, pct } from '../../ui/format';
 import { Lag } from '../../ui/Lag';
-import { useDelayReasons } from './DelayReasonField';
+import { delayState, useDelayReasons } from './DelayReasonField';
 
 /**
  * Матрица «объект × вид работ»: процент — средняя готовность, цвет — состояние наиболее проблемной позиции,
@@ -123,7 +123,7 @@ export function MatrixTab({ code, date, onOpenSite }: { code: string; date?: str
                         ) : null,
                       )}
                       {c.overdue && <div>Срок прошёл, работа не выполнена</div>}
-                      {c.items.map(i => { const r = reasons.byId.get(i.id); return r ? <div key={`reason-${i.id}`}>
+                      {c.items.map(i => { const r = reasons.byId.get(i.id); return r && delayState(r) !== 'calm' ? <div key={`reason-${i.id}`}>
                         <b>Причина отставания от графика:</b> {r.text || 'Не заполнена'}
                         <div>Ответственные: {r.responsibles.map(u => u.fullName).join('; ') || 'не назначены'}</div>
                       </div> : null; })}
@@ -141,7 +141,7 @@ export function MatrixTab({ code, date, onOpenSite }: { code: string; date?: str
                             style={{ position: 'absolute', top: 3, right: 3, width: 7, height: 7, borderRadius: 4, background: 'var(--status-critical)', boxShadow: '0 0 0 1.5px var(--mantine-color-body)' }}
                           />
                         )}
-                        {showReasons && c.items.map(i => { const r = reasons.byId.get(i.id); return r ? <div className="delay-reason-preview" key={i.id}>
+                        {showReasons && c.items.map(i => { const r = reasons.byId.get(i.id); return r && delayState(r) !== 'calm' ? <div className="delay-reason-preview" data-state={delayState(r)} key={i.id}>
                           <Text size="xs" fw={600}>Причина отставания от графика</Text>
                           <Text size="xs">{r.text || 'Не заполнена'}</Text>
                           <Text size="xs">Ответственные: {r.responsibles.map(u => u.fullName).join('; ') || 'не назначены'}</Text>

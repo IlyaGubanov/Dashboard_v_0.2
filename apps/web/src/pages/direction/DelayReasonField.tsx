@@ -22,6 +22,11 @@ export function DelayReason({ code, workItemId, date, periodId }: { code: string
   return <DelayReasonField key={`${row.workItemId}-${row.periodId}`} code={code} row={row} />;
 }
 
+/** Как показывать причину: delayed — отставание (красный блок), resolved — отставания нет, но причина записана, calm — по графику, пусто. */
+export function delayState(row: Pick<DelayReasonRow, 'delayed' | 'text'>): 'delayed' | 'resolved' | 'calm' {
+  return row.delayed ? 'delayed' : row.text.trim() ? 'resolved' : 'calm';
+}
+
 export function DelayReasonField({ code, row }: { code: string; row: DelayReasonRow }) {
   const qc = useQueryClient();
   const userId = qc.getQueryData<Me>(['me'])?.id;
@@ -54,13 +59,17 @@ export function DelayReasonField({ code, row }: { code: string; row: DelayReason
     },
   });
   const names = row.responsibles.map(u => u.fullName).join('; ');
-  return <Stack gap={6} className="delay-reason" data-work-item={row.workItemId} style={{ whiteSpace: 'normal' }}>
+  // красным — только при отставании; работа по графику — спокойное поле, причина не требуется
+  const state = delayState(row);
+  return <Stack gap={6} className="delay-reason" data-state={state} data-work-item={row.workItemId} style={{ whiteSpace: 'normal' }}>
     <Textarea label="Причина отставания от графика" aria-label={`Причина отставания от графика: ${row.name}`}
       description={names ? `Ответственные: ${names}` : 'Ответственные не назначены — назначьте их в конструкторе направлений'}
       value={value} onChange={e => setDraft({ text: e.currentTarget.value, version: draft?.version ?? row.version })}
       readOnly={!row.canEdit} disabled={save.isPending} maxLength={2000} rows={3} resize="vertical"
-      placeholder="Укажите причину отставания" required={row.required} />
+      placeholder={state === 'delayed' ? 'Укажите причину отставания' : 'Отставания нет'} required={row.required} />
     {row.required && <Text size="xs" className="delay-reason-status">Обязательно при отставании</Text>}
+    {state === 'calm' && <Text size="xs" c="dimmed">Работа идёт по графику — причина не требуется</Text>}
+    {state === 'resolved' && <Text size="xs" c="dimmed">Отставание устранено — причина сохранена для истории</Text>}
     <Text size="xs" c="dimmed" style={{ overflowWrap: 'anywhere' }}>
       {row.periodDate ? `Отчётная дата: ${fmtDate(row.periodDate)}` : 'Отчётных точек пока нет'}
       {row.from && row.from !== row.periodDate ? ` · перенесено с ${fmtDate(row.from)}` : ''}
@@ -70,7 +79,7 @@ export function DelayReasonField({ code, row }: { code: string; row: DelayReason
     {save.error && <Alert color="red">{save.error.message}{save.error instanceof ApiError && save.error.status === 409 && <Button mt={6} size="xs" variant="default" onClick={async () => { await qc.invalidateQueries({ queryKey: ['dir', code, 'delay-reasons'] }); setDraft(null); save.reset(); }}>Загрузить актуальную причину</Button>}</Alert>}
     {!row.canEdit && dirty && <Alert color="orange" title="Есть несохранённый черновик">Право заполнения изменилось. Выше показана сохранённая причина. Ваш черновик: {draft?.text}</Alert>}
     {dirty && <Group gap="xs" wrap="wrap">
-      {row.canEdit && <Button size="xs" color="red" loading={save.isPending} disabled={row.required && !value.trim()} onClick={() => save.mutate()}>Сохранить причину</Button>}
+      {row.canEdit && <Button size="xs" color={state === 'delayed' ? 'red' : undefined} loading={save.isPending} disabled={row.required && !value.trim()} onClick={() => save.mutate()}>Сохранить причину</Button>}
       <Button size="xs" variant="default" disabled={save.isPending} onClick={() => { setDraft(null); save.reset(); }}>Отменить</Button>
       <Text size="xs">Черновик — не сохранён</Text>
     </Group>}

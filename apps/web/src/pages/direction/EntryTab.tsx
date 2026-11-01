@@ -30,6 +30,7 @@ import { IconCheck, IconDeviceFloppy, IconLock, IconLockOpen, IconPlus, IconSear
 import type { EntryReportValue, EntrySaveInput, EntrySheet, EntryValue, PeriodItem } from '@mvs/shared';
 import { api, ApiError, directionQueries } from '../../api';
 import { date, weekLabel } from '../../ui/format';
+import { DelayReason } from './DelayReasonField';
 
 type Site = EntrySheet['sites'][number];
 type Item = Site['items'][number];
@@ -588,6 +589,8 @@ function SiteEntry({
                 {site.items.map((i) => (
                   <ItemCard
                     key={i.id}
+                    code={sheet.direction.code}
+                    periodId={sheet.period.id}
                     i={i}
                     v={{ ...i.value, ...draft.items[i.id] }}
                     dirty={(k) => draft.items[i.id]?.[k] !== undefined}
@@ -629,6 +632,7 @@ function SiteEntry({
                               {i.version == null && i.from ? ` · значение с ${date(i.from)}` : ''}
                               {i.version != null && i.enteredBy ? ` · ${i.enteredBy}` : ''}
                             </Text>
+                            <DelayReason code={sheet.direction.code} periodId={sheet.period.id} workItemId={i.id} />
                           </Table.Td>
                           {f.status && (
                             <Table.Td>
@@ -746,6 +750,8 @@ function SiteEntry({
  * Те же правки, что и в таблице: черновик, подсветка изменённого, сохранение общей кнопкой.
  */
 function ItemCard({
+  code,
+  periodId,
   i,
   v,
   dirty,
@@ -754,6 +760,8 @@ function ItemCard({
   statusData,
   set,
 }: {
+  code: string;
+  periodId: number;
   i: Item;
   v: EntryValue;
   dirty: (k: keyof EntryValue) => boolean;
@@ -772,6 +780,7 @@ function ItemCard({
   return (
     <Paper withBorder p="sm" radius="md">
       <Text fw={600}>{i.name}</Text>
+      <DelayReason code={code} periodId={periodId} workItemId={i.id} />
       <Text size="xs" c="dimmed" mb={6}>
         {[i.group, i.planEnd ? `до ${date(i.planEnd)}` : null, byQty ? (i.planQty == null ? 'проектный объём не указан' : `проект ${i.planQty} ${i.unit ?? ''}`) : null].filter(Boolean).join(' · ')}
         {i.version == null && i.from ? ` · значение с ${date(i.from)}` : ''}

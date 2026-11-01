@@ -127,6 +127,7 @@ model User {
   memberships                DirectionMember[]
   siteAssignments            SiteAssignment[]
   responsibleItems           WorkItem[]               @relation("WorkItemResponsible")
+  delayReasons               DelayReason[]
   enteredProgress            ProgressEntry[]          @relation("ProgressEnteredBy")
   updatedProgress            ProgressEntry[]          @relation("ProgressUpdatedBy")
   enteredReports             SiteReport[]             @relation("SiteReportEnteredBy")
@@ -626,6 +627,7 @@ model WorkItem {
   contractor  Organization?   @relation(fields: [contractorId], references: [id], onDelete: SetNull)
   contract    Contract?       @relation(fields: [contractId], references: [id], onDelete: SetNull)
   progress    ProgressEntry[]
+  delayReasons DelayReason[]
   remarks     Remark[]
 
   @@unique([siteId, code])
@@ -686,6 +688,7 @@ model ReportingPeriod {
   reports   SiteReport[]
   remarks   Remark[]
   kpiCache  KpiSnapshot[]
+  delayReasons DelayReason[]
 
   @@unique([directionId, program, date])
   @@map("reporting_period")
@@ -696,6 +699,25 @@ enum DataSource {
   IMPORT
   MIGRATION
   API
+}
+
+/// Причина отставания хранится отдельно от импортированного факта и имеет свою версию.
+model DelayReason {
+  id          Int      @id @default(autoincrement())
+  workItemId  Int      @map("work_item_id")
+  periodId    Int      @map("period_id")
+  text        String   @db.Text
+  version     Int      @default(1)
+  updatedById Int?     @map("updated_by_id")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  workItem  WorkItem        @relation(fields: [workItemId], references: [id], onDelete: Cascade)
+  period    ReportingPeriod @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  updatedBy User?           @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@unique([workItemId, periodId])
+  @@index([periodId])
+  @@map("delay_reason")
 }
 
 /// Факт по позиции на отчётную точку. Одна строка на (позиция, период) — история не затирается.

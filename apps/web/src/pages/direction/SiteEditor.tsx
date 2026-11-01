@@ -28,6 +28,7 @@ import { IconArchive, IconArrowBackUp, IconPencil, IconPlus, IconTrash } from '@
 import { ASSIGNMENT_ROLE_LABELS, ASSIGNMENT_ROLES, ORGANIZATION_KIND_LABELS, type ManageRefs, type SiteEdit, type SiteInput, type WorkItemInput } from '@mvs/shared';
 import { api, ApiError, directionQueries } from '../../api';
 import { date, money } from '../../ui/format';
+import { DelayReason } from './DelayReasonField';
 
 const num = (v: string | number) => (v === '' || v == null ? null : Number(v));
 const blank = (v: string) => (v.trim() === '' ? null : v);
@@ -317,6 +318,7 @@ function Items({ code, site, refs }: { code: string; site: SiteEdit; refs: Manag
                       {typeName(i.workTypeId)}
                     </Text>
                   )}
+                  {!i.isArchived && <DelayReason code={code} workItemId={i.id} />}
                 </Table.Td>
                 <Table.Td>{i.planQty != null ? `${i.planQty} ${i.unit ?? ''}` : '—'}</Table.Td>
                 <Table.Td>{money(i.planCost)}</Table.Td>

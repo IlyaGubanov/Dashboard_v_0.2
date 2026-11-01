@@ -7,6 +7,7 @@ import { directionQueries } from '../../api';
 import { RiskBadge, riskColor } from '../../ui/RiskBadge';
 import { date, pct } from '../../ui/format';
 import { Lag } from '../../ui/Lag';
+import { DelayReason } from './DelayReasonField';
 
 interface Row {
   key: string;
@@ -19,6 +20,7 @@ interface Row {
   risk: SiteRisk | null;
   overdue: boolean;
   siteId?: number;
+  workItemId?: number;
   children?: Row[];
 }
 
@@ -57,6 +59,10 @@ export function ScheduleTab({ code, date: asOf, onOpenSite }: { code: string; da
             plan: plans.length ? plans.reduce((a, i) => a + i.plan!, 0) / plans.length : null,
             risk: null,
             overdue: its.some((i) => i.overdue),
+            children: data.sites.flatMap(s => s.items.filter(i => i.workTypeId === t.id && i.start && i.end && !i.excluded).map(i => ({
+              key: `t${t.id}-i${i.id}`, workItemId: i.id, name: `${s.name} · ${i.name}`, sub: null,
+              start: ms(i.start)!, end: ms(i.end)!, fact: i.fact, plan: i.plan, risk: null, overdue: i.overdue,
+            }))),
           };
         })
         .filter((r): r is Row => !!r)
@@ -80,6 +86,7 @@ export function ScheduleTab({ code, date: asOf, onOpenSite }: { code: string; da
           .filter((i) => i.start && i.end && !i.excluded)
           .map((i) => ({
             key: `i${i.id}`,
+            workItemId: i.id,
             name: i.name,
             sub: null,
             start: ms(i.start)!,
@@ -245,13 +252,16 @@ export function ScheduleTab({ code, date: asOf, onOpenSite }: { code: string; da
                   </Box>
                   {isOpen &&
                     r.children!.map((c) => (
-                      <Box key={c.key} style={{ display: 'grid', gridTemplateColumns: '300px 1fr', alignItems: 'center', background: 'var(--surface-muted)' }}>
+                      <Box key={c.key} style={{ background: 'var(--surface-muted)' }}>
+                      <Box style={{ display: 'grid', gridTemplateColumns: '300px 1fr', alignItems: 'center' }}>
                         <Text size="xs" pl={34} pr="sm" truncate>
                           {c.name} · {pct(c.fact, 0)}
                         </Text>
                         <Box pos="relative" h={24}>
                           {bar(c, true)}
                         </Box>
+                      </Box>
+                      <Box pl={34} pb="xs" maw={600}><DelayReason code={code} date={asOf} workItemId={c.workItemId!} /></Box>
                       </Box>
                     ))}
                 </Fragment>

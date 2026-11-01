@@ -109,8 +109,10 @@ API вручную: в `apps/api` с переменными `DATABASE_URL`, `COO
 - `deploy/*.sh` — LF и исполняемые; на сервере вызывать как `bash deploy/…`.
 - `gh` может быть не установлен — тогда PR через сайт GitHub.
 
-## Работа с git
+## Работа с Git
 
-Задача — отдельная ветка от `main` → PR в `main`. Сервер обновляется из `main`:
-`git pull --ff-only` → `sudo bash deploy/update.sh --no-pull` (копия, пересборка, миграции при старте API).
+Перед началом любых изменений прочитать [AGENTS.md](AGENTS.md): это единственный общий регламент Git.
+Практические команды и процесс review/release — [docs/GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md).
+Короткие промпты для начала и продолжения задач — [docs/AI_PROMPTS.md](docs/AI_PROMPTS.md).
+Технические сведения выше не разрешают самостоятельно обновлять production.
 В конце сообщения коммита — строка `Co-Authored-By`, если её требует среда.

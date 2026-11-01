@@ -4,6 +4,7 @@ export * from './directions';
 export * from './users';
 export * from './kpi';
 export * from './entry';
+export * from './delay-reasons';
 export * from './manage';
 export * from './admin';
 export * from './panorama';

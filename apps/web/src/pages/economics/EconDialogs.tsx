@@ -103,6 +103,7 @@ const ENTITY: Record<string, string> = {
   econ_editors: 'Ответственные',
   econ_demo: 'Демо-данные',
   econ_cash: 'ДДС',
+  econ_deviation: 'Разбор отклонения',
 };
 const ACTION: Record<string, string> = { CREATE: 'Создание', UPDATE: 'Изменение', DELETE: 'Удаление', IMPORT: 'Загрузка', PERIOD_CLOSE: 'Закрытие', PERIOD_OPEN: 'Открытие' };
 

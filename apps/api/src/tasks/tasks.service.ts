@@ -4,7 +4,8 @@
  *   Ответственный за ввод (и куратор) — объекты без факта в открытой отчётной точке;
  *   исполнитель — незакрытые замечания по его объектам или назначенные ему;
  *   проверяющий (автор замечания, куратор) — замечания «устранено», ждущие проверки;
- *   куратор — открыть точку текущей недели, проверить и закрыть прошлые точки.
+ *   куратор — открыть точку текущей недели, проверить и закрыть прошлые точки;
+ *   «Экономика» — назначенные разборы отклонений, ответственным ПЭО — отклонения без разбора.
  * Администратор и руководство получают задачи только как авторы замечаний: общую картину они видят в сводке.
  */
 import { Injectable } from '@nestjs/common';
@@ -12,6 +13,7 @@ import type { Direction, MemberRole } from '@prisma/client';
 import type { MyTask, MyTasks } from '@mvs/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { AccessService } from '../auth/access.service';
+import { EconomicsDeviationsService } from '../economics/economics-deviations.service';
 import type { AuthUser } from '../common/request';
 
 const DAY = 86_400_000;
@@ -32,6 +34,7 @@ export class TasksService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly access: AccessService,
+    private readonly econ: EconomicsDeviationsService,
   ) {}
 
   async forUser(user: AuthUser): Promise<MyTasks> {
@@ -44,6 +47,8 @@ export class TasksService {
     }
     // замечания скрыты у сотрудника — и задачи по ним не показываем
     if (!user.hiddenSections.includes('remarks')) items.push(...(await this.remarkTasks(user, members.map((m) => ({ d: m.direction, role: m.role })))));
+    // экономика: разборы отклонений на сотруднике, ответственным ПЭО — отклонения без разбора
+    items.push(...(await this.econ.tasks(user)));
     const order = { critical: 0, warning: 1, info: 2 };
     items.sort((a, b) => order[a.level] - order[b.level] || a.direction.shortName.localeCompare(b.direction.shortName, 'ru'));
     return { items, badge: items.filter((i) => i.level !== 'info').length };

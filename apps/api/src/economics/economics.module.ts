@@ -5,6 +5,7 @@ import { EconomicsController } from './economics.controller';
 import { EconomicsService } from './economics.service';
 import { EconomicsDemoService } from './economics-demo.service';
 import { EconomicsCashService } from './economics-cash.service';
+import { EconomicsDeviationsService } from './economics-deviations.service';
 
-@Module({ imports: [AuthModule, KpiModule], controllers: [EconomicsController], providers: [EconomicsService, EconomicsDemoService, EconomicsCashService] })
+@Module({ imports: [AuthModule, KpiModule], controllers: [EconomicsController], providers: [EconomicsService, EconomicsDemoService, EconomicsCashService, EconomicsDeviationsService], exports: [EconomicsDeviationsService] })
 export class EconomicsModule {}

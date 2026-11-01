@@ -73,6 +73,8 @@ docker compose exec api npm run db:demo:verify               # сверить п
 и [порядок разработки и выпуска](docs/GIT_WORKFLOW.md). Для нового чата есть
 [короткие промпты для ИИ](docs/AI_PROMPTS.md). Production использует только `main`.
 
+Отдельная dev-VM: [инструкция автодеплоя для Debian 13 и локальной сети](docs/DEV_AUTODEPLOY.md).
+
 Нужны Node.js 22+ и MySQL 8.0+ (можно в Docker: `docker compose up -d db` с открытым портом 3306).
 
 ```bash

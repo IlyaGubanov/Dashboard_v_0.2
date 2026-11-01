@@ -3,6 +3,7 @@
 Это инструкция для администратора. Она не означает, что сервер уже настроен.
 Команды выполняются **на отдельной dev-VM**. Production и его данные в этой процедуре не используются.
 Сначала сделайте Dashboard_v_0.2 приватным, затем подключайте собственный GitHub runner.
+Для HTTPS используется имеющийся wildcard-сертификат организации, режим Caddy `TLS_MODE=files`.
 
 ## Что получится
 
@@ -27,9 +28,16 @@ GitHub Free подходит: использование собственног�
 ## 1. Подготовить VM и адрес
 
 Практический начальный размер: 4 vCPU, 8 ГБ ОЗУ, диск от 80 ГБ. Сборка выполняется на VM.
-Понадобятся постоянный локальный IP и адрес, например `dev.mvsst.lan` — далее это **пример**,
-его нужно заменить своим. Внутренний DNS должен направлять адрес на dev-VM; VM также должна его разрешать.
-Для первой проверки можно использовать IP VM вместо имени и TLS_MODE=internal.
+Понадобятся постоянный локальный IP и DNS-имя, покрываемое вашим wildcard-сертификатом.
+Например, для `*.example.org` подходит `dev.example.org`, но не `dashboard.dev.example.org`,
+не само `example.org` и не IP-адрес (если они не перечислены в SAN отдельно).
+Здесь `example.org` — **пример**: замените его доменом из вашего сертификата во всех командах,
+DOMAIN и DEV_URL. Сопоставление wildcard ограничено одним уровнем имени:
+[правила TLS](https://www.rfc-editor.org/rfc/rfc9525.html#section-6.3).
+
+Внутренний DNS должен направлять выбранное имя на локальный IP dev-VM; сама VM также должна
+разрешать это имя. Публичная DNS-запись и доступ из интернета для использования готового сертификата
+не требуются. Открывать приложение и проверять HTTPS нужно по имени, а не по IP.
 
 Доступ пользователей: HTTPS/443 из локальной сети, HTTP/80 для перенаправления.
 SSH/22 — только для администратора из локальной сети. Не делайте внешнего NAT на эту VM.
@@ -49,7 +57,7 @@ SSH/22 — только для администратора из локальн�
 
 ```bash
 sudo apt update
-sudo apt install -y ca-certificates curl git openssh-client util-linux nano
+sudo apt install -y ca-certificates curl git openssh-client openssl util-linux nano
 sudo install -m 0755 -d /etc/apt/keyrings
 sudo curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
 sudo chmod a+r /etc/apt/keyrings/docker.asc
@@ -130,14 +138,14 @@ cd /srv/mvsst-dev/app
 bash deploy/install.sh --env-only
 ```
 
-На вопросы скрипта: ваш dev-адрес, режим `internal` (или `files` при корпоративном сертификате),
+На вопросы скрипта: DNS-имя dev-сайта из вашего wildcard-домена, режим `files`,
 демо-данные `true` для тестовой среды. Скрипт создаст .env и отдельные случайные пароли.
 Перед первым запуском открыть `nano .env` и проверить/добавить:
 
 ```dotenv
 COMPOSE_PROJECT_NAME=mvsst-dev
-DOMAIN=dev.mvsst.lan
-TLS_MODE=internal
+DOMAIN=dev.example.org
+TLS_MODE=files
 MYSQL_DATABASE=mvs_dev
 MYSQL_USER=mvs_dev
 ADMIN_LOGIN=admin
@@ -149,14 +157,51 @@ VIDEO_ALLOWED_DNS_SUFFIXES=
 ```
 
 Это фрагмент, а не замена всего .env. MYSQL_ROOT_PASSWORD, MYSQL_PASSWORD, ADMIN_PASSWORD и
-VIDEO_* ключи оставить сгенерированными. Не копировать .env, БД, файлы, учётные данные или ключи production.
+VIDEO_* ключи оставить сгенерированными. Не копировать .env, БД, пользовательские файлы,
+учётные данные и служебные ключи production. Общий TLS wildcard-сертификат устанавливается отдельно
+из согласованного защищённого хранилища организации, как описано ниже.
 При DEMO_DATA=true загружаются штатные демо-данные, а не production-БД. Подключение реальных камер
 не требуется; пустые VIDEO_ALLOWED_NETWORKS/DNS_SUFFIXES запрещают их сетевой доступ.
 Проверьте, что VIDEO_CONTROL_SUBNET не пересекается с вашей локальной сетью/VPN/другими Docker-сетями.
 
+### Установить wildcard-сертификат до запуска контейнеров
+
+Администратор передаёт на dev-VM два PEM-файла:
+
+- `fullchain.pem`: сначала серверный wildcard-сертификат, затем промежуточные сертификаты по цепочке;
+- `privatekey.pem`: соответствующий закрытый ключ без пароля, чтобы Caddy мог запускаться автоматически.
+
+Корневой CA обычно не добавляется в выдаваемую сервером цепочку. Если исходник — PFX/P12,
+администратор сначала экспортирует из него эти PEM-файлы. Не размещать закрытый ключ в GitHub,
+чатах, workflow или общедоступной папке.
+
+В командах ниже `/srv/mvsst-dev/incoming` — временный закрытый каталог приёма файлов, доступный
+пользователю mvsst-dev. Создайте его с правами 700 и передайте файлы туда защищённым способом.
+Далее под **mvsst-dev**, в `/srv/mvsst-dev/app`:
+
+```bash
+install -d -m 0700 /srv/mvsst-dev/incoming
+install -d -m 0700 deploy/certs
+install -m 0644 /srv/mvsst-dev/incoming/fullchain.pem deploy/certs/cert.pem
+install -m 0600 /srv/mvsst-dev/incoming/privatekey.pem deploy/certs/key.pem
+openssl x509 -in deploy/certs/cert.pem -noout -subject -issuer -dates -ext subjectAltName
+openssl x509 -in deploy/certs/cert.pem -noout -checkhost dev.example.org
+openssl x509 -in deploy/certs/cert.pem -pubkey -noout | openssl pkey -pubin -outform DER | openssl dgst -sha256
+openssl pkey -in deploy/certs/key.pem -pubout -outform DER | openssl dgst -sha256
+```
+
+Последние две строки должны вывести одинаковый SHA-256: это проверка соответствия сертификата ключу.
+Также проверить срок действия и DNS-имя. Команды не выводят закрытый ключ.
+`deploy/certs/*.pem` исключены из Git. Docker монтирует каталог в Caddy как `/certs` только для чтения;
+существующий `tls-files.caddy` использует `/certs/cert.pem` и `/certs/key.pem`.
+[Поддерживаемый формат Caddy](https://caddyserver.com/docs/caddyfile/directives/tls).
+
+Теперь проверить конфигурацию и запустить контейнеры:
+
 ```bash
 chmod 600 .env
 docker compose config -q
+docker compose run --rm --no-deps caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 for service in api web mediamtx; do docker compose build "$service"; done
 docker compose up -d
 docker compose ps
@@ -164,25 +209,35 @@ docker compose exec -T api wget -qO- http://127.0.0.1:3000/api/health
 ```
 
 Дождаться healthy у db и api: первый запуск применяет миграции и наполняет демо-данные, это занимает
-несколько минут. Затем открыть `https://ВАШ_DEV_АДРЕС`, войти и сменить начальный пароль администратора.
+несколько минут. После настройки доверия к CA ниже открыть `https://ВАШ_DEV_АДРЕС`, войти
+и сменить начальный пароль администратора.
 При ошибке сначала смотреть `docker compose logs --tail=150 api caddy web`.
 
-При TLS_MODE=internal браузеры должны доверять тестовому CA Caddy. Для самой VM:
+После ручного запуска вернуться от пользователя mvsst-dev к администратору:
 
 ```bash
-# Выполнить под mvsst-dev в /srv/mvsst-dev/app, после запуска caddy:
-docker compose exec -T caddy cat /data/caddy/pki/authorities/local/root.crt > /tmp/mvsst-dev-ca.crt
 exit
-# Снова под администратором:
-sudo install -m 0644 /tmp/mvsst-dev-ca.crt /usr/local/share/ca-certificates/mvsst-dev-ca.crt
-sudo update-ca-certificates
-curl --fail https://dev.mvsst.lan/api/health
-curl --fail --output /dev/null https://dev.mvsst.lan/
 ```
 
-На клиентских компьютерах доверие к этому **публичному root.crt** также настраивается администратором.
-Закрытый ключ CA не распространять. При корпоративном сертификате выбрать TLS_MODE=files, положить
-cert.pem/key.pem в deploy/certs и обеспечить доверие соответствующему CA на VM и компьютерах.
+Если сертификат выдан публичным CA, которому уже доверяют Debian и браузеры, ничего добавлять
+в доверенные сертификаты не нужно. Если его выдал внутренний CA организации, администратор
+устанавливает **корневой сертификат CA организации** на dev-VM и клиентские компьютеры.
+На Debian (путь к исходному CA-файлу — пример, заменить своим):
+
+```bash
+sudo install -m 0644 /secure/corp-root-ca.crt /usr/local/share/ca-certificates/mvsst-org-root.crt
+sudo update-ca-certificates
+```
+
+Не добавлять сам серверный wildcard-сертификат в корневые CA. В этой схеме тестовый CA Caddy
+не используется. После настройки доверия проверить с VM:
+
+```bash
+curl --fail https://dev.example.org/api/health
+curl --fail --output /dev/null https://dev.example.org/
+```
+
+Не отключать проверку сертификата через curl -k: те же проверки затем выполняет автодеплой.
 Использовать HTTPS даже в локальной сети: COOKIE_SECURE=true требует HTTPS для входа.
 
 ## 5. Подключить GitHub runner
@@ -223,7 +278,7 @@ exit
 Под администратором создать `/etc/mvsst-dev-deploy.env` (без production-секретов):
 
 ```dotenv
-DEV_URL=https://dev.mvsst.lan
+DEV_URL=https://dev.example.org
 ```
 
 Заменить адрес своим. Создать `/usr/local/bin/mvsst-dev-deploy` со следующим содержимым:
@@ -369,12 +424,44 @@ df -h
 Отдельные каталоги deployments автоматически им не очищаются: раз в неделю проверять размер и удалять
 старые dev-копии по выбранному сроку хранения, сохраняя нужную копию для отката.
 
+### Продление wildcard-сертификата
+
+Caddy использует предоставленные файлы и не выпускает новый wildcard-сертификат автоматически.
+Продление выполняется по принятой в организации процедуре. Перед истечением срока администратор
+получает новую пару сертификат/ключ и цепочку, проверяет имя, срок и совпадение ключей, затем под lock заменяет
+`deploy/certs/cert.pem` и `key.pem` с теми же правами. Сертификат и ключ обновлять согласованной парой.
+Сохранить предыдущую пару в отдельном защищённом хранилище до проверки новой.
+
+Замену файлов, проверку конфигурации и перезапуск Caddy выполнять под mvsst-dev, из `/srv/mvsst-dev/app`,
+под тем же lock, что и deploy. Новую пару предварительно передать в закрытый incoming-каталог:
+
+```bash
+flock -w 600 /var/lib/mvsst-dev/deploy.lock bash -c '
+  set -euo pipefail
+  cd /srv/mvsst-dev/app
+  install -m 0644 /srv/mvsst-dev/incoming/fullchain.pem deploy/certs/cert.pem
+  install -m 0600 /srv/mvsst-dev/incoming/privatekey.pem deploy/certs/key.pem
+  docker compose run --rm --no-deps caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+  docker compose restart caddy
+  curl --fail https://dev.example.org/api/health
+'
+```
+
+Не менять пару параллельно с deploy. Если validation завершилась ошибкой, перезапуска не будет;
+до следующего deploy/перезапуска нужно восстановить предыдущую корректную пару.
+Перезапуск Caddy кратковременно прервёт HTTPS-доступ
+на dev; БД и API для этого перезапускать не требуется. Обычный `docker compose up -d` может не
+перезапустить Caddy только из-за смены содержимого PEM-файлов.
+Штатный backup.sh копирует БД, файлы приложения и .env, но **не TLS-сертификат и key.pem**.
+Для восстановления VM эта пара и цепочка должны оставаться в защищённом хранилище организации
+или отдельной защищённой резервной копии.
+
 | Проблема | Что проверить |
 |---|---|
 | Deploy dev ожидает runner | Runner Idle/Online, служба запущена, метки linux/x64/mvsst-dev совпадают |
 | Permission denied при Git | Read-only deploy key, SSH config/known_hosts именно пользователя mvsst-dev |
 | Docker permission denied | Группа docker у mvsst-dev; после её изменения перезапустить службу runner |
-| Ошибка сертификата curl | DEV_URL совпадает с DOMAIN; CA dev-сертификата установлен на VM |
+| Ошибка сертификата curl | DEV_URL/DOMAIN покрыты wildcard; срок действия, полная цепочка и доверие к CA |
 | CI не запускается после приватизации | Actions разрешены, включённая квота/бюджет не исчерпаны |
 | Сборка очень долгая | Память/подкачка и диск; Docker-образы собираются последовательно |
 | Ошибка deploy после миграции | Сначала журнал и копия; автоматический откат схемы БД не выполнять |

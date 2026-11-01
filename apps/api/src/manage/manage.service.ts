@@ -163,7 +163,7 @@ export class ManageService {
       include: {
         status: true,
         assignments: { include: { user: { select: { fullName: true } } } },
-        workItems: { orderBy: [{ isArchived: 'asc' }, { sort: 'asc' }, { id: 'asc' }], include: { _count: { select: { progress: true } } } },
+        workItems: { orderBy: [{ isArchived: 'asc' }, { sort: 'asc' }, { id: 'asc' }], include: { _count: { select: { progress: true, delayReasons: true } } } },
       },
     });
     return {
@@ -176,7 +176,7 @@ export class ManageService {
       items: s.workItems.map((w) => ({
         id: w.id, workTypeId: w.workTypeId, label: w.label, unit: w.unit, planQty: num(w.planQty), planCost: num(w.planCost),
         planStart: day(w.planStart), planEnd: day(w.planEnd), responsibleId: w.responsibleId, contractorId: w.contractorId,
-        note: w.note, isArchived: w.isArchived, hasProgress: w._count.progress > 0,
+        note: w.note, isArchived: w.isArchived, hasProgress: w._count.progress > 0 || w._count.delayReasons > 0,
       })),
     };
   }
@@ -327,11 +327,12 @@ export class ManageService {
 
   async archiveItem(user: AuthUser, code: string, itemId: number, archived: boolean, ip: string | null) {
     const d = await this.dir(user, code);
-    const it = await this.prisma.workItem.findUnique({ where: { id: itemId }, include: { site: true, _count: { select: { progress: true } } } });
-    if (!it || it.site.directionId !== d.id) throw new NotFoundException('Позиция не найдена');
     await this.prisma.$transaction(async (tx) => {
-      // позицию без факта, созданную по ошибке, удаляем; с фактом — только в архив (история сохраняется)
-      if (archived && it._count.progress === 0 && !it.isExample) await tx.workItem.delete({ where: { id: itemId } });
+      await tx.$queryRaw`SELECT id FROM work_item WHERE id = ${itemId} FOR UPDATE`;
+      const it = await tx.workItem.findUnique({ where: { id: itemId }, include: { site: true, _count: { select: { progress: true, delayReasons: true } } } });
+      if (!it || it.site.directionId !== d.id) throw new NotFoundException('Позиция не найдена');
+      // История причин сохраняется, даже если факт ещё не внесён.
+      if (archived && it._count.progress === 0 && it._count.delayReasons === 0 && !it.isExample) await tx.workItem.delete({ where: { id: itemId } });
       else await tx.workItem.update({ where: { id: itemId }, data: { isArchived: archived } });
       await this.audit.write({ userId: user.id, action: archived ? 'DELETE' : 'UPDATE', entity: 'work_item', entityId: itemId, directionId: d.id, siteId: it.siteId, comment: archived ? 'позиция убрана' : 'позиция возвращена', ip }, tx);
     });

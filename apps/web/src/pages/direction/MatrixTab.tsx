@@ -7,6 +7,7 @@ import { RiskBadge, RiskIcon } from '../../ui/RiskBadge';
 import { MatrixLegend, matrixCell, matrixStatusStyle } from '../../ui/MatrixStatus';
 import { int, pct } from '../../ui/format';
 import { Lag } from '../../ui/Lag';
+import { delayState, useDelayReasons } from './DelayReasonField';
 
 /**
  * Матрица «объект × вид работ»: процент — средняя готовность, цвет — состояние наиболее проблемной позиции,
@@ -14,8 +15,10 @@ import { Lag } from '../../ui/Lag';
  */
 export function MatrixTab({ code, date, onOpenSite }: { code: string; date?: string; onOpenSite: (id: number) => void }) {
   const { data, error } = useQuery(directionQueries.grid(code, date));
+  const reasons = useDelayReasons(code, date);
   const [section, setSection] = useState<string | null>(null);
   const [lagOnly, setLagOnly] = useState(false);
+  const [showReasons, setShowReasons] = useState(true);
 
   const sections = useMemo(() => [...new Set((data?.sites ?? []).map((s) => s.section).filter(Boolean))] as string[], [data]);
   if (error) return <Alert color="red">{(error as Error).message}</Alert>;
@@ -40,7 +43,9 @@ export function MatrixTab({ code, date, onOpenSite }: { code: string; date?: str
         {sections.length > 1 && <Select aria-label="Все разделы" placeholder="Все разделы" clearable data={sections} value={section} onChange={setSection} w={220} />}
         {data.planDate && <Switch label="Только отстающие объекты" checked={lagOnly} onChange={(e) => setLagOnly(e.currentTarget.checked)} />}
         <MatrixLegend />
+        <Switch label="Причины и ответственные" checked={showReasons} onChange={e => setShowReasons(e.currentTarget.checked)} />
       </Group>
+      {reasons.error && <Alert color="red">Не удалось загрузить причины: {reasons.error.message}</Alert>}
 
       <Box style={{ overflow: 'auto', maxHeight: '70vh' }}>
         <table className="matrix-table" style={{ borderCollapse: 'separate', borderSpacing: 2, fontSize: 'calc(12px * var(--text-scale, 1))' }}>
@@ -118,6 +123,10 @@ export function MatrixTab({ code, date, onOpenSite }: { code: string; date?: str
                         ) : null,
                       )}
                       {c.overdue && <div>Срок прошёл, работа не выполнена</div>}
+                      {c.items.map(i => { const r = reasons.byId.get(i.id); return r && delayState(r) !== 'calm' ? <div key={`reason-${i.id}`}>
+                        <b>Причина отставания от графика:</b> {r.text || 'Не заполнена'}
+                        <div>Ответственные: {r.responsibles.map(u => u.fullName).join('; ') || 'не назначены'}</div>
+                      </div> : null; })}
                     </div>
                   );
                   return (
@@ -132,6 +141,11 @@ export function MatrixTab({ code, date, onOpenSite }: { code: string; date?: str
                             style={{ position: 'absolute', top: 3, right: 3, width: 7, height: 7, borderRadius: 4, background: 'var(--status-critical)', boxShadow: '0 0 0 1.5px var(--mantine-color-body)' }}
                           />
                         )}
+                        {showReasons && c.items.map(i => { const r = reasons.byId.get(i.id); return r && delayState(r) !== 'calm' ? <div className="delay-reason-preview" data-state={delayState(r)} key={i.id}>
+                          <Text size="xs" fw={600}>Причина отставания от графика</Text>
+                          <Text size="xs">{r.text || 'Не заполнена'}</Text>
+                          <Text size="xs">Ответственные: {r.responsibles.map(u => u.fullName).join('; ') || 'не назначены'}</Text>
+                        </div> : null; })}
                       </td>
                     </Tooltip>
                   );

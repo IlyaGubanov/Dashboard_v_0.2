@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { Alert, Badge, Box, Button, Drawer, Group, SimpleGrid, Skeleton, Stack, Table, Tabs, Text, Tooltip } from '@mantine/core';
 import { IconClockExclamation, IconPencil } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
+import { DelayReason } from './DelayReasonField';
 import { TrackerEditor } from './TrackerEditor';
 import type { SiteCard, SiteCardField, SiteCardTracker } from '@mvs/shared';
 import { directionQueries, meQuery } from '../../api';
@@ -152,7 +153,7 @@ function Card({ data: c, code, onOpenRemark }: { data: SiteCard; code: string; o
         <Tabs.Panel value="cameras" pt="md">{videoAllowed && <SiteCameras siteId={c.row.id} />}</Tabs.Panel>
 
         <Tabs.Panel value="items" pt="md">
-          <Items c={c} />
+          <Items c={c} code={code} />
         </Tabs.Panel>
         <Tabs.Panel value="passport" pt="md">
           <Passport c={c} />
@@ -212,7 +213,7 @@ function Kv({ k, v }: { k: string; v: React.ReactNode }) {
 }
 
 /** Позиции работ: факт, план на дату, объёмы, деньги, кто и когда внёс. */
-function Items({ c }: { c: SiteCard }) {
+function Items({ c, code }: { c: SiteCard; code: string }) {
   const financeHidden = useFinanceHidden();
   const has = {
     qty: c.items.some((i) => i.planQty != null),
@@ -244,7 +245,7 @@ function Items({ c }: { c: SiteCard }) {
         <Table.Tbody>
           {c.items.map((i) => (
             <Table.Tr key={i.id} style={{ opacity: i.excluded ? 0.5 : 1 }}>
-              <Table.Td style={{ whiteSpace: 'normal', minWidth: 200 }}>
+              <Table.Td style={{ whiteSpace: 'normal', minWidth: 240, maxWidth: 420 }}>
                 <Text component="div" size="sm" fw={500}>
                   {i.name}
                   {i.isExample && (
@@ -259,6 +260,7 @@ function Items({ c }: { c: SiteCard }) {
                     {i.weight != null ? ` · вес ${i.weight}` : ''}
                   </Text>
                 )}
+                <DelayReason code={code} date={c.asOf ?? undefined} workItemId={i.id} />
               </Table.Td>
               {has.status && (
                 <Table.Td>

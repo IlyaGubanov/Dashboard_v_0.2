@@ -2,7 +2,7 @@
  * «Мои задачи» — напоминания пользователю: что внести, что устранить, что проверить, что закрыть.
  * Считаются при каждом запросе из текущих данных, отдельно не хранятся.
  */
-export type TaskKind = 'entry' | 'openPeriod' | 'closePeriod' | 'remarksFix' | 'remarksCheck';
+export type TaskKind = 'entry' | 'openPeriod' | 'closePeriod' | 'remarksFix' | 'remarksCheck' | 'econDeviation' | 'econReview';
 
 export interface MyTask {
   key: string;
@@ -13,8 +13,8 @@ export interface MyTask {
   count: number;
   /** critical — срок прошёл; warning — пора сделать; info — к сведению */
   level: 'critical' | 'warning' | 'info';
-  /** куда перейти: вкладка направления */
-  tab: 'entry' | 'remarks' | 'manage';
+  /** куда перейти: вкладка направления; economics — раздел «Экономика», вкладка «Отклонения» */
+  tab: 'entry' | 'remarks' | 'manage' | 'economics';
   /** отбор на вкладке замечаний: ждут проверки / мои */
   view?: 'check' | 'mine';
 }

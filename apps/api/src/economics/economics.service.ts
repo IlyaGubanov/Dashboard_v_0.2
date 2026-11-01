@@ -433,6 +433,7 @@ export class EconomicsService {
           ksAmount: dec(r.ksAmount ?? null),
           nzpOverride: dec(r.nzpOverride ?? null),
           nzpNote: r.nzpOverride == null ? null : r.nzpNote?.trim() || null,
+          materialsPurchased: dec(r.materialsPurchased ?? null),
           note: r.note || null,
           updatedById: user.id,
         };
@@ -440,14 +441,14 @@ export class EconomicsService {
         let before: MonthRowRecord | null = null;
         if (r.version === 0) {
           if (await tx.econBudgetMonth.findUnique({ where: { budgetId_month: { budgetId: r.budgetId, month } } })) throw conflict(`Факт «${budgetTitle(b)}»`);
-          if (!amounts.length && r.laborHours == null && r.machineHours == null && r.ksAmount == null && r.nzpOverride == null && !r.note) continue;
+          if (!amounts.length && r.laborHours == null && r.machineHours == null && r.ksAmount == null && r.nzpOverride == null && r.materialsPurchased == null && !r.note) continue;
           row = await tx.econBudgetMonth.create({ data: { budgetId: r.budgetId, month, ...fields } });
         } else {
           before = await tx.econBudgetMonth.findUnique({ where: { budgetId_month: { budgetId: r.budgetId, month } }, include: { facts: true } });
           if (!before) throw conflict(`Факт «${budgetTitle(b)}»`);
           const after = { laborHours: num(fields.laborHours), machineHours: num(fields.machineHours), note: fields.note };
           const same = num(before.laborHours) === after.laborHours && num(before.machineHours) === after.machineHours && before.note === after.note &&
-            num(before.ksAmount) === num(fields.ksAmount) && num(before.nzpOverride) === num(fields.nzpOverride) && before.nzpNote === fields.nzpNote &&
+            num(before.ksAmount) === num(fields.ksAmount) && num(before.nzpOverride) === num(fields.nzpOverride) && before.nzpNote === fields.nzpNote && num(before.materialsPurchased) === num(fields.materialsPurchased) &&
             sameAmounts(before.facts.map((f) => [f.articleId, Number(f.amount)]), amounts.map((f) => [f.articleId, Number(f.amount)]));
           if (before.version !== r.version) throw conflict(`Факт «${budgetTitle(b)}»`);
           if (same) continue;
@@ -547,7 +548,7 @@ export class EconomicsService {
   async journal(user: AuthUser): Promise<EconAuditItem[]> {
     const p = await this.access.assertEconomics(user);
     this.access.assertFeature(user, 'audit');
-    const entities = ['econ_budget', 'econ_fact', 'econ_company_fact', 'econ_month', 'econ_article', 'econ_settings', 'econ_demo', 'econ_cash', ...(p.canAdmin ? ['econ_editors'] : [])];
+    const entities = ['econ_budget', 'econ_fact', 'econ_company_fact', 'econ_month', 'econ_article', 'econ_settings', 'econ_demo', 'econ_cash', 'econ_deviation', ...(p.canAdmin ? ['econ_editors'] : [])];
     const rows = await this.prisma.auditLog.findMany({
       where: { entity: { in: entities }, ...(p.directionIds ? { directionId: { in: p.directionIds } } : {}) },
       take: 200,
@@ -579,6 +580,7 @@ function factRow(r: MonthRowRecord, users: Map<number, string>): EconFactRow {
     ksAmount: num(r.ksAmount),
     nzpOverride: num(r.nzpOverride),
     nzpNote: r.nzpNote,
+    materialsPurchased: num(r.materialsPurchased),
     updatedAt: r.updatedAt.toISOString(),
     updatedBy: r.updatedById ? (users.get(r.updatedById) ?? null) : null,
   };
@@ -586,7 +588,7 @@ function factRow(r: MonthRowRecord, users: Map<number, string>): EconFactRow {
 
 /** Для журнала: десятичные — числами. */
 const plain = (v: unknown) => JSON.parse(JSON.stringify(v, (_k, x) => (x instanceof Prisma.Decimal ? Number(x) : x)));
-const rowPlain = (r: MonthRowRecord) => ({ laborHours: num(r.laborHours), machineHours: num(r.machineHours), ksAmount: num(r.ksAmount), nzpOverride: num(r.nzpOverride), nzpNote: r.nzpNote, note: r.note, amounts: amountsObj(r.facts) });
+const rowPlain = (r: MonthRowRecord) => ({ laborHours: num(r.laborHours), machineHours: num(r.machineHours), ksAmount: num(r.ksAmount), nzpOverride: num(r.nzpOverride), nzpNote: r.nzpNote, materialsPurchased: num(r.materialsPurchased), note: r.note, amounts: amountsObj(r.facts) });
 const amountsObj = (list: { articleId: number; amount: Prisma.Decimal }[]) => Object.fromEntries(list.map((x) => [x.articleId, Number(x.amount)]));
 function sameAmounts(a: [number, number][], b: [number, number][]) {
   const key = (l: [number, number][]) => JSON.stringify([...l].sort((x, y) => x[0] - y[0]));

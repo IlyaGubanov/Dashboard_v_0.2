@@ -34,7 +34,10 @@ function TaskRow({ t, onGo }: { t: MyTask; onGo: (t: MyTask) => void }) {
 
 function useGo() {
   const navigate = useNavigate();
-  return (t: MyTask) => navigate({ to: '/d/$code', params: { code: t.direction.code }, search: { tab: t.tab, rv: t.view } });
+  return (t: MyTask) =>
+    t.tab === 'economics'
+      ? navigate({ to: '/economics', search: { tab: 'deviations' } })
+      : navigate({ to: '/d/$code', params: { code: t.direction.code }, search: { tab: t.tab, rv: t.view } });
 }
 
 /** Колокольчик в шапке: число задач «пора сделать» и «срок прошёл», список по щелчку. */

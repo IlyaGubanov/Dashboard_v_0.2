@@ -98,6 +98,8 @@ export const econFactRowSchema = z.object({
   /** поправка НЗП на конец месяца без НДС (может быть отрицательной: КС-2 опережает выполнение) */
   nzpOverride: z.number({ error: 'Укажите число' }).finite().min(-1e13).max(1e13).nullable().optional(),
   nzpNote: text(500),
+  /** закуплено материалов за месяц без НДС (поступление ТМЦ) */
+  materialsPurchased: money.optional(),
 }).refine((v) => v.nzpOverride == null || !!v.nzpNote?.trim(), { message: 'Укажите причину поправки НЗП', path: ['nzpNote'] });
 export type EconFactRowInput = z.infer<typeof econFactRowSchema>;
 export const econMonthSaveSchema = z.object({
@@ -218,6 +220,7 @@ export interface EconFactRow {
   ksAmount: number | null;
   nzpOverride: number | null;
   nzpNote: string | null;
+  materialsPurchased: number | null;
   updatedAt: string | null;
   updatedBy: string | null;
 }
@@ -466,4 +469,149 @@ export function econCashBalance(opening: number | null, months: EconCashMonth[],
   });
   const min = series.reduce<(typeof series)[number] | null>((a, x) => (a == null || x.balance < a.balance ? x : a), null);
   return { series, gap: min && min.balance < 0 ? { month: min.month, value: min.balance } : null, min };
+}
+
+// ── Этап 4: разбор отклонений (часть 4 таблицы ПЭО «Выводы и анализ отклонений») ──
+
+export const ECON_DEVIATION_KINDS = ['OVERRUN', 'STOCK'] as const;
+export type EconDeviationKind = (typeof ECON_DEVIATION_KINDS)[number];
+export const ECON_DEVIATION_KIND_LABELS: Record<EconDeviationKind, string> = { OVERRUN: 'Перерасход', STOCK: 'Закупка сверх потребности' };
+export const ECON_DEVIATION_STATUSES = ['OPEN', 'IN_WORK', 'RESOLVED', 'DISMISSED'] as const;
+export type EconDeviationStatus = (typeof ECON_DEVIATION_STATUSES)[number];
+export const ECON_DEVIATION_STATUS_LABELS: Record<EconDeviationStatus, string> = { OPEN: 'Открыто', IN_WORK: 'В работе', RESOLVED: 'Решено', DISMISSED: 'Снято' };
+export const econDeviationActive = (s: EconDeviationStatus) => s === 'OPEN' || s === 'IN_WORK';
+
+/** Причины отклонений (по методике ПЭО: доп. объёмы или необоснованный убыток). */
+export const ECON_CAUSES = [
+  { code: 'volume', label: 'Увеличение объёмов работ' },
+  { code: 'price', label: 'Рост цен поставщиков и подрядчиков' },
+  { code: 'productivity', label: 'Низкая производительность, простои' },
+  { code: 'rework', label: 'Переделки, брак' },
+  { code: 'limit', label: 'Ошибка в лимите (норме)' },
+  { code: 'accounting', label: 'Ошибка учёта (отнесение затрат)' },
+  { code: 'stock', label: 'Закупка впрок, излишки на складе' },
+  { code: 'other', label: 'Другое' },
+] as const;
+export type EconCause = (typeof ECON_CAUSES)[number]['code'];
+/** Решения: доказать доп. объёмы заказчику или решить, за счёт чего компенсировать убыток. */
+export const ECON_DECISIONS = [
+  { code: 'claim', label: 'Доп. соглашение с заказчиком на доп. объёмы' },
+  { code: 'compensate', label: 'Компенсировать экономией по другим статьям' },
+  { code: 'limit', label: 'Скорректировать лимит (норму)' },
+  { code: 'supplier', label: 'Претензия поставщику или подрядчику' },
+  { code: 'stop_purchase', label: 'Приостановить закупки, использовать остатки' },
+  { code: 'accept', label: 'Принять убыток' },
+  { code: 'other', label: 'Другое' },
+] as const;
+export type EconDecision = (typeof ECON_DECISIONS)[number]['code'];
+const causeCodes = ECON_CAUSES.map((c) => c.code) as [EconCause, ...EconCause[]];
+const decisionCodes = ECON_DECISIONS.map((c) => c.code) as [EconDecision, ...EconDecision[]];
+export const econCauseLabel = (code: string) => ECON_CAUSES.find((c) => c.code === code)?.label ?? code;
+export const econDecisionLabel = (code: string) => ECON_DECISIONS.find((c) => c.code === code)?.label ?? code;
+
+/** Закупка материалов к потребности на выполненный объём: до 1,2 — норма, до 1,5 — внимание, больше — деньги заморожены на складе. */
+export const ECON_STOCK_THRESHOLDS = { warn: 1.2, crit: 1.5 };
+export function econStockStatus(ratio: number | null): EconStatus {
+  if (ratio == null) return 'none';
+  return ratio <= ECON_STOCK_THRESHOLDS.warn ? 'good' : ratio <= ECON_STOCK_THRESHOLDS.crit ? 'warning' : 'critical';
+}
+
+const isoDate = z
+  .string({ error: 'Укажите дату' })
+  .regex(/^20\d{2}-\d{2}-\d{2}$/, 'Укажите дату')
+  .refine((v) => !Number.isNaN(Date.parse(v)), 'Некорректная дата');
+const deviationFields = {
+  cause: z.enum(causeCodes, { error: 'Выберите причину' }),
+  causeText: text(2000),
+  decision: z.enum(decisionCodes, { error: 'Выберите решение' }),
+  decisionText: text(2000),
+  responsibleId: z.number({ error: 'Выберите ответственного' }).int().positive('Выберите ответственного'),
+  dueDate: isoDate,
+};
+const otherNeedsText = (v: { cause?: string; causeText?: string | null; decision?: string; decisionText?: string | null }, ctx: z.RefinementCtx) => {
+  if (v.cause === 'other' && !v.causeText?.trim()) ctx.addIssue({ code: 'custom', path: ['causeText'], message: 'Опишите причину' });
+  if (v.decision === 'other' && !v.decisionText?.trim()) ctx.addIssue({ code: 'custom', path: ['decisionText'], message: 'Опишите решение' });
+};
+export const econDeviationCreateSchema = z
+  .object({ budgetId: id, articleId: id, kind: z.enum(ECON_DEVIATION_KINDS), month: econMonthSchema, ...deviationFields })
+  .superRefine(otherNeedsText);
+export type EconDeviationCreate = z.infer<typeof econDeviationCreateSchema>;
+/** Правка: ПЭО меняет всё; ответственный — статус и итог. Для «Решено» и «Снято» итог обязателен. */
+export const econDeviationUpdateSchema = z
+  .object({
+    version: z.number().int().positive(),
+    status: z.enum(ECON_DEVIATION_STATUSES),
+    result: text(2000),
+    cause: deviationFields.cause.optional(),
+    causeText: deviationFields.causeText,
+    decision: deviationFields.decision.optional(),
+    decisionText: deviationFields.decisionText,
+    responsibleId: deviationFields.responsibleId.optional(),
+    dueDate: isoDate.optional(),
+  })
+  .superRefine((v, ctx) => {
+    otherNeedsText(v, ctx);
+    if ((v.status === 'RESOLVED' || v.status === 'DISMISSED') && !v.result?.trim()) ctx.addIssue({ code: 'custom', path: ['result'], message: 'Опишите итог: что сделано' });
+  });
+export type EconDeviationUpdate = z.infer<typeof econDeviationUpdateSchema>;
+
+/** Найденное отклонение на конец месяца (нарастающим итогом). */
+export interface EconDeviationItem {
+  budgetId: number;
+  articleId: number;
+  kind: EconDeviationKind;
+  plan: number | null;
+  fact: number | null;
+  /** минус — перерасход (излишек закупки) */
+  amount: number | null;
+  pct: number | null;
+  status: EconStatus;
+  /** разбор по этому отклонению (активный или заведённый за этот месяц) */
+  recordId: number | null;
+}
+export interface EconStockRow {
+  budgetId: number;
+  purchased: number;
+  /** потребность на выполненный объём: лимит материалов × готовность */
+  need: number | null;
+  /** списано в производство (факт статьи «Материалы») */
+  consumed: number;
+  surplus: number | null;
+  ratio: number | null;
+  status: EconStatus;
+}
+export interface EconDeviationRecord {
+  id: number;
+  budgetId: number;
+  articleId: number;
+  kind: EconDeviationKind;
+  month: string;
+  plan: number | null;
+  fact: number | null;
+  amount: number | null;
+  pct: number | null;
+  cause: string;
+  causeText: string | null;
+  decision: string;
+  decisionText: string | null;
+  responsible: { id: number; fullName: string } | null;
+  dueDate: string | null;
+  status: EconDeviationStatus;
+  result: string | null;
+  version: number;
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+  closedAt: string | null;
+  overdue: boolean;
+}
+export interface EconDeviationsView {
+  month: string;
+  items: EconDeviationItem[];
+  stock: EconStockRow[];
+  records: EconDeviationRecord[];
+  /** кого можно назначить ответственным: направление → сотрудники с доступом к разделу */
+  candidates: Record<string, { id: number; fullName: string }[]>;
+  canEdit: boolean;
+  userId: number;
 }

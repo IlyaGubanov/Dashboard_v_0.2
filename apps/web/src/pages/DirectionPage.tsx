@@ -56,8 +56,11 @@ function ConstructionDirectionPage() {
 
   const set = (patch: Partial<DirectionSearch>) => navigate({ search: (s: DirectionSearch) => ({ ...s, ...patch }) });
   const openSite = (id: number, workItemId?: number) => set({ site: id, work: workItemId });
-  // «Причины и ответственные» — один переключатель на матрицу и карточку объекта; по умолчанию выключен
-  const [showReasons, setShowReasons] = useState(false);
+  // «Причины и ответственные» — один переключатель на матрицу и карточку объекта; по умолчанию выключен.
+  // Запоминаем направление: страница при смене направления не пересоздаётся, а в другом направлении переключатель снова выключен
+  const [reasonsCode, setReasonsCode] = useState<string | null>(null);
+  const showReasons = reasonsCode === code;
+  const setShowReasons = (v: boolean) => setReasonsCode(v ? code : null);
 
   const available: Record<DirectionTab, boolean> = {
     overview: true,

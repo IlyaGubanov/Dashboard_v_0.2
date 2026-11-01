@@ -153,7 +153,13 @@ test('карточка, ввод, матрица и оба режима граф
   await expect(page.locator('.delay-reason-preview')).toHaveCount(0);
   await page.getByRole('switch', { name: 'Причины и ответственные' }).check();
   await expect(page.locator('.delay-reason-preview').first()).toContainText(names[0]);
-  await page.getByRole('switch', { name: 'Причины и ответственные' }).uncheck();
+  // в другом направлении переключатель снова выключен
+  await page.getByRole('link', { name: /^Школы/ }).click();
+  await expect(page).toHaveURL(/\/d\/schools/);
+  await page.getByRole('tab', { name: 'Матрица', exact: true }).click();
+  await expect(page.getByRole('switch', { name: 'Причины и ответственные' })).not.toBeChecked();
+  await page.goto('/d/mkd?tab=matrix');
+  await expect(page.locator('.matrix-status-cell').first()).toBeVisible();
   // ячейка ведёт к своей работе: строка выделена и видна в карточке, поле причины показано и при выключенном переключателе
   await page.locator('.matrix-status-cell[data-risk="crit"]').last().click();
   await expect(page).toHaveURL(/work=/);

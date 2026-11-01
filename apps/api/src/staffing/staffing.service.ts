@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, type StaffingPeriod as PeriodRecord, type StaffingPayroll as PayrollRecord, type StaffingMovementDay as MovementRecord } from '@prisma/client';
-import { staffingMovementDaySchema, staffingPeriodSchema, staffingPayrollSchema, type StaffingMovementDay, type StaffingMovementDayData, type StaffingPeriod, type StaffingPeriodData, type StaffingPayroll, type StaffingPayrollData, type StaffingView, type StaffingEditors } from '@mvs/shared';
+import { staffingChangeSummary, staffingLinkPositions, staffingMovementDaySchema, staffingPeriodSchema, staffingPayrollSchema, staffingRenameGroup, staffingRenameGroupInDay, type StaffingGroupRename, type StaffingMovementDay, type StaffingMovementDayData, type StaffingPeriod, type StaffingPeriodData, type StaffingPayroll, type StaffingPayrollData, type StaffingView, type StaffingEditors } from '@mvs/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { AccessService } from '../auth/access.service';
@@ -8,7 +8,8 @@ import type { AuthUser } from '../common/request';
 import source from './source.json';
 
 const json = (data: unknown) => JSON.parse(JSON.stringify(data)) as Prisma.InputJsonValue;
-const period = (r: PeriodRecord): StaffingPeriod => ({ ...staffingPeriodSchema.parse(r.data), version: r.version, isArchived: r.isArchived, updatedAt: r.updatedAt.toISOString() });
+/** Срез из базы: должности всегда связаны с подразделениями, в том числе загруженные до появления связи. */
+const period = (r: PeriodRecord): StaffingPeriod => ({ ...staffingLinkPositions(staffingPeriodSchema.parse(r.data)), version: r.version, isArchived: r.isArchived, updatedAt: r.updatedAt.toISOString() });
 const payroll = (r: PayrollRecord): StaffingPayroll => ({ ...staffingPayrollSchema.parse(r.data), version: r.version, updatedAt: r.updatedAt.toISOString() });
 const movement = (r: MovementRecord): StaffingMovementDay => ({ ...staffingMovementDaySchema.parse(r.data), version: r.version, updatedAt: r.updatedAt.toISOString() });
 const unique = (e: unknown): never => { if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') throw new ConflictException('Такой период уже существует. Откройте его для редактирования.'); throw e; };
@@ -27,8 +28,9 @@ export class StaffingService {
     return { periods: periods.map(period), payroll: years.map(payroll), movements: days.map(movement), permissions, canExport: this.access.has(user, 'export'), canAudit: this.access.has(user, 'audit'), canFinance: this.access.has(user, 'finance') };
   }
 
-  async create(user: AuthUser, data: StaffingPeriodData, ip: string | null) {
+  async create(user: AuthUser, input: StaffingPeriodData, ip: string | null) {
     await this.access.assertStaffing(user, true);
+    const data = staffingLinkPositions(input);
     try {
       return await this.prisma.$transaction(async tx => {
         const r = await tx.staffingPeriod.create({ data: { month: data.month, data: json(data) } });
@@ -41,15 +43,45 @@ export class StaffingService {
   async save(user: AuthUser, month: string, input: { version: number; data: StaffingPeriodData; isArchived?: boolean }, ip: string | null) {
     await this.access.assertStaffing(user, true);
     if (month !== input.data.month) throw new BadRequestException('Месяц существующего среза изменить нельзя');
+    const data = staffingLinkPositions(input.data);
     return this.prisma.$transaction(async tx => {
       const before = await tx.staffingPeriod.findUnique({ where: { month } });
       if (!before) throw new NotFoundException('Срез не найден');
-      const changed = await tx.staffingPeriod.updateMany({ where: { month, version: input.version }, data: { data: json(input.data), isArchived: input.isArchived, version: { increment: 1 } } });
+      const changed = await tx.staffingPeriod.updateMany({ where: { month, version: input.version }, data: { data: json(data), isArchived: input.isArchived, version: { increment: 1 } } });
       if (!changed.count) throw new ConflictException('Данные изменил другой пользователь. Обновите раздел и повторите правку.');
       const after = await tx.staffingPeriod.findUniqueOrThrow({ where: { month } });
-      await this.audit.write({ userId: user.id, action: 'UPDATE', entity: 'staffing_period', entityId: month, before: period(before), after: period(after), comment: input.isArchived === true ? 'Срез в архиве' : input.isArchived === false ? 'Срез восстановлен' : 'Редактирование среза', ip }, tx);
+      const comment = input.isArchived === true ? 'Срез в архиве' : input.isArchived === false ? 'Срез восстановлен' : staffingChangeSummary(period(before), period(after)) || 'Сохранено без изменений';
+      await this.audit.write({ userId: user.id, action: 'UPDATE', entity: 'staffing_period', entityId: month, before: period(before), after: period(after), comment, ip }, tx);
       return period(after);
     });
+  }
+
+  /** Переименование или объединение групп: в одном срезе либо во всех срезах и днях приёма/увольнения. Всё или ничего: при чужой правке — 409. */
+  async renameGroup(user: AuthUser, input: StaffingGroupRename, ip: string | null) {
+    await this.access.assertStaffing(user, true);
+    const { from, to, month } = input;
+    const comment = `Группа «${from}» → «${to}»`;
+    return this.prisma.$transaction(async tx => {
+      const conflict = () => new ConflictException('Данные изменил другой пользователь. Обновите раздел и повторите.');
+      let periods = 0, days = 0;
+      for (const r of await tx.staffingPeriod.findMany({ where: month ? { month } : {} })) {
+        const before = period(r);
+        const next = staffingRenameGroup(staffingPeriodSchema.parse(r.data), from, to);
+        if (!next) continue;
+        if (!(await tx.staffingPeriod.updateMany({ where: { month: r.month, version: r.version }, data: { data: json(next), version: { increment: 1 } } })).count) throw conflict();
+        await this.audit.write({ userId: user.id, action: 'UPDATE', entity: 'staffing_period', entityId: r.month, before, after: next, comment, ip }, tx);
+        periods++;
+      }
+      if (!month) for (const r of await tx.staffingMovementDay.findMany()) {
+        const next = staffingRenameGroupInDay(staffingMovementDaySchema.parse(r.data), from, to);
+        if (!next) continue;
+        if (!(await tx.staffingMovementDay.updateMany({ where: { date: r.date, version: r.version }, data: { data: json(next), version: { increment: 1 } } })).count) throw conflict();
+        await this.audit.write({ userId: user.id, action: 'UPDATE', entity: 'staffing_movement', entityId: r.date, before: movement(r), after: next, comment, ip }, tx);
+        days++;
+      }
+      if (!periods && !days) throw new NotFoundException(`Группа «${from}» не найдена`);
+      return { periods, days };
+    }, { timeout: 60_000 });
   }
 
   async createPayroll(user: AuthUser, data: StaffingPayrollData, ip: string | null) {
@@ -167,7 +199,7 @@ export class StaffingService {
     await this.access.assertStaffing(user);
     this.access.assertFeature(user, 'audit');
     const entities = ['staffing_period', 'staffing_movement', ...(this.access.has(user, 'finance') ? ['staffing_payroll'] : []), ...(user.globalRole === 'ADMIN' ? ['staffing_editors'] : [])];
-    const rows = await this.prisma.auditLog.findMany({ where: { entity: { in: entities } }, take: 100, orderBy: { id: 'desc' }, include: { user: { select: { fullName: true } } } });
+    const rows = await this.prisma.auditLog.findMany({ where: { entity: { in: entities } }, take: 300, orderBy: { id: 'desc' }, include: { user: { select: { fullName: true } } } });
     return rows.map(r => ({ id: String(r.id), at: r.at.toISOString(), user: r.user?.fullName ?? 'Система', action: r.action, entityId: r.entityId, comment: r.comment }));
   }
 }

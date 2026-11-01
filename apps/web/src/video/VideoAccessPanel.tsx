@@ -23,13 +23,13 @@ function GrantForm({ userId, initial, sites, isAdmin }: { userId: number; initia
     {!!removedArchived && <Alert color="gray">Назначения на архивные объекты: {removedArchived}. При сохранении они будут сняты.</Alert>}
     <Text size="sm" c="dimmed">Просмотр и управление выдаются отдельно по каждому объекту. Для просмотра нужна роль в направлении; управление доступно руководству и кураторам. Область ввода производственных данных сюда не переносится.</Text>
     <TextInput label="Поиск объекта" value={q} onChange={e => setQ(e.currentTarget.value)} />
-    <ScrollArea mah={350}><Table miw={430}><Table.Thead><Table.Tr><Table.Th>Объект</Table.Th><Table.Th>Просмотр</Table.Th><Table.Th>Управление</Table.Th></Table.Tr></Table.Thead><Table.Tbody>
+    <ScrollArea.Autosize mah={350} type="auto"><Table miw={430}><Table.Thead><Table.Tr><Table.Th>Объект</Table.Th><Table.Th>Просмотр</Table.Th><Table.Th>Управление</Table.Th></Table.Tr></Table.Thead><Table.Tbody>
       {sites.filter(s => s.name.toLowerCase().includes(q.toLowerCase())).map(s => {
         const grant = grants.find(g => g.siteId === s.id);
         return <Table.Tr key={s.id}><Table.Td>{s.name}</Table.Td><Table.Td><Checkbox aria-label={'Просмотр: ' + s.name} checked={!!grant} onChange={e => { setSaved(false); setGrants(e.currentTarget.checked ? [...grants, { siteId: s.id, manage: false }] : grants.filter(g => g.siteId !== s.id)); }} /></Table.Td>
           <Table.Td><Checkbox aria-label={'Управление: ' + s.name} checked={grant?.manage ?? false} disabled={!grant} onChange={e => { setSaved(false); setGrants(grants.map(g => g.siteId === s.id ? { ...g, manage: e.currentTarget.checked } : g)); }} /></Table.Td></Table.Tr>;
       })}
-    </Table.Tbody></Table></ScrollArea>
+    </Table.Tbody></Table></ScrollArea.Autosize>
     {save.error && <Alert color="red">{save.error.message}</Alert>}{saved && <Text size="sm">Доступ сохранён</Text>}
     <Group justify="flex-end"><Button loading={save.isPending} onClick={() => save.mutate()}>Сохранить доступ к камерам</Button></Group>
   </Stack>;

@@ -172,7 +172,7 @@ export function UsersImport({ opened, onClose }: { opened: boolean; onClose: () 
             {!done && result.errors > 0 && (
               <Alert color="red">Строки с ошибками будут пропущены. Можно исправить их в Excel и вставить заново, а можно загрузить остальные.</Alert>
             )}
-            <Table.ScrollContainer minWidth={900} mah={460}>
+            <Table.ScrollContainer minWidth={900} maxHeight={460} scrollAreaProps={{ type: 'auto' }}>
               <Table striped verticalSpacing={4} stickyHeader>
                 <Table.Thead>
                   <Table.Tr>

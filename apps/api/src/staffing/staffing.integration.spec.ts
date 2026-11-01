@@ -18,6 +18,7 @@ describe.skipIf(!db)('сохранение штатной численности
   afterAll(async () => {
     if (actor) {
       await db!.staffingPeriod.deleteMany({ where: { month } });
+      await db!.staffingMovementDay.deleteMany({ where: { date: `${month}-02` } });
       await db!.staffingPayroll.deleteMany({ where: { year: 2098 } });
       await db!.auditLog.deleteMany({ where: { userId: actor.id } });
       await db!.user.delete({ where: { id: actor.id } });
@@ -40,6 +41,29 @@ describe.skipIf(!db)('сохранение штатной численности
     expect(p.isArchived).toBe(true);
     const restored = await service.save(actor, month, { version: 3, data, isArchived: false }, null);
     expect(restored.isArchived).toBe(false);
+  });
+  it('хранит должности подразделения, пишет в журнал что изменилось и переименовывает группу со связями', async () => {
+    const current = (await service.view(actor)).periods.find(p => p.month === month)!;
+    const position = { id: 'pos', group: 'любая', rowId: 'test', title: 'Маляр', planned: 5, actual: 4, isArchived: false };
+    const saved = await service.save(actor, month, { version: current.version, data: { ...data, positions: [position] } }, null);
+    expect(saved.positions![0]).toMatchObject({ group: 'АУП', rowId: 'test' });
+    const journal = await service.journal(actor);
+    expect(journal.find(r => r.entityId === month)!.comment).toContain('должности: добавлено 1');
+    await expect(service.renameGroup({ ...actor, globalRole: 'MANAGEMENT' }, { from: 'АУП', to: 'Икс', month }, null)).rejects.toMatchObject({ status: 403 });
+    await expect(service.renameGroup(actor, { from: 'Нет такой группы', to: 'Икс', month }, null)).rejects.toMatchObject({ status: 404 });
+    expect(await service.renameGroup(actor, { from: 'АУП', to: 'Проверочная группа', month }, null)).toEqual({ periods: 1, days: 0 });
+    const renamed = (await service.view(actor)).periods.find(p => p.month === month)!;
+    expect(renamed.version).toBe(saved.version + 1);
+    expect(renamed.rows[0].group).toBe('Проверочная группа');
+    expect(renamed.positions![0].group).toBe('Проверочная группа');
+    // без указания среза меняются и дни приёма/увольнения; объединяемые группы складываются
+    await service.saveMovementDay(actor, `${month}-02`, { data: { date: `${month}-02`, note: '', rows: [{ group: 'Проверочная группа', hired: 1, dismissed: 2 }, { group: 'Проверочная группа 2', hired: 3, dismissed: 4 }] } }, null);
+    expect(await service.renameGroup(actor, { from: 'Проверочная группа', to: 'Проверочная группа 2' }, null)).toEqual({ periods: 1, days: 1 });
+    const view = await service.view(actor);
+    expect(view.movements.find(d => d.date === `${month}-02`)!.rows).toEqual([{ group: 'Проверочная группа 2', hired: 4, dismissed: 6 }]);
+    const merged = view.periods.find(p => p.month === month)!;
+    expect(merged.rows[0].group).toBe('Проверочная группа 2');
+    await service.save(actor, month, { version: merged.version, data }, null);
   });
   it('проверяет доступ на сервере и исключает ФОТ при отключённых финансах', async () => {
     await expect(service.view({ ...actor, globalRole: 'USER' })).rejects.toMatchObject({ status: 403 });

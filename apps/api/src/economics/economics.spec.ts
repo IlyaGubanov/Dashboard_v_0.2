@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { econCashBalance, econCashSaveSchema, econCashScope, econYearMonths, econDefaultMonth, econDeviation, econDistribute, econMonthEnd, econNzp, econRevenue, econForecast, econIsOwnOrg, econLimitValue, econNet, econParseNumber, econPlanCost, econScopeKey, econStatus, econBudgetSaveSchema, econMonthSaveSchema } from '@mvs/shared';
+import { econCashBalance, econCashSaveSchema, econStockStatus, econDeviationCreateSchema, econDeviationUpdateSchema, econCashScope, econYearMonths, econDefaultMonth, econDeviation, econDistribute, econMonthEnd, econNzp, econRevenue, econForecast, econIsOwnOrg, econLimitValue, econNet, econParseNumber, econPlanCost, econScopeKey, econStatus, econBudgetSaveSchema, econMonthSaveSchema } from '@mvs/shared';
 import { econCoveredSites } from './coverage';
 
 describe('экономика: расчёты', () => {
@@ -168,5 +168,30 @@ describe('экономика: движение денег', () => {
     expect(econCashSaveSchema.safeParse({ version: 0, entries: [e, e] }).success).toBe(false);
     expect(econCashSaveSchema.safeParse({ version: 0, entries: [{ ...e, plan: -1 }] }).success).toBe(false);
     expect(econCashSaveSchema.safeParse({ version: 0, opening: -50, entries: [] }).success).toBe(true);
+  });
+});
+
+describe('экономика: разбор отклонений', () => {
+  it('закупка материалов к потребности: до 1,2 норма, до 1,5 внимание, выше — деньги на складе', () => {
+    expect(econStockStatus(1.1)).toBe('good');
+    expect(econStockStatus(1.4)).toBe('warning');
+    expect(econStockStatus(1.95)).toBe('critical');
+    expect(econStockStatus(null)).toBe('none');
+  });
+
+  it('разбор: причина, решение, ответственный и срок обязательны; «Другое» — с пояснением', () => {
+    const base = { budgetId: 1, articleId: 2, kind: 'OVERRUN', month: '2026-10', cause: 'price', decision: 'supplier', responsibleId: 5, dueDate: '2026-11-20' };
+    expect(econDeviationCreateSchema.safeParse(base).success).toBe(true);
+    expect(econDeviationCreateSchema.safeParse({ ...base, responsibleId: undefined }).success).toBe(false);
+    const other = econDeviationCreateSchema.safeParse({ ...base, cause: 'other' });
+    expect(other.success).toBe(false);
+    expect(other.error?.issues[0].path).toEqual(['causeText']);
+    expect(econDeviationCreateSchema.safeParse({ ...base, cause: 'other', causeText: 'сбой поставок' }).success).toBe(true);
+  });
+
+  it('«Решено» и «Снято» требуют итог', () => {
+    expect(econDeviationUpdateSchema.safeParse({ version: 1, status: 'RESOLVED' }).success).toBe(false);
+    expect(econDeviationUpdateSchema.safeParse({ version: 1, status: 'RESOLVED', result: 'подписано доп. соглашение' }).success).toBe(true);
+    expect(econDeviationUpdateSchema.safeParse({ version: 1, status: 'IN_WORK' }).success).toBe(true);
   });
 });

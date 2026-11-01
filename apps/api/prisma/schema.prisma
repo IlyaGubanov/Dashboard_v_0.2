@@ -174,6 +174,7 @@ model User {
   staffingEditor StaffingEditor?
   remarksResponsible Remark[] @relation("RemarkResponsible")
   econEditor EconEditor?
+  econDeviationsResponsible EconDeviation[] @relation("EconDeviationResponsible")
 
   @@index([fullName])
   @@map("user")
@@ -1655,6 +1656,7 @@ model EconArticle {
   limits       EconLimit[]
   facts        EconFact[]
   companyFacts EconCompanyFact[]
+  deviations   EconDeviation[]
 
   @@map("econ_article")
 }
@@ -1684,6 +1686,7 @@ model EconBudget {
   site      Site?             @relation(fields: [siteId], references: [id], onDelete: Restrict)
   limits    EconLimit[]
   months    EconBudgetMonth[]
+  deviations EconDeviation[]
 
   @@unique([directionId, scopeKey])
   @@map("econ_budget")
@@ -1747,6 +1750,8 @@ model EconBudgetMonth {
   /// поправка ПЭО: НЗП на конец месяца без НДС вместо расчётного (стоимость × готовность − КС-2)
   nzpOverride  Decimal? @map("nzp_override") @db.Decimal(18, 2)
   nzpNote      String?  @map("nzp_note") @db.VarChar(500)
+  /// закуплено материалов за месяц без НДС (поступление ТМЦ) — сравнивается с потребностью на выполненный объём
+  materialsPurchased Decimal? @map("materials_purchased") @db.Decimal(18, 2)
   note         String?  @db.VarChar(2000)
   version      Int      @default(1)
   updatedById  Int?     @map("updated_by_id")
@@ -1837,4 +1842,55 @@ model EconCashEntry {
   @@id([sheetId, month, articleId])
   @@index([articleId])
   @@map("econ_cash_entry")
+}
+
+// ── Экономика, этап 4: разбор отклонений (часть 4 таблицы ПЭО «Выводы и анализ отклонений») ──
+
+enum EconDeviationKind {
+  OVERRUN // перерасход статьи к плану на выполненный объём
+  STOCK // закуплено материалов больше потребности на выполненный объём
+}
+
+enum EconDeviationStatus {
+  OPEN // заведён, ждёт исполнения решения
+  IN_WORK // ответственный приступил
+  RESOLVED // решение выполнено
+  DISMISSED // снято (отклонение не подтвердилось)
+}
+
+/// Разбор отклонения: причина, решение, ответственный и срок. Активный (OPEN, IN_WORK) — не больше одного на центр затрат и статью.
+model EconDeviation {
+  id            Int                 @id @default(autoincrement())
+  budgetId      Int                 @map("budget_id")
+  articleId     Int                 @map("article_id")
+  kind          EconDeviationKind
+  /// месяц, на который выявлено (нарастающим итогом)
+  month         String              @db.Char(7)
+  plan          Decimal?            @db.Decimal(18, 2)
+  fact          Decimal?            @db.Decimal(18, 2)
+  /// отклонение: минус — перерасход (для закупок — излишек со знаком минус)
+  amount        Decimal?            @db.Decimal(18, 2)
+  pct           Decimal?            @db.Decimal(9, 4)
+  cause         String              @db.VarChar(40)
+  causeText     String?             @map("cause_text") @db.VarChar(2000)
+  decision      String              @db.VarChar(40)
+  decisionText  String?             @map("decision_text") @db.VarChar(2000)
+  responsibleId Int?                @map("responsible_id")
+  dueDate       DateTime?           @map("due_date") @db.Date
+  status        EconDeviationStatus @default(OPEN)
+  result        String?             @db.VarChar(2000)
+  version       Int                 @default(1)
+  createdById   Int?                @map("created_by_id")
+  createdAt     DateTime            @default(now()) @map("created_at")
+  updatedById   Int?                @map("updated_by_id")
+  updatedAt     DateTime            @updatedAt @map("updated_at")
+  closedAt      DateTime?           @map("closed_at")
+
+  budget      EconBudget  @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  article     EconArticle @relation(fields: [articleId], references: [id], onDelete: Restrict)
+  responsible User?       @relation("EconDeviationResponsible", fields: [responsibleId], references: [id], onDelete: SetNull)
+
+  @@index([budgetId, articleId, status])
+  @@index([responsibleId, status])
+  @@map("econ_deviation")
 }

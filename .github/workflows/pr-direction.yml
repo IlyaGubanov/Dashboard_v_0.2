@@ -1,0 +1,23 @@
+name: PR direction
+
+on:
+  pull_request_target:
+    branches: [dev, main]
+    types: [opened, synchronize, reopened, edited, ready_for_review]
+
+permissions:
+  contents: read
+
+jobs:
+  direction:
+    name: PR direction
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Trusted BASE only. Never execute PR head code or install its dependencies here.
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+      - run: node .github/scripts/pr-policy.cjs

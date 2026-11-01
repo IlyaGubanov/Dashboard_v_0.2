@@ -177,14 +177,21 @@ export class DirectionsAdminService {
 
   async update(user: AuthUser, code: string, b: DirectionData, ip: string | null) {
     const d = await this.byCode(code);
-    const s = (d.settings ?? {}) as Settings;
-    await this.prisma.direction.update({
-      where: { id: d.id },
-      data: { ...this.columns(b), settings: { ...s, factLabel: b.factLabel ?? null } as Prisma.InputJsonValue },
-    });
+    await this.mergeSettings(d.id, { factLabel: b.factLabel ?? null }, this.columns(b));
     await this.log(user, d.id, 'direction', `настройки направления «${b.name}»`, d, b, ip);
     this.kpi.invalidate(d.id);
     return { ok: true };
+  }
+
+  /** Все редакторы общего JSON читают актуальные настройки под одной блокировкой. */
+  private async mergeSettings(directionId: number, patch: Record<string, unknown>, columns: Prisma.DirectionUpdateInput = {}): Promise<Settings> {
+    return this.prisma.$transaction(async tx => {
+      await tx.$queryRaw`SELECT id FROM direction WHERE id = ${directionId} FOR UPDATE`;
+      const live = await tx.direction.findUniqueOrThrow({ where: { id: directionId } });
+      const before = (live.settings ?? {}) as Settings;
+      await tx.direction.update({ where: { id: directionId }, data: { ...columns, settings: { ...before, ...patch } as Prisma.InputJsonValue } });
+      return before;
+    });
   }
 
   /** Статусы: правка по коду; удалить можно только неиспользуемый. */
@@ -308,8 +315,7 @@ export class DirectionsAdminService {
       }
     });
     if (Object.keys(errors).length) throw new BadRequestException({ message: 'Проверьте параметры показателей', fields: errors });
-    const s = (d.settings ?? {}) as Settings;
-    await this.prisma.direction.update({ where: { id: d.id }, data: { settings: { ...s, kpis: items } as Prisma.InputJsonValue } });
+    const s = await this.mergeSettings(d.id, { kpis: items });
     await this.log(user, d.id, 'direction', 'показатели сводки', s.kpis, items, ip);
     this.kpi.invalidate(d.id);
     return { ok: true };
@@ -317,8 +323,7 @@ export class DirectionsAdminService {
 
   async saveTiles(user: AuthUser, code: string, tiles: OverviewTileConfig[], ip: string | null) {
     const d = await this.byCode(code);
-    const s = (d.settings ?? {}) as Settings;
-    await this.prisma.direction.update({ where: { id: d.id }, data: { settings: { ...s, overviewTiles: tiles } as unknown as Prisma.InputJsonValue } });
+    const s = await this.mergeSettings(d.id, { overviewTiles: tiles });
     await this.log(user, d.id, 'direction', 'плитки обзора', s.overviewTiles, tiles, ip);
     return { ok: true };
   }

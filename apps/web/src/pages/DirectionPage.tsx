@@ -18,6 +18,7 @@ import { SettingsTab } from './direction/SettingsTab';
 import { SiteDrawer } from './direction/SiteDrawer';
 import { EntryTab } from './direction/EntryTab';
 import { ReportEntry } from './direction/ReportEntry';
+import { DelayReasonsTab } from './direction/DelayReasonsTab';
 import { JournalTab } from './direction/JournalTab';
 import { ManageTab } from './direction/ManageTab';
 import { RemarksTab } from './direction/RemarksTab';
@@ -42,7 +43,7 @@ function ConstructionDirectionPage() {
   const { data: periods = [] } = useQuery(directionQueries.periods(code));
   const { data: kpi } = useQuery(directionQueries.kpi(code, search.date));
   const { data: me } = useQuery(meQuery);
-  const see = (t: DirectionTab) => t === 'overview' || t === 'entry' || t === 'manage' || (t === 'journal' ? hasFeature(me, 'audit') : canSee(me, t));
+  const see = (t: DirectionTab) => t === 'overview' || t === 'entry' || t === 'manage' || (t === 'journal' ? hasFeature(me, 'audit') : canSee(me, t === 'reasons' ? 'sites' : t));
   const { data: trackers } = useQuery({ ...directionQueries.trackers(code), enabled: !!me && see('trackers') });
   const { data: remarks } = useQuery({ ...directionQueries.remarks(code), enabled: !!me && see('remarks') });
   const activeRemarks = remarks?.rows.filter((r) => r.status === 'OPEN' || r.status === 'IN_PROGRESS').length ?? 0;
@@ -64,6 +65,7 @@ function ConstructionDirectionPage() {
     people: true,
     dynamics: true,
     entry: canEnter,
+    reasons: true,
     remarks: true,
     manage: canManage,
     journal: true,
@@ -115,7 +117,7 @@ function ConstructionDirectionPage() {
       <Select hiddenFrom="sm" label="Раздел направления" value={tab} allowDeselect={false}
         onChange={(v) => set({ tab: (v as DirectionTab) ?? 'overview' })}
         data={([
-          ['entry', 'Ввод данных'], ['overview', 'Обзор'], ['sites', 'Объекты'], ['matrix', 'Матрица'],
+          ['entry', 'Ввод данных'], ['overview', 'Обзор'], ['sites', 'Объекты'], ['matrix', 'Матрица'], ['reasons', 'Причины отставания'],
           ['schedule', 'График работ'], ['trackers', 'Надстройки'], ['dynamics', 'Динамика'],
           ['remarks', `Замечания${activeRemarks ? ` · ${activeRemarks}` : ''}`], ['people', 'Ответственные'],
           ['manage', 'Управление'], ['journal', 'Журнал'], ['settings', 'Устройство'],
@@ -130,6 +132,7 @@ function ConstructionDirectionPage() {
           )}
           <Tabs.Tab value="overview">Обзор</Tabs.Tab>
           {available.sites && <Tabs.Tab value="sites">Объекты</Tabs.Tab>}
+          {available.reasons && <Tabs.Tab value="reasons">Причины отставания</Tabs.Tab>}
           {available.matrix && <Tabs.Tab value="matrix">Матрица</Tabs.Tab>}
           {available.schedule && <Tabs.Tab value="schedule">График работ</Tabs.Tab>}
           {available.trackers && <Tabs.Tab value="trackers">Надстройки</Tabs.Tab>}
@@ -151,6 +154,7 @@ function ConstructionDirectionPage() {
         <Tabs.Panel value="journal" pt="md">
           <JournalTab code={code} />
         </Tabs.Panel>
+        <Tabs.Panel value="reasons" pt="md"><DelayReasonsTab key={`${code}-${search.date ?? ''}`} code={code} date={search.date} /></Tabs.Panel>
         <Tabs.Panel value="overview" pt="md">
           <OverviewTab code={code} date={search.date} onOpenSite={openSite} onShowSites={() => set({ tab: 'sites' })} />
         </Tabs.Panel>

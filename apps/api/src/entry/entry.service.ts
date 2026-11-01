@@ -8,7 +8,7 @@
  *   направление «только просмотр» (данные приходят отчётами) — ручного ввода нет.
  * Одновременная правка: клиент присылает версию, которую видел; если запись за это время изменили — 409, ничего не сохраняется.
  */
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { Prisma, type PeriodStatus } from '@prisma/client';
 import type { AuditPage, EntryReportValue, EntrySaveData, EntrySaveResult, EntrySheet, EntryValue } from '@mvs/shared';
 import { reportSummaryStoredSchema, type ReportSummarySave } from '@mvs/shared';
@@ -18,6 +18,8 @@ import { AccessService } from '../auth/access.service';
 import { KpiService } from '../kpi/kpi.service';
 import { sheetNoFinance } from '../kpi/finance';
 import type { AuthUser } from '../common/request';
+import { DelayReasonsService } from './delay-reasons.service';
+import { reportProgramScope } from './program-scope';
 
 const num = (v: Prisma.Decimal | number | null | undefined) => (v == null ? null : Number(v));
 const day = (d: Date | null | undefined) => (d ? d.toISOString().slice(0, 10) : null);
@@ -56,6 +58,7 @@ export class EntryService {
     private readonly audit: AuditService,
     private readonly access: AccessService,
     private readonly kpi: KpiService,
+    @Optional() private readonly delayReasons?: DelayReasonsService,
   ) {}
 
   private async direction(user: AuthUser, code: string) {
@@ -72,7 +75,7 @@ export class EntryService {
   }
 
   private programScope(program: string, periodId: number): Prisma.SiteWhereInput {
-    return { OR: [{ section: { code: program } }, { reports: { some: { periodId } } }, { workItems: { some: { progress: { some: { periodId } } } } }, { sectionId: null, reports: { some: { period: { program } } } }] };
+    return reportProgramScope(program, periodId);
   }
 
   /** Может ли роль править данные при этом статусе точки. */
@@ -458,6 +461,13 @@ export class EntryService {
     if (!ok) throw new ForbiddenException(status === 'LOCKED' || p.status === 'LOCKED' ? 'Блокировка — только у администратора' : 'Нужны права куратора направления');
     if (p.status === status) return { id: p.id, status };
     await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM reporting_period WHERE id = ${p.id} FOR UPDATE`;
+      const live = await tx.reportingPeriod.findUniqueOrThrow({ where: { id: p.id } });
+      if (live.status === 'LOCKED' && role !== 'ADMIN') throw new ForbiddenException('Точка заблокирована — изменения только у администратора');
+      if (status !== 'OPEN' && this.delayReasons) {
+        const missing = (await this.delayReasons.sheet(user, code, { periodId })).rows.filter(r => r.required && !r.text.trim());
+        if (missing.length) throw new BadRequestException(`Заполните причины отставания: ${missing.slice(0, 5).map(r => `${r.siteName} · ${r.name}`).join('; ')}${missing.length > 5 ? ` и ещё ${missing.length - 5}` : ''}`);
+      }
       await tx.reportingPeriod.update({
         where: { id: p.id },
         data: status === 'OPEN' ? { status, closedById: null, closedAt: null } : { status, closedById: user.id, closedAt: new Date() },

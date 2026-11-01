@@ -2,3 +2,4 @@
 Он является единственным источником общих правил Git для всего репозитория.
 Технический контекст и команды: [CLAUDE.md](../CLAUDE.md).
 Практический процесс: [docs/GIT_WORKFLOW.md](../docs/GIT_WORKFLOW.md).
+Стартовые промпты: [docs/AI_PROMPTS.md](../docs/AI_PROMPTS.md).

@@ -43,6 +43,7 @@ import {
 import { api, ApiError } from '../../api';
 import { DirectionIcon } from '../../ui/DirectionIcon';
 import { DirectionForm } from './DirectionForm';
+import { DelayReasonSettings } from './DelayReasonSettings';
 
 const route = getRouteApi('/app/admin/directions/$code');
 type Opt = { value: string; label: string; color?: string; done?: boolean };
@@ -120,6 +121,7 @@ export function DirectionEditorPage() {
       <Tabs defaultValue="main" keepMounted={false}>
         <Tabs.List>
           <Tabs.Tab value="main">Основное</Tabs.Tab>
+          <Tabs.Tab value="delay-reasons">Причины отставания</Tabs.Tab>
           <Tabs.Tab value="statuses">Статусы · {d.statuses.length}</Tabs.Tab>
           <Tabs.Tab value="fields">Доп. поля · {d.fields.filter((f) => !f.isArchived).length}</Tabs.Tab>
           <Tabs.Tab value="trackers">Надстройки · {d.trackers.length}</Tabs.Tab>
@@ -129,6 +131,7 @@ export function DirectionEditorPage() {
         <Tabs.Panel value="main" pt="md">
           <Main d={d} />
         </Tabs.Panel>
+        <Tabs.Panel value="delay-reasons" pt="md"><DelayReasonSettings code={code} /></Tabs.Panel>
         <Tabs.Panel value="statuses" pt="md">
           <Statuses d={d} />
         </Tabs.Panel>

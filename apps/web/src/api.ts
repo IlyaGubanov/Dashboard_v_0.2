@@ -27,6 +27,7 @@ import type {
   EconMonthView,
   EconOverview,
   EconCashView,
+  EconDeviationsView,
   StaffingView,
   WorkGrid,
 } from '@mvs/shared';
@@ -85,6 +86,7 @@ export const economicsQuery = queryOptions({ queryKey: ['economics', 'setup'], q
 export const economicsMonthQuery = (month: string) => queryOptions({ queryKey: ['economics', 'month', month], queryFn: () => api<EconMonthView>(`/economics/months/${month}`), staleTime: 15_000 });
 export const economicsOverviewQuery = (month: string, dir?: number) => queryOptions({ queryKey: ['economics', 'overview', month, dir ?? 0], queryFn: () => api<EconOverview>(`/economics/overview/${month}${dir ? `?dir=${dir}` : ''}`), staleTime: 15_000 });
 export const economicsCashQuery = (year: number) => queryOptions({ queryKey: ['economics', 'cash', year], queryFn: () => api<EconCashView>(`/economics/cash/${year}`), staleTime: 15_000 });
+export const economicsDeviationsQuery = (month: string) => queryOptions({ queryKey: ['economics', 'deviations', month], queryFn: () => api<EconDeviationsView>(`/economics/deviations/${month}`), staleTime: 15_000 });
 export const staffingQuery = queryOptions({ queryKey: ['staffing', 'data'], queryFn: () => api<StaffingView>('/staffing'), staleTime: 30_000 });
 
 /** Производственная сводка; обновляется сама раз в 5 минут, пока страница открыта. */

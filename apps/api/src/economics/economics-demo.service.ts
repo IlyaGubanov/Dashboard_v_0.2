@@ -7,6 +7,7 @@ import { AccessService } from '../auth/access.service';
 import { KpiService } from '../kpi/kpi.service';
 import type { AuthUser } from '../common/request';
 import { econCoveredSites } from './coverage';
+import { EconomicsDeviationsService } from './economics-deviations.service';
 
 /** Что создано демо-загрузкой — удаляется только это. */
 const DEMO_KEY = 'economics.demo';
@@ -54,6 +55,7 @@ export class EconomicsDemoService {
     private readonly audit: AuditService,
     private readonly access: AccessService,
     private readonly kpi: KpiService,
+    private readonly deviations: EconomicsDeviationsService,
   ) {}
 
   private async assertAdmin(user: AuthUser) {
@@ -112,7 +114,7 @@ export class EconomicsDemoService {
       sitesByDir.set(d, await this.prisma.site.findMany({ where: { directionId: d, isArchived: false }, select: { id: true, sectionId: true } }));
     const scopeOf = (p: Plan) => ({ scope: p.scope, sectionId: p.sectionId, siteId: p.siteId, isArchived: false });
 
-    return this.prisma.$transaction(
+    const result = await this.prisma.$transaction(
       async (tx) => {
         const budgetIds: number[] = [];
         const directTotals = new Map<string, number>();
@@ -191,6 +193,8 @@ export class EconomicsDemoService {
                 ...(p.code === 'schools' && k === 0 && mi === MONTHS.length - 1
                   ? { nzpOverride: new Prisma.Decimal(r2(costBase * progress * 0.15 * 0.6)), nzpNote: 'Часть выполненных работ не будет принята: замечания заказчика по фасаду' }
                   : {}),
+                // закупка материалов: обычно на 5–15% больше списанного; у второго центра МКД — почти вдвое (деньги на складе)
+                materialsPurchased: new Prisma.Decimal(r2(amounts[1].v * (p.code === 'mkd' && k === 1 ? 1.95 : 1.1 + 0.05 * jitter(b.id * 13 + mi)))),
                 updatedById: user.id,
               },
             });
@@ -230,10 +234,46 @@ export class EconomicsDemoService {
         const marker = { budgetIds, months, companyMonths, cashSheetIds };
         await tx.appSetting.upsert({ where: { key: DEMO_KEY }, create: { key: DEMO_KEY, value: marker }, update: { value: marker } });
         await this.audit.write({ userId: user.id, action: 'IMPORT', entity: 'econ_demo', entityId: 'demo', after: { budgets: budgetIds.length, months }, comment: `Загружены демо-данные экономики: центров затрат ${budgetIds.length}, месяцев ${months.length}`, ip }, tx);
-        return { budgets: budgetIds.length, months: months.length, skipped: plans.length - todo.length };
+        return { budgets: budgetIds.length, months: months.length, skipped: plans.length - todo.length, budgetIds };
       },
       { timeout: 120_000 },
     );
+    const deviations = await this.demoDeviations(user, result.budgetIds, ip);
+    return { budgets: result.budgets, months: result.months, skipped: result.skipped, deviations };
+  }
+
+  /**
+   * Разборы отклонений по демо-центрам затрат за последний демо-месяц: первые найденные — «в работе», «просрочено»,
+   * «решено» и закупка сверх потребности. Ответственный — куратор направления, иначе первый из допустимых.
+   * Удаляются вместе с центрами затрат.
+   */
+  private async demoDeviations(user: AuthUser, budgetIds: number[], ip: string | null) {
+    const month = MONTHS[MONTHS.length - 1];
+    const { items } = await this.deviations.detect(month, null);
+    const own = items.filter((x) => budgetIds.includes(x.budgetId) && x.recordId == null);
+    const plan = [
+      ...own.filter((x) => x.kind === 'STOCK').slice(0, 1).map((x) => ({ x, cause: 'stock', decision: 'stop_purchase', status: 'IN_WORK' as const, due: '2026-11-20', result: null })),
+      ...own.filter((x) => x.kind === 'OVERRUN' && x.status === 'critical').slice(0, 3).map((x, i) => ({
+        x,
+        cause: ['price', 'volume', 'productivity'][i],
+        decision: ['supplier', 'claim', 'compensate'][i],
+        status: (['OPEN', 'IN_WORK', 'RESOLVED'] as const)[i],
+        due: ['2026-10-20', '2026-11-30', '2026-10-25'][i],
+        result: i === 2 ? 'Перераспределён график бригад, простои устранены; перерасход компенсирован экономией по технике' : null,
+      })),
+    ];
+    let n = 0;
+    for (const p of plan) {
+      const b = await this.prisma.econBudget.findUniqueOrThrow({ where: { id: p.x.budgetId }, select: { directionId: true } });
+      const candidates = (await this.deviations.responsibleCandidates([b.directionId]))[String(b.directionId)] ?? [];
+      const curator = await this.prisma.directionMember.findFirst({ where: { directionId: b.directionId, role: 'CURATOR', userId: { in: candidates.map((c) => c.id) } }, select: { userId: true } });
+      const responsibleId = curator?.userId ?? candidates[0]?.id;
+      if (!responsibleId) continue;
+      const { id } = await this.deviations.create(user, { budgetId: p.x.budgetId, articleId: p.x.articleId, kind: p.x.kind, month, cause: p.cause as never, causeText: null, decision: p.decision as never, decisionText: null, responsibleId, dueDate: p.due }, ip);
+      if (p.status !== 'OPEN') await this.deviations.update(user, id, { version: 1, status: p.status, result: p.result }, ip);
+      n++;
+    }
+    return n;
   }
 
   /**

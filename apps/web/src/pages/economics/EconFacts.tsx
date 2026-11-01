@@ -24,10 +24,10 @@ import { articleShort } from './EconLimits';
 import { budgetCode, downloadCsv, errorText, monthChoices, numOrNull, qty, rub } from './format';
 import type { EconomicsSearch } from './search';
 
-interface RowDraft { laborHours: number | null; machineHours: number | null; ksAmount: number | null; nzpOverride: number | null; nzpNote: string | null; note: string | null; amounts: Record<string, number | null> }
+interface RowDraft { laborHours: number | null; machineHours: number | null; ksAmount: number | null; nzpOverride: number | null; nzpNote: string | null; materialsPurchased: number | null; note: string | null; amounts: Record<string, number | null> }
 const COMPANY_CODE = 'ОБЩИЕ';
 const statusColor: Record<EconMonthStatus, string> = { OPEN: 'blue', CLOSED: 'teal', LOCKED: 'gray' };
-const fromRow = (r?: EconFactRow): RowDraft => ({ laborHours: r?.laborHours ?? null, machineHours: r?.machineHours ?? null, ksAmount: r?.ksAmount ?? null, nzpOverride: r?.nzpOverride ?? null, nzpNote: r?.nzpNote ?? null, note: r?.note ?? null, amounts: { ...(r?.amounts ?? {}) } });
+const fromRow = (r?: EconFactRow): RowDraft => ({ laborHours: r?.laborHours ?? null, machineHours: r?.machineHours ?? null, ksAmount: r?.ksAmount ?? null, nzpOverride: r?.nzpOverride ?? null, nzpNote: r?.nzpNote ?? null, materialsPurchased: r?.materialsPurchased ?? null, note: r?.note ?? null, amounts: { ...(r?.amounts ?? {}) } });
 const sum = (list: (number | null | undefined)[]) => { const v = list.filter((x): x is number => x != null); return v.length ? v.reduce((a, x) => a + x, 0) : null; };
 const numberProps = { size: 'xs', min: 0, decimalScale: 2, thousandSeparator: ' ', decimalSeparator: ',', hideControls: true } as const;
 
@@ -149,10 +149,10 @@ function MonthSheet({ data, view }: { data: EconSetup; view: EconMonthView }) {
 
   function exportCsv() {
     downloadCsv(`Факт ${econMonthLabel(view.month)}.csv`, [
-      ['Код', 'Направление', 'Центр затрат', ...direct.map((a) => a.name), 'Трудочасы', 'Маш.-часы', 'КС-2', 'НЗП (поправка)', 'Причина поправки НЗП', 'Примечание'],
+      ['Код', 'Направление', 'Центр затрат', ...direct.map((a) => a.name), 'Трудочасы', 'Маш.-часы', 'КС-2', 'НЗП (поправка)', 'Причина поправки НЗП', 'Закуплено материалов', 'Примечание'],
       ...budgets.map((b) => {
         const r = rowOf(b.id);
-        return [budgetCode(b), data.directions.find((d) => d.id === b.directionId)?.name, b.title, ...direct.map((a) => r?.amounts[a.id] ?? null), r?.laborHours ?? null, r?.machineHours ?? null, r?.ksAmount ?? null, r?.nzpOverride ?? null, r?.nzpNote ?? '', r?.note ?? ''];
+        return [budgetCode(b), data.directions.find((d) => d.id === b.directionId)?.name, b.title, ...direct.map((a) => r?.amounts[a.id] ?? null), r?.laborHours ?? null, r?.machineHours ?? null, r?.ksAmount ?? null, r?.nzpOverride ?? null, r?.nzpNote ?? '', r?.materialsPurchased ?? null, r?.note ?? ''];
       }),
       [],
       ['Общие расходы компании', '', '', ...company.map((a) => `${a.name}: ${view.company[a.id] ?? ''}`)],
@@ -191,7 +191,7 @@ function MonthSheet({ data, view }: { data: EconSetup; view: EconMonthView }) {
         <Alert color="gray">Нет центров затрат. Добавьте их на вкладке «Лимиты».</Alert>
       ) : (
         <Paper withBorder radius="md">
-          <Table.ScrollContainer minWidth={300 + direct.length * 140 + 680}>
+          <Table.ScrollContainer minWidth={300 + direct.length * 140 + 830}>
             <Table verticalSpacing={4} fz="sm" stickyHeader className="econ-nowrap" style={{ fontVariantNumeric: 'tabular-nums' }}>
               <Table.Thead>
                 <Table.Tr>
@@ -201,6 +201,7 @@ function MonthSheet({ data, view }: { data: EconSetup; view: EconMonthView }) {
                   <Table.Th ta="right" miw={110}>Маш.-часы</Table.Th>
                   <Table.Th ta="right" miw={140}><Tooltip label="КС-2 за месяц без НДС. Вносите там, где в дашборде КС-2 не ведутся: если у центра затрат есть хоть одна сумма, выручка считается по внесённым КС-2." multiline w={300}><span>КС-2 за месяц, ₽</span></Tooltip></Table.Th>
                   <Table.Th ta="right" miw={160}><Tooltip label="НЗП на конец месяца = выполнено (стоимость × готовность) − КС-2. Поправка — если расчёт не отражает реальность (например, часть работ не будет принята); причина обязательна." multiline w={300}><span>НЗП: поправка, ₽</span></Tooltip></Table.Th>
+                  <Table.Th ta="right" miw={140}><Tooltip label="Поступление материалов (ТМЦ) за месяц без НДС. Сравнивается с потребностью на выполненный объём: закупка больше потребности в 1,5 раза — деньги заморожены на складе." multiline w={300}><span>Закуплено материалов, ₽</span></Tooltip></Table.Th>
                   <Table.Th miw={160}>Примечание</Table.Th>
                 </Table.Tr>
               </Table.Thead>
@@ -211,7 +212,7 @@ function MonthSheet({ data, view }: { data: EconSetup; view: EconMonthView }) {
                   return (
                     <Fragment key={d.id}>
                       <Table.Tr bg="var(--mantine-color-default-hover)">
-                        <Table.Td colSpan={direct.length + 6}><Text size="sm" fw={600}>{d.shortName}</Text></Table.Td>
+                        <Table.Td colSpan={direct.length + 7}><Text size="sm" fw={600}>{d.shortName}</Text></Table.Td>
                       </Table.Tr>
                       {list.map((b) => {
                         const v = current(b);
@@ -249,6 +250,7 @@ function MonthSheet({ data, view }: { data: EconSetup; view: EconMonthView }) {
                                 ? <TextInput size="xs" mt={4} placeholder="Причина поправки" value={v.nzpNote ?? ''} onChange={(e) => setRow(b.id, { nzpNote: e.currentTarget.value || null })} error={!v.nzpNote?.trim() ? 'Укажите причину' : undefined} aria-label={`${b.title}: причина поправки НЗП`} />
                                 : <Text size="xs" c="dimmed">{v.nzpNote}</Text>)}
                             </Table.Td>
+                            <Table.Td ta="right">{can ? <NumberInput {...numberProps} value={v.materialsPurchased ?? ''} onChange={(x) => setRow(b.id, { materialsPurchased: numOrNull(x) })} aria-label={`${b.title}: закуплено материалов`} /> : rub(v.materialsPurchased)}</Table.Td>
                             <Table.Td>{can ? <Textarea size="xs" autosize maxRows={3} value={v.note ?? ''} onChange={(e) => setRow(b.id, { note: e.currentTarget.value || null })} aria-label={`${b.title}: примечание`} /> : <Text size="xs">{v.note}</Text>}</Table.Td>
                           </Table.Tr>
                         );
@@ -263,6 +265,7 @@ function MonthSheet({ data, view }: { data: EconSetup; view: EconMonthView }) {
                   <Table.Td ta="right" fw={600}>{qty(sum(budgets.map((b) => current(b).machineHours)))}</Table.Td>
                   <Table.Td ta="right" fw={600}>{rub(sum(budgets.map((b) => current(b).ksAmount)))}</Table.Td>
                   <Table.Td />
+                  <Table.Td ta="right" fw={600}>{rub(sum(budgets.map((b) => current(b).materialsPurchased)))}</Table.Td>
                   <Table.Td />
                 </Table.Tr>
               </Table.Tbody>
@@ -331,9 +334,9 @@ function ImportDialog({ data, month, direct, company, budgets, onClose, onApply 
 
   function template() {
     downloadCsv(`Шаблон факта ${econMonthLabel(month)}.csv`, [
-      ['Код', 'Направление', 'Центр затрат', ...direct.map((a) => a.name), ...company.map((a) => a.name), 'Трудочасы', 'Маш.-часы', 'КС-2', 'Примечание'],
-      ...budgets.map((b) => [budgetCode(b), dirName(b), b.title, ...direct.map(() => ''), ...company.map(() => ''), '', '', '', '']),
-      [COMPANY_CODE, '', 'Общие расходы компании', ...direct.map(() => ''), ...company.map(() => ''), '', '', '', ''],
+      ['Код', 'Направление', 'Центр затрат', ...direct.map((a) => a.name), ...company.map((a) => a.name), 'Трудочасы', 'Маш.-часы', 'КС-2', 'Закуплено материалов', 'Примечание'],
+      ...budgets.map((b) => [budgetCode(b), dirName(b), b.title, ...direct.map(() => ''), ...company.map(() => ''), '', '', '', '', '']),
+      [COMPANY_CODE, '', 'Общие расходы компании', ...direct.map(() => ''), ...company.map(() => ''), '', '', '', '', ''],
     ]);
   }
 
@@ -349,6 +352,7 @@ function ImportDialog({ data, month, direct, company, budgets, onClose, onApply 
     const iMachine = col('Маш.-часы', 'Машино-часы');
     const iNote = col('Примечание');
     const iKs = col('КС-2', 'КС-2 за месяц');
+    const iPurchased = col('Закуплено материалов', 'Закуплено');
     const directCols = direct.map((a) => ({ a, i: col(a.name, articleShort(a)) })).filter((x) => x.i >= 0);
     const companyCols = company.map((a) => ({ a, i: col(a.name, articleShort(a)) })).filter((x) => x.i >= 0);
     const problems: string[] = [];
@@ -393,7 +397,9 @@ function ImportDialog({ data, month, direct, company, budgets, onClose, onApply 
       if (iNote >= 0 && (r[iNote] ?? '').trim()) p.note = r[iNote].trim().slice(0, 2000);
       const ks = cell(r, iKs, `${line}, КС-2`);
       if (ks !== undefined) p.ksAmount = ks;
-      if (Object.keys(p.amounts).length || p.laborHours != null || p.machineHours != null || p.ksAmount != null || p.note) { rows[b.id] = p; matched++; }
+      const bought = cell(r, iPurchased, `${line}, закуплено материалов`);
+      if (bought !== undefined) p.materialsPurchased = bought;
+      if (Object.keys(p.amounts).length || p.laborHours != null || p.machineHours != null || p.ksAmount != null || p.materialsPurchased != null || p.note) { rows[b.id] = p; matched++; }
     });
     return { rows, company: companyAmounts, matched, problems };
   }, [text, direct, company, budgets, data.directions]);

@@ -1,4 +1,4 @@
-export const ECON_TABS = ['overview', 'pnl', 'cash', 'limits', 'fact', 'articles', 'journal'] as const;
+export const ECON_TABS = ['overview', 'pnl', 'cash', 'deviations', 'limits', 'fact', 'articles', 'journal'] as const;
 export type EconTab = (typeof ECON_TABS)[number];
 export interface EconomicsSearch { tab?: EconTab; month?: string; dir?: number; archive?: boolean; year?: number; cash?: 'entry'; scope?: string }
 export function parseEconomicsSearch(s: Record<string, unknown>): EconomicsSearch {

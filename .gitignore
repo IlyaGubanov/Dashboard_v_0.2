@@ -5,6 +5,7 @@ dist/
 .vite/
 coverage/
 .video-qa/
+.delay-qa/
 .playwright-cli/
 test-results/
 playwright-report/

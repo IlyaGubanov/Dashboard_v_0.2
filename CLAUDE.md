@@ -113,5 +113,6 @@ API вручную: в `apps/api` с переменными `DATABASE_URL`, `COO
 
 Перед началом любых изменений прочитать [AGENTS.md](AGENTS.md): это единственный общий регламент Git.
 Практические команды и процесс review/release — [docs/GIT_WORKFLOW.md](docs/GIT_WORKFLOW.md).
+Короткие промпты для начала и продолжения задач — [docs/AI_PROMPTS.md](docs/AI_PROMPTS.md).
 Технические сведения выше не разрешают самостоятельно обновлять production.
 В конце сообщения коммита — строка `Co-Authored-By`, если её требует среда.

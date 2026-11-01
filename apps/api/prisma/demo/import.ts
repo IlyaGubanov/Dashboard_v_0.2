@@ -77,6 +77,7 @@ async function main() {
     const manual =
       (await prisma.progressEntry.count({ where: { source: 'MANUAL', workItem: { site: { directionId: dir.id } } } })) +
       (await prisma.siteReport.count({ where: { source: 'MANUAL', site: { directionId: dir.id } } })) +
+      (await prisma.delayReason.count({ where: { period: { directionId: dir.id } } })) +
       (await prisma.reportingPeriod.count({ where: { directionId: dir.id, summary: { not: Prisma.DbNull } } }));
     if ((clear || (force && sites)) && manual && !args.includes('--delete-manual-data')) {
       console.log(

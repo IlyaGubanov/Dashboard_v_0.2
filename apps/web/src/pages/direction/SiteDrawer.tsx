@@ -1,8 +1,8 @@
-import { useCallback, useState } from 'react';
-import { Alert, Badge, Box, Button, Drawer, Group, SimpleGrid, Skeleton, Stack, Table, Tabs, Text, Tooltip } from '@mantine/core';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Alert, Badge, Box, Button, Drawer, Group, SimpleGrid, Skeleton, Stack, Switch, Table, Tabs, Text, Tooltip } from '@mantine/core';
 import { IconClockExclamation, IconPencil } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
-import { DelayReason } from './DelayReasonField';
+import { DelayReason, delayState, useDelayReasons } from './DelayReasonField';
 import { TrackerEditor } from './TrackerEditor';
 import type { SiteCard, SiteCardField, SiteCardTracker } from '@mvs/shared';
 import { directionQueries, meQuery } from '../../api';
@@ -32,6 +32,9 @@ export function SiteDrawer({
   code,
   date: asOf,
   siteId,
+  workItemId,
+  showReasons,
+  onShowReasons,
   onClose,
   onEditSite,
   onOpenRemark,
@@ -39,6 +42,10 @@ export function SiteDrawer({
   code: string;
   date?: string;
   siteId?: number;
+  /** работа, к которой прокрутить список (переход из ячейки матрицы) */
+  workItemId?: number;
+  showReasons: boolean;
+  onShowReasons: (v: boolean) => void;
   onClose: () => void;
   onEditSite: (id: number) => void;
   onOpenRemark: (id: number) => void;
@@ -77,12 +84,19 @@ export function SiteDrawer({
     >
       {error && <Alert color="red">{(error as Error).message}</Alert>}
       {isLoading && <Skeleton h={400} />}
-      {data && <Card data={data} code={code} onOpenRemark={onOpenRemark} />}
+      {data && <Card data={data} code={code} workItemId={workItemId} showReasons={showReasons} onShowReasons={onShowReasons} onOpenRemark={onOpenRemark} />}
     </Drawer>
   );
 }
 
-function Card({ data: c, code, onOpenRemark }: { data: SiteCard; code: string; onOpenRemark: (id: number) => void }) {
+function Card({ data: c, code, workItemId, showReasons, onShowReasons, onOpenRemark }: {
+  data: SiteCard;
+  code: string;
+  workItemId?: number;
+  showReasons: boolean;
+  onShowReasons: (v: boolean) => void;
+  onOpenRemark: (id: number) => void;
+}) {
   const { data: me } = useQuery(meQuery);
   const { data: video } = useQuery({ ...videoQuery, enabled: !!me?.videoAccess?.view });
   const cameraCount = video?.cameras.filter(camera => camera.siteId === c.row.id).length ?? 0;
@@ -153,7 +167,7 @@ function Card({ data: c, code, onOpenRemark }: { data: SiteCard; code: string; o
         <Tabs.Panel value="cameras" pt="md">{videoAllowed && <SiteCameras siteId={c.row.id} />}</Tabs.Panel>
 
         <Tabs.Panel value="items" pt="md">
-          <Items c={c} code={code} />
+          <Items c={c} code={code} focusId={workItemId} showReasons={showReasons} onShowReasons={onShowReasons} />
         </Tabs.Panel>
         <Tabs.Panel value="passport" pt="md">
           <Passport c={c} />
@@ -213,8 +227,18 @@ function Kv({ k, v }: { k: string; v: React.ReactNode }) {
 }
 
 /** Позиции работ: факт, план на дату, объёмы, деньги, кто и когда внёс. */
-function Items({ c, code }: { c: SiteCard; code: string }) {
+function Items({ c, code, focusId, showReasons, onShowReasons }: { c: SiteCard; code: string; focusId?: number; showReasons: boolean; onShowReasons: (v: boolean) => void }) {
   const financeHidden = useFinanceHidden();
+  const reasons = useDelayReasons(code, c.asOf ?? undefined);
+  const reasonsReady = !!reasons.data || !!reasons.error;
+  const focusRow = useRef<HTMLTableRowElement>(null);
+  // прокрутка — когда причины загружены: поля причин меняют высоту строк выше нужной работы
+  useEffect(() => {
+    const row = focusRow.current;
+    const box = row?.closest('.mantine-Drawer-content');
+    if (!row || !box || !reasonsReady) return;
+    box.scrollTop += row.getBoundingClientRect().top - box.getBoundingClientRect().top - (box.clientHeight - row.offsetHeight) / 2;
+  }, [focusId, reasonsReady]);
   const has = {
     qty: c.items.some((i) => i.planQty != null),
     cost: !financeHidden && c.items.some((i) => i.planCost != null),
@@ -225,6 +249,8 @@ function Items({ c, code }: { c: SiteCard; code: string }) {
     resp: c.items.some((i) => i.responsible),
   };
   return (
+    <Stack gap="xs">
+    <Switch label="Причины и ответственные" checked={showReasons} onChange={(e) => onShowReasons(e.currentTarget.checked)} />
     <Table.ScrollContainer minWidth={800}>
       <Table striped highlightOnHover verticalSpacing={6} styles={{ td: { whiteSpace: 'nowrap' } }}>
         <Table.Thead>
@@ -243,8 +269,11 @@ function Items({ c, code }: { c: SiteCard; code: string }) {
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
-          {c.items.map((i) => (
-            <Table.Tr key={i.id} style={{ opacity: i.excluded ? 0.5 : 1 }}>
+          {c.items.map((i) => {
+            const focused = i.id === focusId;
+            const reason = reasons.byId.get(i.id);
+            return (
+            <Table.Tr key={i.id} ref={focused ? focusRow : undefined} className={focused ? 'site-work-focus' : undefined} aria-current={focused || undefined} style={{ opacity: i.excluded ? 0.5 : 1 }}>
               <Table.Td style={{ whiteSpace: 'normal', minWidth: 240, maxWidth: 420 }}>
                 <Text component="div" size="sm" fw={500}>
                   {i.name}
@@ -260,7 +289,8 @@ function Items({ c, code }: { c: SiteCard; code: string }) {
                     {i.weight != null ? ` · вес ${i.weight}` : ''}
                   </Text>
                 )}
-                <DelayReason code={code} date={c.asOf ?? undefined} workItemId={i.id} />
+                {/* работа, к которой перешли из матрицы, показывает причину и при выключенном переключателе — чтобы её можно было сразу заполнить */}
+                {(showReasons || (focused && reason && delayState(reason) !== 'calm')) && <DelayReason code={code} date={c.asOf ?? undefined} workItemId={i.id} />}
               </Table.Td>
               {has.status && (
                 <Table.Td>
@@ -325,10 +355,12 @@ function Items({ c, code }: { c: SiteCard; code: string }) {
                 )}
               </Table.Td>
             </Table.Tr>
-          ))}
+            );
+          })}
         </Table.Tbody>
       </Table>
     </Table.ScrollContainer>
+    </Stack>
   );
 }
 

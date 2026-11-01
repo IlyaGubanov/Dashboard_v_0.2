@@ -16,7 +16,9 @@ export function matrixCell(items: Item[]) {
   const risk: SiteRisk = risks.includes('crit') ? 'crit' : risks.includes('warn') ? 'warn'
     : risks.includes('na') ? 'na' : risks.every((r) => r === 'done') ? 'done'
     : risks.includes('ok') || risks.includes('done') ? 'ok' : 'wait';
-  return { fact, plan, risk, overdue: live.some((i) => i.overdue), items: live };
+  // куда вести из ячейки: цвет задаёт самая проблемная позиция — к ней и переходим
+  const focus = live.find((i) => i.risk === 'crit') ?? live.find((i) => i.risk === 'warn') ?? live[0];
+  return { fact, plan, risk, overdue: live.some((i) => i.overdue), items: live, focus };
 }
 
 export const matrixStatusStyle = (risk: SiteRisk): CSSProperties => ({ '--matrix-status': riskColor(risk) } as CSSProperties);

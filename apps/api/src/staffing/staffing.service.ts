@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, type StaffingPeriod as PeriodRecord, type StaffingPayroll as PayrollRecord, type StaffingMovementDay as MovementRecord } from '@prisma/client';
-import { staffingChangeSummary, staffingLinkPositions, staffingMovementDaySchema, staffingPeriodSchema, staffingPayrollSchema, staffingRenameGroup, staffingRenameGroupInDay, type StaffingGroupRename, type StaffingMovementDay, type StaffingMovementDayData, type StaffingPeriod, type StaffingPeriodData, type StaffingPayroll, type StaffingPayrollData, type StaffingView, type StaffingEditors } from '@mvs/shared';
+import { staffingChangeSummary, staffingLinkPositions, staffingPayrollChangeSummary, staffingMovementDaySchema, staffingPeriodSchema, staffingPayrollSchema, staffingRenameGroup, staffingRenameGroupInDay, type StaffingGroupRename, type StaffingMovementDay, type StaffingMovementDayData, type StaffingPeriod, type StaffingPeriodData, type StaffingPayroll, type StaffingPayrollData, type StaffingView, type StaffingEditors } from '@mvs/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { AccessService } from '../auth/access.service';
@@ -90,7 +90,7 @@ export class StaffingService {
     try {
       return await this.prisma.$transaction(async tx => {
         const r = await tx.staffingPayroll.create({ data: { year: data.year, data: json(data) } });
-        await this.audit.write({ userId: user.id, action: 'CREATE', entity: 'staffing_payroll', entityId: data.year, after: payroll(r), ip }, tx);
+        await this.audit.write({ userId: user.id, action: 'CREATE', entity: 'staffing_payroll', entityId: data.year, after: payroll(r), comment: staffingPayrollChangeSummary(null, data) || 'Добавлен год', ip }, tx);
         return payroll(r);
       });
     } catch (e) { unique(e); }
@@ -106,7 +106,7 @@ export class StaffingService {
       const changed = await tx.staffingPayroll.updateMany({ where: { year, version: input.version }, data: { data: json(input.data), version: { increment: 1 } } });
       if (!changed.count) throw new ConflictException('ФОТ изменил другой пользователь. Обновите раздел и повторите правку.');
       const after = await tx.staffingPayroll.findUniqueOrThrow({ where: { year } });
-      await this.audit.write({ userId: user.id, action: 'UPDATE', entity: 'staffing_payroll', entityId: year, before: payroll(before), after: payroll(after), ip }, tx);
+      await this.audit.write({ userId: user.id, action: 'UPDATE', entity: 'staffing_payroll', entityId: year, before: payroll(before), after: payroll(after), comment: staffingPayrollChangeSummary(payroll(before), payroll(after)) || 'Сохранено без изменений', ip }, tx);
       return payroll(after);
     });
   }

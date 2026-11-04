@@ -38,9 +38,11 @@ export const staffingPeriodWriteSchema = staffingPeriodSchema.superRefine((v, ct
 export const staffingPeriodSaveSchema = z.object({ version: z.number().int().positive(), data: staffingPeriodWriteSchema, isArchived: z.boolean().optional() });
 export const staffingPayrollSchema = z.object({
   year: z.number().int().min(2020).max(2099), label: z.string().trim().min(2).max(200),
-  rows: z.array(z.object({ ...identity, amount: quantity })).max(1000).refine(uniqueRows, 'Подразделение указано дважды'),
+  /** months — ФОТ по месяцам (январь…декабрь, млн ₽, null — нет данных); строки без помесячных данных хранятся без него. */
+  rows: z.array(z.object({ ...identity, amount: quantity, months: z.array(quantity).length(12, 'Нужно 12 месяцев').optional() })).max(1000).refine(uniqueRows, 'Подразделение указано дважды'),
 });
 export type StaffingPayrollData = z.infer<typeof staffingPayrollSchema>;
+export type StaffingPayrollRow = StaffingPayrollData['rows'][number];
 export interface StaffingPayroll extends StaffingPayrollData { version: number; updatedAt: string }
 export const staffingPayrollSaveSchema = z.object({ version: z.number().int().positive(), data: staffingPayrollSchema });
 /** Приём и увольнение за один день по группам (как лист «Приемыувольнения»: вносится утром за вчера). */
@@ -349,6 +351,53 @@ export function staffingChangeSummary(before: StaffingPeriodData, after: Staffin
   const removedPositions = (before.positions ?? []).filter(p => !after.positions?.some(x => x.id === p.id)).length;
   const total = [count.added && `добавлено ${count.added}`, count.changed && `изменено ${count.changed}`, count.archived && `в архив ${count.archived}`, count.restored && `восстановлено ${count.restored}`, removedPositions && `убрано ${removedPositions}`].filter(Boolean);
   if (total.length) parts.push(`должности: ${total.join(', ')}${details.length && details.length <= 5 ? ` (${details.join('; ')})` : ''}`);
+  const text = parts.join('; ');
+  return text.length > 1000 ? `${text.slice(0, 999)}…` : text;
+}
+export const STAFFING_MONTHS = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'] as const;
+const money = (v: number) => Math.round(v * 1000) / 1000;
+const knownSum = (values: (number | null | undefined)[]) => values.some(v => v != null) ? money(values.reduce<number>((s, v) => s + (v ?? 0), 0)) : null;
+/** Сумма внесённых месяцев строки; пропуски не считаются нулём. */
+export function staffingPayrollMonthsSum(row: Pick<StaffingPayrollRow, 'months'>) { return knownSum(row.months ?? []); }
+/** Итоги по каждому из 12 месяцев; месяц без данных — null. */
+export function staffingPayrollMonthTotals(rows: Pick<StaffingPayrollRow, 'months'>[]) { return STAFFING_MONTHS.map((_, i) => knownSum(rows.map(r => r.months?.[i]))); }
+/** Годовой ФОТ расходится с суммой внесённых месяцев. Строка без месяцев не сравнивается. */
+export function staffingPayrollDiffers(row: Pick<StaffingPayrollRow, 'amount' | 'months'>) { const sum = staffingPayrollMonthsSum(row); return sum != null && sum !== row.amount; }
+/**
+ * Вносит значения одного месяца (id строки → сумма; нет ключа — без изменений).
+ * Годовой ФОТ идёт за суммой месяцев, пока совпадал с ней или был пуст; годовая сумма из источника или внесённая вручную не меняется.
+ */
+export function staffingPayrollSetMonth<T extends Pick<StaffingPayrollRow, 'id' | 'amount' | 'months'>>(rows: T[], month: number, values: Record<string, number | null>): T[] {
+  return rows.map(r => {
+    if (!(r.id in values) || (r.months?.[month] ?? null) === values[r.id]) return r;
+    const months = r.months ? [...r.months] : Array<number | null>(12).fill(null);
+    months[month] = values[r.id];
+    const { months: _months, ...rest } = r;
+    const next = months.some(v => v != null) ? { ...rest, months } : rest;
+    return { ...next, amount: r.amount === staffingPayrollMonthsSum(r) ? knownSum(months) : r.amount } as T;
+  });
+}
+/** Подставляет в годовой ФОТ сумму внесённых месяцев. Строки без месяцев не меняются. */
+export function staffingPayrollApplySums<T extends Pick<StaffingPayrollRow, 'amount' | 'months'>>(rows: T[]): T[] {
+  return rows.map(r => { const sum = staffingPayrollMonthsSum(r); return sum == null ? r : { ...r, amount: sum }; });
+}
+/** Что изменилось в ФОТ — короткой строкой для журнала (колонка до 1000 символов). */
+export function staffingPayrollChangeSummary(before: StaffingPayrollData | null, after: StaffingPayrollData): string {
+  const value = (v: number | null | undefined) => v == null ? '—' : String(v);
+  const old = new Map((before?.rows ?? []).map(r => [r.id, r]));
+  const parts: string[] = [];
+  if (before && before.label !== after.label) parts.push(`период: ${after.label}`);
+  const added = after.rows.filter(r => !old.has(r.id)).length, removed = (before?.rows ?? []).filter(r => !after.rows.some(x => x.id === r.id)).length;
+  if (before && added) parts.push(`добавлено строк: ${added}`);
+  if (removed) parts.push(`убрано строк: ${removed}`);
+  const annual = after.rows.filter(r => old.has(r.id) && old.get(r.id)!.amount !== r.amount);
+  if (annual.length === 1) parts.push(`${annual[0].department}: за год ${value(old.get(annual[0].id)!.amount)} → ${value(annual[0].amount)}`);
+  else if (annual.length) parts.push(`годовой ФОТ изменён: ${annual.length}`);
+  STAFFING_MONTHS.forEach((name, i) => {
+    const changed = after.rows.filter(r => (old.get(r.id)?.months?.[i] ?? null) !== (r.months?.[i] ?? null));
+    if (changed.length === 1) parts.push(`${name.toLowerCase()}, ${changed[0].department}: ${value(old.get(changed[0].id)?.months?.[i])} → ${value(changed[0].months?.[i])}`);
+    else if (changed.length) parts.push(`${name.toLowerCase()}: подразделений ${changed.length}, итого ${value(staffingPayrollMonthTotals(after.rows)[i])} млн ₽`);
+  });
   const text = parts.join('; ');
   return text.length > 1000 ? `${text.slice(0, 999)}…` : text;
 }

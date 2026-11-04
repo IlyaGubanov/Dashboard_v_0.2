@@ -245,6 +245,71 @@ describe('штатная численность', () => {
       expect(staffing.staffingChangeSummary(before, many).length).toBeLessThanOrEqual(1000);
     });
   });
+  describe('ФОТ по месяцам', () => {
+    const pay = (id: string, amount: number | null, months?: (number | null)[]) => ({ id, department: `Отдел ${id}`, category: 'ОП' as const, amount, ...(months ? { months } : {}) });
+    const year = (months: Partial<Record<number, number | null>>) => Array.from({ length: 12 }, (_, i) => months[i] ?? null);
+
+    it('старые годы без месяцев открываются, в месяцах должно быть ровно 12 значений и не меньше нуля', () => {
+      for (const y of source.payroll) expect(staffing.staffingPayrollSchema.safeParse(y).success).toBe(true);
+      const data = (months: (number | null)[]) => ({ year: 2026, label: 'Тест', rows: [pay('a', 1, months)] });
+      expect(staffing.staffingPayrollSchema.safeParse(data(year({ 9: 1.25 }))).success).toBe(true);
+      expect(staffing.staffingPayrollSchema.safeParse(data([1, 2])).success).toBe(false);
+      expect(staffing.staffingPayrollSchema.safeParse(data(year({ 0: -1 }))).success).toBe(false);
+    });
+    it('сумма не считает пропуски нулём и не накапливает ошибку округления', () => {
+      expect(staffing.staffingPayrollMonthsSum(pay('a', null))).toBeNull();
+      expect(staffing.staffingPayrollMonthsSum(pay('a', null, year({})))).toBeNull();
+      expect(staffing.staffingPayrollMonthsSum(pay('a', null, year({ 0: 0 })))).toBe(0);
+      expect(staffing.staffingPayrollMonthsSum(pay('a', null, year({ 0: 0.1, 1: 0.2 })))).toBe(0.3);
+      const totals = staffing.staffingPayrollMonthTotals([pay('a', null, year({ 0: 1.5 })), pay('b', null, year({ 0: 2, 1: 3 })), pay('c', 5)]);
+      expect(totals.slice(0, 3)).toEqual([3.5, 3, null]);
+      expect(totals).toHaveLength(12);
+    });
+    it('годовой ФОТ идёт за месяцами, только если был пуст или совпадал; сумма из источника не меняется', () => {
+      const [fresh, sourced, other] = staffing.staffingPayrollSetMonth([pay('a', null), pay('b', 120.5), pay('c', 7)], 9, { a: 10, b: 12 });
+      expect(fresh).toMatchObject({ amount: 10 });
+      expect(fresh.months![9]).toBe(10);
+      expect(sourced).toMatchObject({ amount: 120.5 });
+      expect(sourced.months![9]).toBe(12);
+      expect(other).toEqual(pay('c', 7));
+      const [next] = staffing.staffingPayrollSetMonth([fresh], 10, { a: 5.5 });
+      expect(next.amount).toBe(15.5);
+      expect(next.months!.slice(9, 11)).toEqual([10, 5.5]);
+    });
+    it('очистка единственного месяца убирает месяцы и пустую сумму, ноль остаётся значением', () => {
+      const [filled] = staffing.staffingPayrollSetMonth([pay('a', null)], 0, { a: 4 });
+      const [cleared] = staffing.staffingPayrollSetMonth([filled], 0, { a: null });
+      expect(cleared.months).toBeUndefined();
+      expect(cleared.amount).toBeNull();
+      const [zero] = staffing.staffingPayrollSetMonth([pay('a', null)], 0, { a: 0 });
+      expect(zero).toMatchObject({ amount: 0 });
+      expect(zero.months![0]).toBe(0);
+    });
+    it('то же значение и другой месяц ничего не трогают, исходный массив не меняется', () => {
+      const row = pay('a', 3, year({ 2: 3 }));
+      const rows = [row];
+      expect(staffing.staffingPayrollSetMonth(rows, 2, { a: 3 })[0]).toBe(row);
+      expect(staffing.staffingPayrollSetMonth(rows, 2, {})[0]).toBe(row);
+      staffing.staffingPayrollSetMonth(rows, 3, { a: 9 });
+      expect(row.months![3]).toBeNull();
+    });
+    it('сообщает о расхождении с годом и подставляет сумму только там, где есть месяцы', () => {
+      const differs = pay('a', 100, year({ 0: 8 })), same = pay('b', 8, year({ 0: 8 })), noMonths = pay('c', 100);
+      expect([differs, same, noMonths].map(staffing.staffingPayrollDiffers)).toEqual([true, false, false]);
+      expect(staffing.staffingPayrollApplySums([differs, noMonths]).map(r => r.amount)).toEqual([8, 100]);
+    });
+    it('журнал описывает изменения ФОТ и укладывается в размер колонки', () => {
+      const before = { year: 2026, label: 'Год', rows: [pay('a', 10), pay('b', 20)] };
+      const one = { ...before, rows: staffing.staffingPayrollSetMonth(before.rows, 9, { a: 1.5 }) };
+      expect(staffing.staffingPayrollChangeSummary(before, one)).toBe('октябрь, Отдел a: — → 1.5');
+      const two = { ...before, rows: staffing.staffingPayrollSetMonth(before.rows, 9, { a: 1.5, b: 2 }) };
+      expect(staffing.staffingPayrollChangeSummary(before, two)).toBe('октябрь: подразделений 2, итого 3.5 млн ₽');
+      expect(staffing.staffingPayrollChangeSummary(before, { ...before, rows: [{ ...before.rows[0], amount: 11 }, before.rows[1]] })).toBe('Отдел a: за год 10 → 11');
+      expect(staffing.staffingPayrollChangeSummary(before, before)).toBe('');
+      const many = { year: 2026, label: 'x'.repeat(2000), rows: [] };
+      expect(staffing.staffingPayrollChangeSummary(before, many).length).toBeLessThanOrEqual(1000);
+    });
+  });
   it('экранирует формулы при выгрузке в Excel', () => {
     expect(staffing.staffingCsvCell('=1+1')).toBe('"\'=1+1"');
     expect(staffing.staffingCsvCell('Отдел "А"')).toBe('"Отдел ""А"""');

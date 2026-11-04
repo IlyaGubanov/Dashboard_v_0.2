@@ -68,7 +68,15 @@ describe.skipIf(!db)('сохранение штатной численности
   it('проверяет доступ на сервере и исключает ФОТ при отключённых финансах', async () => {
     await expect(service.view({ ...actor, globalRole: 'USER' })).rejects.toMatchObject({ status: 403 });
     await expect(service.create({ ...actor, globalRole: 'MANAGEMENT' }, data, null)).rejects.toMatchObject({ status: 403 });
-    await service.createPayroll(actor, { year: 2098, label: 'Тест', rows: [{ id: 'test', department: 'Тест', category: 'ОП', amount: 5 }] }, null);
+    const created = await service.createPayroll(actor, { year: 2098, label: 'Тест', rows: [{ id: 'test', department: 'Тест', category: 'ОП', amount: 5 }] }, null);
+    const months = Array.from({ length: 12 }, (_, i) => i === 9 ? 1.5 : null);
+    const saved = await service.savePayroll(actor, 2098, { version: created!.version, data: { year: 2098, label: 'Тест', rows: [{ id: 'test', department: 'Тест', category: 'ОП', amount: 5, months }] } }, null);
+    expect(saved.rows[0].months![9]).toBe(1.5);
+    expect((await service.view(actor)).payroll.find(y => y.year === 2098)!.rows[0].months![9]).toBe(1.5);
+    expect((await service.journal(actor)).find(r => r.entityId === '2098')!.comment).toBe('октябрь, Тест: — → 1.5');
+    await expect(service.savePayroll(actor, 2098, { version: created!.version, data: { year: 2098, label: 'Тест', rows: [] } }, null)).rejects.toMatchObject({ status: 409 });
+    await expect(service.savePayroll({ ...actor, globalRole: 'MANAGEMENT' }, 2098, { version: saved.version, data: { year: 2098, label: 'Тест', rows: [] } }, null)).rejects.toMatchObject({ status: 403 });
+    await expect(service.savePayroll({ ...actor, deniedFeatures: ['finance'] }, 2098, { version: saved.version, data: { year: 2098, label: 'Тест', rows: [] } }, null)).rejects.toMatchObject({ status: 403 });
     const view = await service.view({ ...actor, globalRole: 'MANAGEMENT', deniedFeatures: ['finance'] });
     expect(view.payroll).toEqual([]);
     await expect(service.createPayroll({ ...actor, deniedFeatures: ['finance'] }, { year: 2099, label: 'Тест', rows: [] }, null)).rejects.toMatchObject({ status: 403 });

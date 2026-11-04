@@ -139,7 +139,9 @@ test('конструктор назначает ответственных и в
 test('карточка, ввод, матрица и оба режима графика показывают причины и ФИО', async ({ page }, info) => {
   await login(page, true);
   await page.goto('/d/mkd?tab=entry');
+  // при вводе — только отстающие работы
   await expect(page.locator('.delay-reason').first()).toBeVisible();
+  await expect(page.locator('.delay-reason:not([data-state="delayed"])')).toHaveCount(0);
   await page.setViewportSize({ width: 375, height: 900 });
   await expect(page.locator('.delay-reason').first()).toBeVisible();
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

@@ -13,10 +13,12 @@ export function useDelayReasons(code: string, date?: string, periodId?: number) 
   return { ...query, byId };
 }
 
-export function DelayReason({ code, workItemId, date, periodId }: { code: string; workItemId: number; date?: string; periodId?: number }) {
+/** onlyDelayed — поле только у работ с отставанием; у остальных ничего не выводится, сохранённая причина остаётся на вкладке «Причины отставания». */
+export function DelayReason({ code, workItemId, date, periodId, onlyDelayed }: { code: string; workItemId: number; date?: string; periodId?: number; onlyDelayed?: boolean }) {
   const q = useDelayReasons(code, date, periodId);
   if (q.error) return <Alert color="red" title="Причина отставания">{q.error.message}</Alert>;
   const row = q.byId.get(workItemId);
+  if (onlyDelayed && !row?.delayed) return null;
   if (!q.data) return <Skeleton h={90} />;
   if (!row) return <Text size="xs" c="dimmed">Нет отчётной точки для этой работы</Text>;
   return <DelayReasonField key={`${row.workItemId}-${row.periodId}`} code={code} row={row} />;

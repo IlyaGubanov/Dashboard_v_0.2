@@ -20,7 +20,7 @@ function SettingsForm({ code, data }: { code: string; data: DelayReasonAdmin }) 
   const activeIds = new Set(data.users.map(u => u.id));
   const assignedOptions = (ids: number[]) => [...options, ...ids.filter(id => !activeIds.has(id)).map(id => ({ value: String(id), label: `Сотрудник №${id} — доступ отозван, удалите назначение` }))];
   return <Stack gap="md" className="delay-reason-settings">
-    <Text size="sm">Поле «Причина отставания от графика» отображается под каждой работой во всех направлениях. Назначайте активных участников направления. Изменение назначения сразу меняет ФИО и права заполнения.</Text>
+    <Text size="sm">Поле «Причина отставания от графика» есть у каждой работы во всех направлениях; во вкладке «Ввод данных» оно показывается только при отставании. Назначайте активных участников направления. Изменение назначения сразу меняет ФИО и права заполнения.</Text>
     <MultiSelect label="Ответственные по умолчанию" description="Для всех видов работ без отдельного назначения" searchable clearable data={assignedOptions(v.defaultResponsibleIds)} value={v.defaultResponsibleIds.map(String)} onChange={ids => patch({ defaultResponsibleIds: ids.map(Number) })} />
     <Checkbox label="Если общие ответственные не выбраны, использовать ответственных позиции и объекта" checked={v.useSiteResponsibles} onChange={e => patch({ useSiteResponsibles: e.currentTarget.checked })} />
     <Checkbox label="Разрешить куратору редактировать причины" checked={v.allowCuratorEdit} onChange={e => patch({ allowCuratorEdit: e.currentTarget.checked })} />

@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { MantineProvider } from '@mantine/core';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { DelayReasonRow } from '@mvs/shared';
-import { DelayReasonField } from '../src/pages/direction/DelayReasonField';
+import { DelayReason, DelayReasonField } from '../src/pages/direction/DelayReasonField';
 
 const row: DelayReasonRow = { workItemId: 1, workTypeId: 2, siteId: 3, name: 'Кровля', siteName: 'Школа', periodId: 4, periodDate: '2026-10-21', program: '',
   text: 'Не поставлен материал', version: 1, from: '2026-10-21', updatedBy: 'Сидоров Алексей Петрович', updatedAt: null,
@@ -33,5 +33,16 @@ describe('поле причины отставания', () => {
   });
   it('сообщает об отсутствии назначенных сотрудников', () => {
     expect(render({ responsibles: [] })).toContain('Ответственные не назначены');
+  });
+  it('ввод данных: поле только при отставании', () => {
+    const entry = (changes: Partial<DelayReasonRow>, workItemId = row.workItemId) => {
+      const client = new QueryClient();
+      client.setQueryData(['dir', 'schools', 'delay-reasons', row.periodId], { rows: [{ ...row, ...changes }] });
+      return renderToStaticMarkup(<MantineProvider><QueryClientProvider client={client}><DelayReason code="schools" periodId={row.periodId!} workItemId={workItemId} onlyDelayed /></QueryClientProvider></MantineProvider>);
+    };
+    expect(entry({})).toContain('data-state="delayed"');
+    expect(entry({ delayed: false, required: false, text: '' })).not.toContain('delay-reason');
+    expect(entry({ delayed: false, required: false })).not.toContain('delay-reason');
+    expect(entry({}, 999)).not.toContain('Нет отчётной точки');
   });
 });

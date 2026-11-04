@@ -91,6 +91,19 @@ export class AccessService {
     if (user.globalRole === 'USER' && !await this.fleetMembership(user, registryId)) throw new ForbiddenException('Нет доступа к РЭБ');
   }
 
+  /**
+   * Сверка техники объекта с РЭБ. Сотрудник направления видит итоги по видам на своих объектах, чтобы исправить расхождение;
+   * конкретные машины — только с доступом к РЭБ; имена внёсших — со справочником сотрудников. Скрытый раздел РЭБ закрывает сверку.
+   */
+  async machineryAccess(user: AuthUser, registryId: number | null) {
+    const counts = this.canSee(user, 'fleet') && registryId != null;
+    return {
+      counts,
+      vehicles: counts && (user.globalRole !== 'USER' || !!(await this.fleetMembership(user, registryId))),
+      names: this.canSee(user, 'people'),
+    };
+  }
+
   async canManageFleet(user: AuthUser, registryId: number) {
     return user.globalRole === 'ADMIN' || (await this.fleetMembership(user, registryId))?.role === 'CURATOR';
   }

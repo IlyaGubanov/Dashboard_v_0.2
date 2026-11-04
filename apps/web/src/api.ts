@@ -1,5 +1,7 @@
 import { queryOptions } from '@tanstack/react-query';
 import type {
+  KpiTileDetail,
+  MachineryView,
   ObjectsMap,
   AuditPage,
   ContractorsView,
@@ -103,6 +105,10 @@ const q = (date?: string) => (date ? `?date=${date}` : '');
 export const directionQueries = {
   kpi: (code: string, date?: string) =>
     queryOptions({ queryKey: ['dir', code, 'kpi', date ?? ''], queryFn: () => api<DirectionKpi>(`/directions/${code}/kpi${q(date)}`), staleTime: 60_000 }),
+  machinery: (code: string, date?: string) =>
+    queryOptions({ queryKey: ['dir', code, 'machinery', date ?? ''], queryFn: () => api<MachineryView>(`/directions/${code}/machinery${q(date)}`), staleTime: 0 }),
+  tile: (code: string, slot: number, date?: string) =>
+    queryOptions({ queryKey: ['dir', code, 'tile', slot, date ?? ''], queryFn: () => api<KpiTileDetail>(`/directions/${code}/kpi/tiles/${slot}${q(date)}`), staleTime: 60_000 }),
   sites: (code: string, date?: string) =>
     queryOptions({ queryKey: ['dir', code, 'sites', date ?? ''], queryFn: () => api<SiteKpiRow[]>(`/directions/${code}/sites${q(date)}`), staleTime: 60_000 }),
   dynamics: (code: string, date?: string) =>

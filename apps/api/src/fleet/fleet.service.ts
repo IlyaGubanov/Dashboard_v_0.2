@@ -98,7 +98,7 @@ export class FleetService {
     const where:Record<string,unknown>={directionId,isArchived:q.archived??false};
     const vehicleWhere:Record<string,unknown>={};
     for(const key of ['ownership','kind','departmentId'] as const) if(q[key]) vehicleWhere[key]=q[key];
-    if(kind==='vehicles') Object.assign(where,vehicleWhere);
+    if(kind==='vehicles') { Object.assign(where,vehicleWhere); if(q.category)where.category=q.category; }
     else if(Object.keys(vehicleWhere).length && !['fuel','requests','snapshots'].includes(kind)) where.vehicle=vehicleWhere;
     if(q.vehicleId&&!['fuel','requests','snapshots'].includes(kind))where[kind==='vehicles'?'id':'vehicleId']=q.vehicleId;
     if(q.targetDirectionId && !['vehicles','fuel','snapshots','downtime'].includes(kind)) where.targetDirectionId=q.targetDirectionId;
@@ -339,7 +339,9 @@ export class FleetService {
     const latest=monthly.at(-1);
     const updated=data.flat().map(r=>new Date(String(r.updatedAt)).getTime()).filter(Number.isFinite);
     const payments=(rows:DbRow[])=>paymentTotals(rows.map(r=>({amount:String(r.amount),paidAmount:r.paidAmount==null?null:String(r.paidAmount),status:String(r.status),dueDate:r.dueDate?day(r.dueDate):null})),new Date().toLocaleDateString('sv-SE',{timeZone:'Europe/Moscow'}));
-    return {asOf:updated.length?new Date(Math.max(...updated)).toISOString():null,counts:vehicles.length?fleetCounts(vehicles.map(v=>({ownership:String(v.ownership),technicalState:String(v.effectiveTechnicalState??v.technicalState),usageState:String(v.effectiveUsageState??v.usageState)}))):null,
+    const park=new Map<string,Map<string,number>>();
+    for(const v of vehicles){const c=String(v.category??'Без категории'),k=String(v.kind),m=park.get(c)??new Map<string,number>();m.set(k,(m.get(k)??0)+1);park.set(c,m);}
+    return {categories:[...park].map(([category,kinds])=>({category,total:[...kinds.values()].reduce((a,n)=>a+n,0),kinds:[...kinds].map(([kind,total])=>({kind,total})).sort((a,b)=>b.total-a.total)})).sort((a,b)=>b.total-a.total),asOf:updated.length?new Date(Math.max(...updated)).toISOString():null,counts:vehicles.length?fleetCounts(vehicles.map(v=>({ownership:String(v.ownership),technicalState:String(v.effectiveTechnicalState??v.technicalState),usageState:String(v.effectiveUsageState??v.usageState)}))):null,
       incidents:incidents.length||null,fines:finance&&fines.length?payments(fines):null,tolls:finance&&tolls.length?payments(tolls):null,
       fuel:{period:latest?.period??null,liters:latest?.liters??null,cost:latest?.cost??null,monthly},openRequests:requests.length?requests.filter(r=>!['FULFILLED','CANCELLED','REJECTED'].includes(String(r.status))).length:null};
   }

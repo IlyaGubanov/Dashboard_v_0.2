@@ -19,3 +19,4 @@ export * from './fleet';
 export * from './video';
 export * from './staffing';
 export * from './economics';
+export * from './machinery';

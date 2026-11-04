@@ -1,11 +1,12 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import type { DirectionKpi, DynamicsPoint, Overview, PeopleView, PeriodItem, SiteCard, SiteKpiRow, TrackersView, WorkGrid } from '@mvs/shared';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import type { KpiTileDetail, DirectionKpi, DynamicsPoint, Overview, PeopleView, PeriodItem, SiteCard, SiteKpiRow, TrackersView, WorkGrid } from '@mvs/shared';
 import { buildSiteCard } from './site-card';
 import { peopleView, trackersView, workGrid } from './views';
 import { PrismaService } from '../prisma/prisma.service';
 import { AccessService } from '../auth/access.service';
 import type { AuthUser } from '../common/request';
-import { directionKpi, dynamics, hasFactAt, mainProgram, calcSite, toRow, type DirectionResult } from './engine';
+import { calculate, directionKpi, dynamics, hasFactAt, mainProgram, calcSite, planDateFor, toRow, type DirectionResult } from './engine';
+import { tileDetail } from './metrics';
 import { objectReportPeriods, reportPrograms } from './report-programs';
 import { loadDirection, loadPeriods } from './loader';
 import { isoDate, parseDate, type KPeriod } from './model';
@@ -70,6 +71,18 @@ export class KpiService {
     const id = await this.directionId(user, code);
     const rows = (await this.result(id, date, await this.thresholds())).rows;
     return this.access.has(user, 'finance') ? rows : rows.map(rowNoFinance);
+  }
+
+  async tileDetail(user: AuthUser, code: string, slot: number, date?: string): Promise<KpiTileDetail> {
+    const id = await this.directionId(user, code);
+    const { dir, period } = await this.prepare(id, date, false);
+    if (!period) throw new NotFoundException('Отчётных точек пока нет');
+    const P = planDateFor(dir, period);
+    const detail = tileDetail(dir, period, P, calculate(dir, period, P), slot);
+    if (!detail) throw new NotFoundException('Показатель не найден');
+    if (detail.format === 'money' && !this.access.has(user, 'finance')) throw new ForbiddenException('Нет доступа к финансам');
+    if (detail.key === 'remarksTotal' && !this.access.canSee(user, 'remarks')) throw new ForbiddenException('Раздел замечаний вам недоступен');
+    return detail;
   }
 
   async periods(user: AuthUser, code: string): Promise<PeriodItem[]> {

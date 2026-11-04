@@ -1,5 +1,5 @@
 import { Controller, Get, Param, ParseIntPipe, Query } from '@nestjs/common';
-import type { DirectionKpi, DynamicsPoint, Overview, PeopleView, PeriodItem, SiteCard, SiteKpiRow, TrackersView, WorkGrid } from '@mvs/shared';
+import type { KpiTileDetail, DirectionKpi, DynamicsPoint, Overview, PeopleView, PeriodItem, SiteCard, SiteKpiRow, TrackersView, WorkGrid } from '@mvs/shared';
 import { CurrentUser } from '../auth/decorators';
 import type { AuthUser } from '../common/request';
 import { KpiService } from './kpi.service';
@@ -18,6 +18,12 @@ export class KpiController {
   @Get('directions/:code/kpi')
   directionKpi(@CurrentUser() user: AuthUser, @Param('code') code: string, @Query('date') date?: string): Promise<DirectionKpi> {
     return this.kpi.kpi(user, code, date);
+  }
+
+  /** Из чего складывается плитка показателя: значения по объектам. */
+  @Get('directions/:code/kpi/tiles/:slot')
+  tile(@CurrentUser() user: AuthUser, @Param('code') code: string, @Param('slot', ParseIntPipe) slot: number, @Query('date') date?: string): Promise<KpiTileDetail> {
+    return this.kpi.tileDetail(user, code, slot, date);
   }
 
   /** Реестр объектов с готовностью, планом, отклонением и деньгами на дату. */

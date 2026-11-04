@@ -4,7 +4,7 @@ export const DIRECTION_TABS = ['overview', 'sites', 'matrix', 'schedule', 'track
 export type DirectionTab = (typeof DIRECTION_TABS)[number];
 
 export interface DirectionSearch {
-  fleet?: FleetKind | 'overview';
+  fleet?: FleetKind | 'overview' | 'reconciliation';
   fr?: number;
   ff?: Record<string,string>;
   tab?: DirectionTab;
@@ -26,7 +26,7 @@ export interface DirectionSearch {
 
 export function parseDirectionSearch(s: Record<string, unknown>): DirectionSearch {
   return {
-    fleet: s.fleet==='overview'||FLEET_KINDS.includes(s.fleet as FleetKind)?s.fleet as FleetKind|'overview':undefined,
+    fleet: s.fleet==='overview'||s.fleet==='reconciliation'||FLEET_KINDS.includes(s.fleet as FleetKind)?s.fleet as FleetKind|'overview'|'reconciliation':undefined,
     fr:Number.isSafeInteger(Number(s.fr))&&Number(s.fr)>0?Number(s.fr):undefined,
     ff:s.ff&&typeof s.ff==='object'&&!Array.isArray(s.ff)?Object.fromEntries(Object.entries(s.ff).filter(([k,v])=>['from','to','q','ownership','kind','status','departmentId','targetDirectionId','vehicleId','archived','page','sort','order','active','fuelType','category','technicalState','usageState'].includes(k)&&typeof v==='string'&&v.length<=200)) as Record<string,string>:undefined,
     tab: DIRECTION_TABS.includes(s.tab as DirectionTab) ? (s.tab as DirectionTab) : undefined,

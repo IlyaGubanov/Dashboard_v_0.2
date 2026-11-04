@@ -16,6 +16,20 @@ export const SITE_RISK_LABELS: Record<SiteRisk, string> = {
 export type KpiFormat = 'money' | 'int' | 'qty' | 'days' | 'percent';
 
 /** Дополнительный показатель направления (набор задаётся в настройках направления). */
+/** Из чего складывается плитка: значения по объектам; для надстроек — какой этап смотреть. */
+export interface KpiTileDetail {
+  key: string;
+  label: string;
+  format: KpiFormat;
+  unit?: string;
+  asOf: string | null;
+  /** дата плана: с ней сравниваются сроки надстроек */
+  planDate: string;
+  /** объекты с ненулевым значением; у показателей надстроек и отставания в днях список пуст */
+  rows: { siteId: number; siteName: string; value: number }[];
+  tracker?: { code: string; stage: string };
+}
+
 export interface KpiTile {
   /** метрика */
   key: string;

@@ -3,7 +3,7 @@ import { Alert, Autocomplete, Button, Checkbox, Group, Modal, MultiSelect, Nativ
 import { notifications } from '@mantine/notifications';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { IconPlus } from '@tabler/icons-react';
-import { STAFFING_CATEGORIES, staffingCopyStructure, staffingDuplicatePosition, staffingGroupOf, staffingGroupRenameSchema, staffingGroups, staffingPeriodWriteSchema, staffingPayrollSchema, staffingPositionSchema, staffingPositionTotals, staffingRowSchema, staffingSyncRow, staffingTitleKey, staffingTotalsDiffer, type StaffingEditors, type StaffingPeriod, type StaffingPeriodData, type StaffingPayroll, type StaffingPayrollData, type StaffingPosition, type StaffingRow } from '@mvs/shared';
+import { STAFFING_CATEGORIES, STAFFING_MONTHS, staffingCopyStructure, staffingDuplicatePosition, staffingGroupOf, staffingGroupRenameSchema, staffingGroups, staffingPeriodWriteSchema, staffingPayrollSchema, staffingPayrollSetMonth, staffingPositionSchema, staffingPositionTotals, staffingRowSchema, staffingSyncRow, staffingTitleKey, staffingTotalsDiffer, type StaffingEditors, type StaffingPeriod, type StaffingPeriodData, type StaffingPayroll, type StaffingPayrollData, type StaffingPosition, type StaffingRow } from '@mvs/shared';
 import { api } from '../../api';
 import { PositionsEditor, TitleOptions, TotalsHint, withRowPositions } from './StaffingPositions';
 
@@ -50,7 +50,7 @@ export function RowEditor({ row, period, canEdit, tab, onClose, onSave }: { row:
             <Autocomplete label="Группа на диаграмме" description="Пусто — определяется по названию" placeholder={staffingGroupOf({ department: value.department })} data={staffingGroups(period.rows).map(g => g.group)} value={value.group ?? ''} onChange={group => change({ group })} disabled={!canEdit} error={fields.group} comboboxProps={{ zIndex: 1000 }} />
           </SimpleGrid>
           <SimpleGrid cols={2}>
-            <NumberInput label="Штат, ед." value={value.planned ?? ''} onChange={v => change({ planned: num(v) })} min={0} decimalScale={2} disabled={!canEdit} error={fields.planned} />
+            <NumberInput label="Штат, ед." value={value.planned ?? ''} onChange={v => change({ planned: num(v) })} min={0} decimalScale={2} decimalSeparator="," disabled={!canEdit} error={fields.planned} />
             <NumberInput label="Факт, чел." value={value.actual ?? ''} onChange={v => change({ actual: num(v) })} min={0} allowDecimal={false} disabled={!canEdit} error={fields.actual} />
           </SimpleGrid>
           <Text size="xs" c="dimmed">Пустое поле — нет данных. Ноль — подтверждённое нулевое значение.</Text>
@@ -104,7 +104,7 @@ export function RowsTableEditor({ period, rows, onClose, onSave }: { period: Sta
           <Table.Td><TextInput size="xs" aria-label="Подразделение" value={r.department} onChange={e => change(r.id, { department: e.currentTarget.value })} error={errors[`${r.id}.department`]} /></Table.Td>
           <Table.Td><TextInput size="xs" aria-label={`Группа: ${r.department}`} list="staffing-groups" placeholder={staffingGroupOf({ department: r.department })} value={r.group ?? ''} onChange={e => change(r.id, { group: e.currentTarget.value })} error={errors[`${r.id}.group`]} /></Table.Td>
           <Table.Td><NativeSelect size="xs" aria-label={`Категория: ${r.department}`} data={[...STAFFING_CATEGORIES]} value={r.category} onChange={e => change(r.id, { category: e.currentTarget.value as StaffingRow['category'] })} /></Table.Td>
-          <Table.Td><NumberInput size="xs" hideControls aria-label={`Штат: ${r.department}`} value={r.planned ?? ''} onChange={v => change(r.id, { planned: num(v) })} min={0} allowNegative={false} decimalScale={2} error={errors[`${r.id}.planned`]} /></Table.Td>
+          <Table.Td><NumberInput size="xs" hideControls aria-label={`Штат: ${r.department}`} value={r.planned ?? ''} onChange={v => change(r.id, { planned: num(v) })} min={0} allowNegative={false} decimalScale={2} decimalSeparator="," error={errors[`${r.id}.planned`]} /></Table.Td>
           <Table.Td><NumberInput size="xs" hideControls aria-label={`Факт: ${r.department}`} value={r.actual ?? ''} onChange={v => change(r.id, { actual: num(v) })} min={0} allowNegative={false} allowDecimal={false} error={errors[`${r.id}.actual`]} /></Table.Td>
           <Table.Td ta="right"><Text size="xs" c={t?.count && staffingTotalsDiffer(r, t) ? 'var(--status-warning)' : 'dimmed'}>{t?.count ? `${staffingTotalsDiffer(r, t) ? '△ ' : ''}${n(t.planned)} / ${n(t.actual)}` : '—'}</Text></Table.Td>
         </Table.Tr>; })}</Table.Tbody>
@@ -206,6 +206,62 @@ export function EditorsDialog({ onClose }: { onClose: () => void }) {
   </Modal>;
 }
 
+const moscowMonth = () => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Moscow' }).format(new Date()).slice(0, 7);
+/** Ввод ФОТ за месяц: значения по подразделениям года. Можно заполнить несколько месяцев и сохранить одной записью; года ещё нет — он создаётся из подразделений открытого среза. */
+export function PayrollMonthEditor({ years, period, start, onClose, onSave }: { years: StaffingPayroll[]; period?: StaffingPeriod; start?: { year: number; month: number }; onClose: () => void; onSave: (data: StaffingPayrollData, existing?: StaffingPayroll) => Promise<void> }) {
+  const [now] = useState(() => { const [y, m] = moscowMonth().split('-').map(Number); return { y, m: m - 1 }; });
+  // по умолчанию — прошлый месяц: ФОТ вносится за закрытый период
+  const [year, setYear] = useState(start?.year ?? (now.m === 0 ? now.y - 1 : now.y));
+  const [month, setMonth] = useState(start?.month ?? (now.m === 0 ? 11 : now.m - 1));
+  const [edits, setEdits] = useState<Record<number, Record<string, number | null>>>({});
+  const [search, setSearch] = useState('');
+  const [fields, setFields] = useState<Record<string, string>>({});
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const existing = years.find(y => y.year === year);
+  const rows: StaffingPayrollData['rows'] = useMemo(() => existing?.rows ?? period?.rows.filter(r => !r.isArchived).map(r => ({ id: r.id, department: r.department, category: r.category, amount: null })) ?? [], [existing, period]);
+  const valueOf = (id: string, m = month) => { const edited = edits[m]; return edited && id in edited ? edited[id] : rows.find(r => r.id === id)?.months?.[m] ?? null; };
+  const set = (id: string, v: number | null) => setEdits(s => ({ ...s, [month]: { ...s[month], [id]: v } }));
+  const yearOptions = [...new Set([...years.map(y => y.year), now.y, now.y + 1, year])].sort((a, b) => a - b).map(String);
+  const editedMonths = Object.entries(edits).filter(([m, values]) => Object.entries(values).some(([id, v]) => v !== (rows.find(r => r.id === id)?.months?.[Number(m)] ?? null))).map(([m]) => Number(m));
+  const total = rows.some(r => valueOf(r.id) != null) ? Math.round(rows.reduce((s, r) => s + (valueOf(r.id) ?? 0), 0) * 1000) / 1000 : null;
+  const key = search.trim().toLocaleLowerCase('ru');
+  const shown = rows.filter(r => !key || r.department.toLocaleLowerCase('ru').includes(key));
+  const previousFilled = month > 0 ? rows.filter(r => valueOf(r.id, month - 1) != null && valueOf(r.id) == null) : [];
+  async function save() {
+    let next = rows;
+    for (const m of editedMonths) next = staffingPayrollSetMonth(next, m, edits[m]);
+    const data = { year, label: existing?.label ?? 'Годовой ФОТ', rows: next };
+    const parsed = staffingPayrollSchema.safeParse(data);
+    if (!parsed.success) { setFields(Object.fromEntries(parsed.error.issues.map(i => [String(i.path[1] != null ? rows[Number(i.path[1])]?.id : '_'), i.message]))); setError('Проверьте значения: не меньше нуля, строки названы'); return; }
+    setBusy(true); setError(''); setFields({});
+    try { await onSave(parsed.data, existing); onClose(); } catch (e) { setError(message(e)); } finally { setBusy(false); }
+  }
+  return <Modal opened onClose={onClose} title="ФОТ за месяц, млн ₽" size="lg" closeOnClickOutside={false}>
+    <Stack gap="sm">
+      <Group gap="sm" align="flex-end" wrap="wrap">
+        <Select label="Год" data={yearOptions} value={String(year)} onChange={v => { if (v && Number(v) !== year) { setYear(Number(v)); setEdits({}); setFields({}); } }} allowDeselect={false} w={100} comboboxProps={{ zIndex: 1000 }} />
+        <Select label="Месяц" data={STAFFING_MONTHS.map((m, i) => ({ value: String(i), label: m }))} value={String(month)} onChange={v => v && setMonth(Number(v))} allowDeselect={false} w={150} comboboxProps={{ zIndex: 1000 }} />
+        <TextInput aria-label="Поиск подразделения" placeholder="Поиск подразделения" value={search} onChange={e => setSearch(e.currentTarget.value)} style={{ flex: '1 1 180px' }} />
+      </Group>
+      {!existing && <Text size="sm" c="var(--status-warning)">△ {year} года ещё нет. При сохранении он будет создан со списком подразделений из открытого среза.</Text>}
+      <Group justify="space-between" gap="xs"><Text size="sm"><b>Итого за {STAFFING_MONTHS[month].toLowerCase()}:</b> {total == null ? '—' : total.toLocaleString('ru-RU', { maximumFractionDigits: 3 })} млн ₽</Text>
+        {previousFilled.length > 0 && <Button size="compact-xs" variant="default" onClick={() => setEdits(s => ({ ...s, [month]: { ...s[month], ...Object.fromEntries(previousFilled.map(r => [r.id, valueOf(r.id, month - 1)])) } }))}>Заполнить пустые из прошлого месяца ({previousFilled.length})</Button>}</Group>
+      <Table.ScrollContainer minWidth={280} maxHeight={420} scrollAreaProps={{ type: 'auto' }}><Table verticalSpacing={4} stickyHeader className="staffing-editor">
+        <Table.Thead><Table.Tr><Table.Th>Подразделение</Table.Th><Table.Th w={64} visibleFrom="sm">Катег.</Table.Th><Table.Th w={104} ta="right">{STAFFING_MONTHS[month]}</Table.Th></Table.Tr></Table.Thead>
+        <Table.Tbody>{shown.map(r => <Table.Tr key={r.id}><Table.Td>{r.department}</Table.Td><Table.Td visibleFrom="sm">{r.category}</Table.Td>
+          <Table.Td><NumberInput size="xs" hideControls aria-label={`ФОТ за ${STAFFING_MONTHS[month].toLowerCase()}: ${r.department}`} value={valueOf(r.id) ?? ''} onChange={v => set(r.id, num(v))} min={0} allowNegative={false} decimalScale={3} decimalSeparator="," error={fields[r.id]} /></Table.Td></Table.Tr>)}</Table.Tbody>
+      </Table></Table.ScrollContainer>
+      {!rows.length && <Text size="sm" c="dimmed" ta="center">Подразделений нет: добавьте их в срез или в годовой ФОТ.</Text>}
+      {rows.length > 0 && !shown.length && <Text size="sm" c="dimmed" ta="center">Подразделения не найдены</Text>}
+      <Text size="xs" c="dimmed">Пустое поле — нет данных, ноль — подтверждённый ноль. Месяц можно сменить, не сохраняя: внесённое останется. Годовой ФОТ обновится сам, только если был пуст или совпадал с суммой месяцев.</Text>
+      {error && <Alert color="red">{error}</Alert>}
+      <Group justify="space-between" gap="xs"><Text size="xs" c="dimmed">{editedMonths.length ? `Изменено месяцев: ${editedMonths.length} (${editedMonths.sort((a, b) => a - b).map(m => STAFFING_MONTHS[m].toLowerCase()).join(', ')})` : 'Изменений пока нет'}</Text>
+        <Group gap="xs"><Button variant="default" onClick={onClose}>Отмена</Button><Button loading={busy} disabled={!editedMonths.length} onClick={save}>Сохранить</Button></Group></Group>
+    </Stack>
+  </Modal>;
+}
+
 export function PayrollEditor({ initial, period, onClose, onSave }: { initial?: StaffingPayroll; period?: StaffingPeriod; onClose: () => void; onSave: (data: StaffingPayrollData) => Promise<void> }) {
   const [value, setValue] = useState<StaffingPayrollData>(initial ?? { year: new Date().getFullYear(), label: 'Годовой ФОТ', rows: period?.rows.filter(r => !r.isArchived).map(r => ({ id: r.id, department: r.department, category: r.category, amount: null })) ?? [] });
   const [error, setError] = useState('');
@@ -217,7 +273,7 @@ export function PayrollEditor({ initial, period, onClose, onSave }: { initial?: 
     setBusy(true); setError('');
     try { await onSave(parsed.data); onClose(); } catch (e) { setError(message(e)); } finally { setBusy(false); }
   }
-  return <Modal opened onClose={onClose} title="Редактировать годовой ФОТ" size="xl">
+  return <Modal opened onClose={onClose} title="Редактировать годовой ФОТ" size="xl" closeOnClickOutside={false}>
     <Stack gap="sm">
       <SimpleGrid cols={2}><NumberInput label="Год" value={value.year} min={2020} max={2099} disabled={!!initial} onChange={v => setValue(s => ({ ...s, year: Number(v) }))} /><TextInput label="Период / основание" value={value.label} onChange={e => { const label = e.currentTarget.value; setValue(s => ({ ...s, label })); }} /></SimpleGrid>
       <Group justify="space-between"><TextInput placeholder="Поиск подразделения" aria-label="Поиск в редакторе ФОТ" value={search} onChange={e => setSearch(e.currentTarget.value)} /><Button variant="default" size="xs" onClick={() => { setSearch(''); setValue(s => ({ ...s, rows: [...s.rows, { id: crypto.randomUUID(), department: '', category: 'ВП', amount: null }] })); }}>Добавить строку</Button></Group>
@@ -226,7 +282,7 @@ export function PayrollEditor({ initial, period, onClose, onSave }: { initial?: 
           <Table.Tbody>{value.rows.filter(r => r.department.toLowerCase().includes(search.toLowerCase())).map(r => <Table.Tr key={r.id}>
             <Table.Td><TextInput aria-label="Наименование подразделения ФОТ" value={r.department} onChange={e => { const department = e.currentTarget.value; setValue(s => ({ ...s, rows: s.rows.map(x => x.id === r.id ? { ...x, department } : x) })); }} /></Table.Td>
             <Table.Td w={100}><Select aria-label="Категория ФОТ" data={[...STAFFING_CATEGORIES]} value={r.category} onChange={category => setValue(s => ({ ...s, rows: s.rows.map(x => x.id === r.id ? { ...x, category: category as StaffingRow['category'] } : x) }))} allowDeselect={false} /></Table.Td>
-            <Table.Td w={145}><NumberInput aria-label={`ФОТ: ${r.department}`} value={r.amount ?? ''} min={0} decimalScale={2} onChange={v => setValue(s => ({ ...s, rows: s.rows.map(x => x.id === r.id ? { ...x, amount: num(v) } : x) }))} /></Table.Td>
+            <Table.Td w={145}><NumberInput aria-label={`ФОТ: ${r.department}`} value={r.amount ?? ''} min={0} decimalScale={3} decimalSeparator="," onChange={v => setValue(s => ({ ...s, rows: s.rows.map(x => x.id === r.id ? { ...x, amount: num(v) } : x) }))} /></Table.Td>
             <Table.Td><Button variant="subtle" color="red" size="xs" onClick={() => setValue(s => ({ ...s, rows: s.rows.filter(x => x.id !== r.id) }))}>Убрать</Button></Table.Td>
           </Table.Tr>)}</Table.Tbody>
         </Table>

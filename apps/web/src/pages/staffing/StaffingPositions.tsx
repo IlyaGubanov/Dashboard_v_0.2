@@ -55,7 +55,7 @@ export function PositionsEditor({ positions, saved, target, canEdit, errors, onC
       <Table.Thead><Table.Tr><Table.Th>Должность</Table.Th><Table.Th w={78} ta="right">План, ед.</Table.Th><Table.Th w={78} ta="right">Факт, чел.</Table.Th><Table.Th w={60} ta="right">Нужно</Table.Th>{canEdit && <Table.Th w={38} />}</Table.Tr></Table.Thead>
       <Table.Tbody>{shown.map(p => <Table.Tr key={p.id}>
         <Table.Td><TextInput size="xs" aria-label="Название должности" list="staffing-titles" autoFocus={p.id === focus} value={p.title} onChange={e => set(p.id, { title: e.currentTarget.value })} disabled={!canEdit || p.isArchived} error={errors[p.id]} /></Table.Td>
-        <Table.Td><NumberInput size="xs" hideControls aria-label={`План: ${p.title}`} value={p.planned ?? ''} onChange={v => set(p.id, { planned: num(v) })} min={0} allowNegative={false} decimalScale={2} disabled={!canEdit || p.isArchived} /></Table.Td>
+        <Table.Td><NumberInput size="xs" hideControls aria-label={`План: ${p.title}`} value={p.planned ?? ''} onChange={v => set(p.id, { planned: num(v) })} min={0} allowNegative={false} decimalScale={2} decimalSeparator="," disabled={!canEdit || p.isArchived} /></Table.Td>
         <Table.Td><NumberInput size="xs" hideControls aria-label={`Факт: ${p.title}`} value={p.actual ?? ''} onChange={v => set(p.id, { actual: num(v) })} min={0} allowNegative={false} allowDecimal={false} disabled={!canEdit || p.isArchived} /></Table.Td>
         <Table.Td ta="right"><NeedCell value={need(p)} /></Table.Td>
         {canEdit && <Table.Td>{!saved.has(p.id) ? <Tooltip label="Убрать новую строку"><ActionIcon variant="subtle" color="gray" aria-label={`Убрать: ${p.title}`} onClick={() => onChange(positions.filter(x => x.id !== p.id))}><IconTrash size={15} /></ActionIcon></Tooltip>
@@ -221,7 +221,7 @@ function PositionDialog({ position, isNew, rows, all, onClose, onSave }: { posit
       <Select label="Подразделение" searchable data={rows.map(r => ({ value: r.id, label: r.department }))} value={value.rowId ?? null} onChange={v => change({ rowId: v ?? undefined })} error={fields.rowId} required allowDeselect={false} comboboxProps={{ zIndex: 1000 }} placeholder={value.rowId ? undefined : position.group || 'Выберите подразделение'} />
       <TextInput label="Должность" list="staffing-titles" value={value.title} onChange={e => change({ title: e.currentTarget.value })} error={fields.title} required data-autofocus />
       <SimpleGrid cols={2}>
-        <NumberInput label="План, ед." value={value.planned ?? ''} onChange={v => change({ planned: num(v) })} min={0} allowNegative={false} decimalScale={2} error={fields.planned} />
+        <NumberInput label="План, ед." value={value.planned ?? ''} onChange={v => change({ planned: num(v) })} min={0} allowNegative={false} decimalScale={2} decimalSeparator="," error={fields.planned} />
         <NumberInput label="Факт, чел." value={value.actual ?? ''} onChange={v => change({ actual: num(v) })} min={0} allowNegative={false} allowDecimal={false} error={fields.actual} />
       </SimpleGrid>
       <Text size="xs" c="dimmed">Пустое поле — нет данных. Ноль — подтверждённое нулевое значение. Если итог подразделения совпадал с суммой должностей, он обновится сам.</Text>

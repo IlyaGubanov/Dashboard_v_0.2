@@ -1,11 +1,11 @@
 /** Используем компоненты и иконки действующего приложения (Mantine/Tabler), чтобы раздел наследовал оформление и доступность. */
 import { useMemo, useState } from 'react';
-import { ActionIcon, Alert, Badge, Button, Checkbox, Group, Menu, Modal, Pagination, Paper, Select, SimpleGrid, Skeleton, Stack, Switch, Table, Tabs, Text, TextInput, Title, Tooltip, UnstyledButton } from '@mantine/core';
+import { ActionIcon, Alert, Badge, Button, Checkbox, Group, Menu, Modal, Pagination, Paper, SegmentedControl, Select, SimpleGrid, Skeleton, Stack, Switch, Table, Tabs, Text, TextInput, Title, Tooltip, UnstyledButton } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getRouteApi } from '@tanstack/react-router';
 import { IconArchive, IconCalendar, IconCalendarEvent, IconCategory, IconDots, IconDownload, IconEdit, IconFileImport, IconGauge, IconListDetails, IconPlus, IconPrinter, IconRefresh, IconSearch, IconSettings, IconTableOptions, IconUserCheck, IconUserExclamation, IconUsers, IconUsersGroup } from '@tabler/icons-react';
-import { STAFFING_CATEGORIES, staffingDelta, staffingGroupOf, staffingGroups, staffingPositionTotals, staffingTotalsDiffer, summarizeStaffing, type StaffingAuditItem, type StaffingMovementDay, type StaffingPeriod, type StaffingPeriodData, type StaffingPayroll, type StaffingRow } from '@mvs/shared';
+import { STAFFING_CATEGORIES, STAFFING_MONTHS, staffingDelta, staffingGroupOf, staffingGroups, staffingPayrollApplySums, staffingPayrollDiffers, staffingPayrollMonthTotals, staffingPayrollMonthsSum, staffingPositionTotals, staffingTotalsDiffer, summarizeStaffing, type StaffingAuditItem, type StaffingMovementDay, type StaffingPeriod, type StaffingPeriodData, type StaffingPayroll, type StaffingRow } from '@mvs/shared';
 import { api, staffingQuery } from '../../api';
 import { EChart, baseOption } from '../../ui/EChart';
 import { download } from './download';
@@ -13,7 +13,7 @@ import { GroupPie, type Measure } from './StaffingGroups';
 import { MovementsTab } from './StaffingMovements';
 import { PositionsTab } from './StaffingPositions';
 import { useFinanceHidden } from '../../ui/finance';
-import { EditorsDialog, GroupsDialog, PayrollEditor, PeriodEditor, RowEditor, RowsTableEditor } from './StaffingForms';
+import { EditorsDialog, GroupsDialog, PayrollEditor, PayrollMonthEditor, PeriodEditor, RowEditor, RowsTableEditor } from './StaffingForms';
 import type { StaffingSearch } from './search';
 import './staffing.css';
 
@@ -46,6 +46,7 @@ export function StaffingPage() {
   const [tableEdit, setTableEdit] = useState(false);
   const [groupsForm, setGroupsForm] = useState(false);
   const [payrollForm, setPayrollForm] = useState<StaffingPayroll | 'new' | null>(null);
+  const [payrollMonth, setPayrollMonth] = useState<{ start?: { year: number; month: number } } | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [confirm, setConfirm] = useState<{ title: string; action: () => Promise<unknown> } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -144,7 +145,7 @@ export function StaffingPage() {
           <Stat tone={5} icon={<IconGauge size={20} />} label="Укомплектованность" value={stats.occupancy == null ? '—' : `${n(stats.occupancy * 100)} %`} hint={`${stats.paired} / ${stats.count} сопоставимых`} tooltip="Факт / штат по подразделениям, где заполнены оба показателя. Может превышать 100%." />
         </SimpleGrid>
         <Tabs value={tab} onChange={v => update({ tab: v ?? undefined })}>
-          <Tabs.List className="staffing-controls"><Tabs.Tab value="overview">Обзор</Tabs.Tab><Tabs.Tab value="departments">Подразделения</Tabs.Tab><Tabs.Tab value="positions">Должности</Tabs.Tab><Tabs.Tab value="movements">Приём и увольнение</Tabs.Tab>{showFinance && <Tabs.Tab value="payroll">ФОТ по годам</Tabs.Tab>}{data.canAudit && <Tabs.Tab value="journal">Журнал</Tabs.Tab>}</Tabs.List>
+          <Tabs.List className="staffing-controls"><Tabs.Tab value="overview">Обзор</Tabs.Tab><Tabs.Tab value="departments">Подразделения</Tabs.Tab><Tabs.Tab value="positions">Должности</Tabs.Tab><Tabs.Tab value="movements">Приём и увольнение</Tabs.Tab>{showFinance && <Tabs.Tab value="payroll">ФОТ</Tabs.Tab>}{data.canAudit && <Tabs.Tab value="journal">Журнал</Tabs.Tab>}</Tabs.List>
           <Tabs.Panel value="overview" pt="md"><Overview periods={active} current={current} previous={previous} open={setRow} movements={data.movements ?? []} measure={search.pie ?? 'actual'} onMeasure={m => update({ pie: m === 'planned' ? m : undefined })} openGroup={group => { update({ tab: 'departments', group, q: undefined, category: undefined, status: undefined }); setPage(1); }} editGroup={canEdit ? editGroup : undefined} /></Tabs.Panel>
           <Tabs.Panel value="positions" pt="md"><PositionsTab period={current} previous={previous} canEdit={canEdit} canExport={data.canExport} group={search.group} onGroup={group => update({ group })} onSave={value => savePeriod(value)} /></Tabs.Panel>
           <Tabs.Panel value="movements" pt="md"><MovementsTab days={data.movements ?? []} groups={staffingGroups(current.rows).map(g => g.group)} canEdit={canEdit} onSaved={refresh} /></Tabs.Panel>
@@ -182,7 +183,7 @@ export function StaffingPage() {
               {filtered.length > 50 && <Pagination total={Math.ceil(filtered.length / 50)} value={page} onChange={setPage} />}
             </Stack>
           </Tabs.Panel>
-          {showFinance && <Tabs.Panel value="payroll" pt="md"><Payroll years={data.payroll} canEdit={canEdit} canExport={data.canExport} onEdit={setPayrollForm} /></Tabs.Panel>}
+          {showFinance && <Tabs.Panel value="payroll" pt="md"><Payroll years={data.payroll} canEdit={canEdit} canExport={data.canExport} onEdit={setPayrollForm} onMonth={start => setPayrollMonth({ start })} onApplySums={year => setConfirm({ title: `Подставить сумму месяцев в годовой ФОТ ${year.year} года? Изменятся только подразделения, где месяцы внесены. Прежние значения останутся в журнале.`, action: () => api(`/staffing/payroll/${year.year}`, { method: 'PUT', body: { version: year.version, data: { year: year.year, label: year.label, rows: staffingPayrollApplySums(year.rows) } } }) })} /></Tabs.Panel>}
           {data.canAudit && <Tabs.Panel value="journal" pt="md"><Journal /></Tabs.Panel>}
         </Tabs>
         <Text size="xs" c="dimmed" className="staffing-source">{current.note || 'Источник не указан'} · обновлено {new Date(current.updatedAt).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })}</Text>
@@ -193,6 +194,7 @@ export function StaffingPage() {
     {groupsForm && current && <GroupsDialog period={current} onClose={() => setGroupsForm(false)} onDone={refresh} />}
     {periodForm && <PeriodEditor initial={periodForm === 'edit' ? periodBase : undefined} periods={periods} onClose={() => setPeriodForm(null)} onSave={async value => { if (periodForm === 'edit') await savePeriod(value, undefined, periodBase); else { await api('/staffing/periods', { method: 'POST', body: value }); await refresh(); update({ month: value.month, archive: undefined }); } }} />}
     {editors && <EditorsDialog onClose={() => setEditors(false)} />}
+    {payrollMonth && <PayrollMonthEditor years={data.payroll} period={current} start={payrollMonth.start} onClose={() => setPayrollMonth(null)} onSave={async (value, existing) => { await api(existing ? `/staffing/payroll/${existing.year}` : '/staffing/payroll', { method: existing ? 'PUT' : 'POST', body: existing ? { version: existing.version, data: value } : value }); await refresh(); notifications.show({ color: 'green', message: 'ФОТ сохранён' }); }} />}
     {payrollForm && <PayrollEditor initial={payrollForm === 'new' ? undefined : payrollForm} period={current} onClose={() => setPayrollForm(null)} onSave={async value => { await api(payrollForm === 'new' ? '/staffing/payroll' : `/staffing/payroll/${payrollForm.year}`, { method: payrollForm === 'new' ? 'POST' : 'PUT', body: payrollForm === 'new' ? value : { version: payrollForm.version, data: value } }); await refresh(); }} />}
     <Modal opened={!!confirm} onClose={() => { if (!busy) { setConfirm(null); setActionError(''); } }} title="Подтвердите действие"><Stack><Text size="sm">{confirm?.title}</Text>{actionError && <Alert color="red">{actionError}</Alert>}<Group justify="flex-end"><Button variant="default" disabled={busy} onClick={() => setConfirm(null)}>Отмена</Button><Button loading={busy} onClick={() => confirm && runAction(confirm.action)}>Подтвердить</Button></Group></Stack></Modal>
   </Stack>;
@@ -213,17 +215,36 @@ function Overview({ periods, current, previous, open, measure, onMeasure, openGr
   </Stack>;
 }
 
-function Payroll({ years, canEdit, canExport, onEdit }: { years: StaffingPayroll[]; canEdit: boolean; canExport: boolean; onEdit: (p: StaffingPayroll | 'new') => void }) {
+const m3 = (v: number | null | undefined) => v == null ? '—' : v.toLocaleString('ru-RU', { maximumFractionDigits: 3 });
+/** ФОТ: таблица по месяцам (строки × 12 месяцев) и годовые суммы. Ввод — по месяцу, нажатие на месяц в заголовке открывает его. */
+function Payroll({ years, canEdit, canExport, onEdit, onMonth, onApplySums }: { years: StaffingPayroll[]; canEdit: boolean; canExport: boolean; onEdit: (p: StaffingPayroll | 'new') => void; onMonth: (start?: { year: number; month: number }) => void; onApplySums: (p: StaffingPayroll) => void }) {
   const [chosen, setChosen] = useState<number | null>(null);
   const [q, setQ] = useState('');
   const [category, setCategory] = useState<string | null>(null);
+  const [mode, setMode] = useState<string | null>(null);
   const current = years.find(y => y.year === chosen) ?? years.at(-1);
+  const hasMonths = !!current?.rows.some(r => r.months);
+  const view = mode ?? (hasMonths ? 'months' : 'year');
   const rows = current?.rows.filter(r => r.department.toLocaleLowerCase('ru').includes(q.toLocaleLowerCase('ru')) && (!category || r.category === category)) ?? [];
   const total = rows.some(r => r.amount !== null) ? rows.reduce((s, r) => s + (r.amount ?? 0), 0) : null;
-  return <Stack gap="sm"><Group justify="space-between" align="end"><Group align="end"><Select label="Год" data={years.map(y => String(y.year))} value={current ? String(current.year) : null} onChange={v => setChosen(Number(v))} w={110} allowDeselect={false} /><div><Text size="xs" c="dimmed">{current?.label}</Text><Text size="xl" fw={600}>{n(total)} млн ₽</Text></div></Group>{canEdit && <Group gap="xs"><Button variant="default" size="sm" onClick={() => onEdit('new')}>Добавить год</Button>{current && <Button size="sm" onClick={() => onEdit(current)}>Редактировать ФОТ</Button>}</Group>}</Group>
-    <Text size="xs" c="dimmed">{rows.filter(r => r.amount !== null).length} / {rows.length} заполнено · ФОТ по годам не суммируется с месячными срезами</Text>
-    <Group className="staffing-controls"><TextInput placeholder="Поиск подразделения" aria-label="Поиск ФОТ" leftSection={<IconSearch size={16} />} value={q} onChange={e => setQ(e.currentTarget.value)} /><Select placeholder="Все категории" aria-label="Категория ФОТ" data={[...STAFFING_CATEGORIES]} value={category} onChange={setCategory} clearable />{canExport && current && <Button variant="subtle" size="xs" leftSection={<IconDownload size={14} />} onClick={() => download(`ФОТ ${current.year}.csv`, [['Год', 'Период', 'Подразделение', 'Категория', 'ФОТ, млн ₽'], ...rows.map(r => [current.year, current.label, r.department, r.category, r.amount])])}>Выгрузить</Button>}</Group>
-    <Table.ScrollContainer minWidth={560}><Table highlightOnHover verticalSpacing="xs"><Table.Thead><Table.Tr><Table.Th>Подразделение</Table.Th><Table.Th>Категория</Table.Th><Table.Th ta="right">ФОТ, млн ₽</Table.Th></Table.Tr></Table.Thead><Table.Tbody>{rows.map(r => <Table.Tr key={r.id}><Table.Td>{r.department}</Table.Td><Table.Td>{r.category}</Table.Td><Table.Td ta="right">{n(r.amount)}</Table.Td></Table.Tr>)}</Table.Tbody><Table.Tfoot><Table.Tr><Table.Td fw={600}>Итого по найденным</Table.Td><Table.Td /><Table.Td ta="right" fw={600}>{n(total)}</Table.Td></Table.Tr></Table.Tfoot></Table></Table.ScrollContainer>{!rows.length && <Text c="dimmed" size="sm">{years.length ? 'Подразделения не найдены' : 'Годовой ФОТ пока не добавлен'}</Text>}
+  const monthTotals = staffingPayrollMonthTotals(rows);
+  const monthsSum = monthTotals.some(v => v != null) ? Math.round(monthTotals.reduce<number>((s, v) => s + (v ?? 0), 0) * 1000) / 1000 : null;
+  const entered = monthTotals.filter(v => v != null).length;
+  const differs = current?.rows.filter(staffingPayrollDiffers).length ?? 0;
+  const exportRows = () => current && download(`ФОТ ${current.year}.csv`, view === 'months'
+    ? [['Год', 'Период', 'Подразделение', 'Категория', ...STAFFING_MONTHS, 'Сумма месяцев, млн ₽', 'ФОТ за год, млн ₽'], ...rows.map(r => [current.year, current.label, r.department, r.category, ...STAFFING_MONTHS.map((_, i) => r.months?.[i] ?? null), staffingPayrollMonthsSum(r), r.amount])]
+    : [['Год', 'Период', 'Подразделение', 'Категория', 'ФОТ, млн ₽'], ...rows.map(r => [current.year, current.label, r.department, r.category, r.amount])]);
+  return <Stack gap="sm"><Group justify="space-between" align="end"><Group align="end"><Select label="Год" data={years.map(y => String(y.year))} value={current ? String(current.year) : null} onChange={v => setChosen(Number(v))} w={110} allowDeselect={false} /><div><Text size="xs" c="dimmed">{current?.label}</Text><Text size="xl" fw={600}>{n(total)} млн ₽</Text></div></Group>{canEdit && <Group gap="xs"><Button variant="default" size="sm" onClick={() => onEdit('new')}>Добавить год</Button>{current && <Button variant="default" size="sm" onClick={() => onEdit(current)}>Редактировать годовой ФОТ</Button>}<Button size="sm" leftSection={<IconPlus size={15} />} onClick={() => onMonth()}>Внести за месяц</Button></Group>}</Group>
+    <Text size="xs" c="dimmed">{view === 'months' ? `Внесено месяцев: ${entered} из 12 · сумма по месяцам ${m3(monthsSum)} млн ₽` : `${rows.filter(r => r.amount !== null).length} / ${rows.length} заполнено`} · ФОТ не суммируется с месячными срезами</Text>
+    <Group className="staffing-controls"><SegmentedControl size="xs" value={view} onChange={setMode} data={[{ value: 'months', label: 'По месяцам' }, { value: 'year', label: 'За год' }]} aria-label="Вид таблицы ФОТ" /><TextInput placeholder="Поиск подразделения" aria-label="Поиск ФОТ" leftSection={<IconSearch size={16} />} value={q} onChange={e => setQ(e.currentTarget.value)} /><Select placeholder="Все категории" aria-label="Категория ФОТ" data={[...STAFFING_CATEGORIES]} value={category} onChange={setCategory} clearable />{canExport && current && <Button variant="subtle" size="xs" leftSection={<IconDownload size={14} />} onClick={exportRows}>Выгрузить</Button>}</Group>
+    {view === 'months' && differs > 0 && current && <Group gap="xs" wrap="wrap"><Text size="xs" c="var(--status-warning)">△ У подразделений ({differs}) сумма месяцев не совпадает с годовым ФОТ. Для незавершённого года или суммы из источника это нормально.</Text>{canEdit && <Button size="compact-xs" variant="default" onClick={() => onApplySums(current)}>Подставить суммы месяцев в год</Button>}</Group>}
+    {view === 'months' ? <Table.ScrollContainer minWidth={1320}><Table highlightOnHover verticalSpacing="xs" className="staffing-payroll-grid">
+      <Table.Thead><Table.Tr><Table.Th>Подразделение</Table.Th>{STAFFING_MONTHS.map((m, i) => <Table.Th key={m} ta="right">{canEdit && current ? <UnstyledButton className="staffing-department" aria-label={`Внести ФОТ за ${m.toLowerCase()} ${current.year}`} onClick={() => onMonth({ year: current.year, month: i })}>{m.slice(0, 3)}</UnstyledButton> : m.slice(0, 3)}</Table.Th>)}<Table.Th ta="right">Сумма</Table.Th><Table.Th ta="right">За год</Table.Th></Table.Tr></Table.Thead>
+      <Table.Tbody>{rows.map(r => <Table.Tr key={r.id}><Table.Td><Text size="sm" lineClamp={2}>{r.department}</Text><Text size="xs" c="dimmed">{r.category}</Text></Table.Td>{STAFFING_MONTHS.map((m, i) => <Table.Td key={m} ta="right">{m3(r.months?.[i])}</Table.Td>)}<Table.Td ta="right" fw={600}>{m3(staffingPayrollMonthsSum(r))}</Table.Td><Table.Td ta="right">{staffingPayrollDiffers(r) ? <Text span size="sm" c="var(--status-warning)">△ {m3(r.amount)}</Text> : m3(r.amount)}</Table.Td></Table.Tr>)}</Table.Tbody>
+      <Table.Tfoot><Table.Tr><Table.Td fw={600}>Итого</Table.Td>{monthTotals.map((v, i) => <Table.Td key={i} ta="right" fw={600}>{m3(v)}</Table.Td>)}<Table.Td ta="right" fw={600}>{m3(monthsSum)}</Table.Td><Table.Td ta="right" fw={600}>{m3(total)}</Table.Td></Table.Tr></Table.Tfoot>
+    </Table></Table.ScrollContainer> : <Table.ScrollContainer minWidth={560}><Table highlightOnHover verticalSpacing="xs"><Table.Thead><Table.Tr><Table.Th>Подразделение</Table.Th><Table.Th>Категория</Table.Th><Table.Th ta="right">ФОТ, млн ₽</Table.Th></Table.Tr></Table.Thead><Table.Tbody>{rows.map(r => <Table.Tr key={r.id}><Table.Td>{r.department}</Table.Td><Table.Td>{r.category}</Table.Td><Table.Td ta="right">{n(r.amount)}</Table.Td></Table.Tr>)}</Table.Tbody><Table.Tfoot><Table.Tr><Table.Td fw={600}>Итого по найденным</Table.Td><Table.Td /><Table.Td ta="right" fw={600}>{n(total)}</Table.Td></Table.Tr></Table.Tfoot></Table></Table.ScrollContainer>}
+    {!rows.length && <Text c="dimmed" size="sm">{years.length ? 'Подразделения не найдены' : 'ФОТ пока не внесён'}</Text>}
+    {view === 'months' && rows.length > 0 && <Text size="xs" c="dimmed">Значения в млн ₽. {canEdit ? 'Нажмите на месяц в заголовке, чтобы внести или исправить его.' : ''}</Text>}
   </Stack>;
 }
 

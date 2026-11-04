@@ -783,12 +783,24 @@ model SiteReport {
 
   site      Site            @relation(fields: [siteId], references: [id], onDelete: Cascade)
   period    ReportingPeriod @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  machinery SiteMachinery[]
   enteredBy User?           @relation("SiteReportEnteredBy", fields: [enteredById], references: [id], onDelete: SetNull)
   updatedBy User?           @relation("SiteReportUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
 
   @@unique([siteId, periodId])
   @@index([periodId])
   @@map("site_report")
+}
+
+/// Техника объекта по видам, как её внёс ответственный. Итог равен «техника + не допущено» в отчёте; сверяется с распределением РЭБ.
+model SiteMachinery {
+  reportId Int        @map("report_id")
+  kind     String     @db.VarChar(100)
+  qty      Int
+  report   SiteReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@id([reportId, kind])
+  @@map("site_machinery")
 }
 
 enum RemarkSeverity {

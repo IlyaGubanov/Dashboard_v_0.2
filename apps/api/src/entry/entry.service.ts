@@ -11,7 +11,7 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { Prisma, type PeriodStatus } from '@prisma/client';
 import type { AuditPage, EntryReportValue, EntrySaveData, EntrySaveResult, EntrySheet, EntryValue } from '@mvs/shared';
-import { reportSummaryStoredSchema, type ReportSummarySave } from '@mvs/shared';
+import { machineryText, reportSummaryStoredSchema, type MachineryLine, type ReportSummarySave } from '@mvs/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { AccessService } from '../auth/access.service';
@@ -24,6 +24,12 @@ import { reportProgramScope } from './program-scope';
 const num = (v: Prisma.Decimal | number | null | undefined) => (v == null ? null : Number(v));
 const day = (d: Date | null | undefined) => (d ? d.toISOString().slice(0, 10) : null);
 const parse = (s: string) => new Date(`${s}T00:00:00Z`);
+/** Техника по видам: один вид — одна строка, порядок как при чтении из базы, пустой список — разбивки нет. */
+const sortedMachinery = (lines: MachineryLine[] | null): MachineryLine[] | null => {
+  const merged = new Map<string, number>();
+  for (const l of lines ?? []) merged.set(l.kind, (merged.get(l.kind) ?? 0) + l.qty);
+  return merged.size ? [...merged].map(([kind, qty]) => ({ kind, qty })).sort((a, b) => a.kind.localeCompare(b.kind, 'ru')) : null;
+};
 
 const ITEM_FIELDS = ['statusCode', 'pct', 'factQty', 'ks', 'paid', 'note'] as const;
 const REPORT_FIELDS = ['workers', 'machines', 'workersBlocked', 'machinesBlocked', 'ks', 'paid', 'note', 'statusText', 'remarksCount'] as const;
@@ -39,6 +45,7 @@ const FIELD_LABEL: Record<string, string> = {
   machines: 'техники',
   workersBlocked: 'людей не допущено',
   machinesBlocked: 'техники не допущено',
+  machinery: 'техника по видам',
   remarkStatus: 'статус замечания',
   text: 'текст',
   category: 'категория',
@@ -116,7 +123,7 @@ export class EntryService {
           where: { period: { date: { lte: p.date }, program: p.program } },
           orderBy: { period: { date: 'desc' } },
           take: 1,
-          include: { period: { select: { id: true, date: true } } },
+          include: { period: { select: { id: true, date: true } }, machinery: { orderBy: { kind: 'asc' } } },
         },
         workItems: {
           where: { isArchived: false },
@@ -186,6 +193,7 @@ export class EntryService {
               machines: r?.machines ?? null,
               workersBlocked: r?.workersBlocked ?? null,
               machinesBlocked: r?.machinesBlocked ?? null,
+              machinery: r?.machinery.length ? r.machinery.map((l) => ({ kind: l.kind, qty: l.qty })) : null,
               ks: num(r?.ksAmount),
               paid: num(r?.paidAmount),
               note: ownReport ? (r?.note ?? null) : null,
@@ -271,7 +279,7 @@ export class EntryService {
 
     const [existingItems, existingReports] = await Promise.all([
       this.prisma.progressEntry.findMany({ where: { periodId, workItemId: { in: itemIds } }, include: { status: { select: { code: true } } } }),
-      this.prisma.siteReport.findMany({ where: { periodId, siteId: { in: siteIds } } }),
+      this.prisma.siteReport.findMany({ where: { periodId, siteId: { in: siteIds } }, include: { machinery: { orderBy: { kind: 'asc' } } } }),
     ]);
     const exItem = new Map(existingItems.map((e) => [e.workItemId, e]));
     const exReport = new Map(existingReports.map((e) => [e.siteId, e]));
@@ -360,6 +368,7 @@ export class EntryService {
           const before: EntryReportValue | null = e
             ? {
                 workers: e.workers, machines: e.machines, workersBlocked: e.workersBlocked, machinesBlocked: e.machinesBlocked,
+                machinery: e.machinery.length ? e.machinery.map((l) => ({ kind: l.kind, qty: l.qty })) : null,
                 ks: num(e.ksAmount), paid: num(e.paidAmount), note: e.note,
                 statusText: e.statusText, remarksCount: e.remarksCount,
               }
@@ -367,11 +376,18 @@ export class EntryService {
           const pick = <K extends keyof EntryReportValue>(k: K) => (r[k] !== undefined ? (r[k] as EntryReportValue[K]) : (before?.[k] ?? null));
           const after: EntryReportValue = {
             workers: pick('workers'), machines: pick('machines'), workersBlocked: pick('workersBlocked'), machinesBlocked: pick('machinesBlocked'),
+            machinery: r.machinery !== undefined ? sortedMachinery(r.machinery) : (before?.machinery ?? null),
             ks: pick('ks'), paid: pick('paid'), note: (pick('note') as string | null) || null,
             statusText: r.statusText !== undefined ? r.statusText : e?.statusText ?? null,
             remarksCount: r.remarksCount !== undefined ? r.remarksCount : e?.remarksCount ?? null,
           };
-          if (before && REPORT_FIELDS.every((f) => before[f] === after[f])) {
+          if (after.machinery) {
+            const sum = after.machinery.reduce((a, l) => a + l.qty, 0);
+            const total = (after.machines ?? 0) + (after.machinesBlocked ?? 0);
+            if (sum !== total) throw new BadRequestException({ message: `Сумма по видам техники (${sum}) не равна общему числу техники (${total})`, fields: { machinery: 'Сумма по видам не равна общему числу техники' } });
+          }
+          const sameMachinery = machineryText(before?.machinery) === machineryText(after.machinery);
+          if (before && sameMachinery && REPORT_FIELDS.every((f) => before[f] === after[f])) {
             unchanged++;
             continue;
           }
@@ -382,10 +398,14 @@ export class EntryService {
           };
           if (e && !(await tx.siteReport.updateMany({ where: { id: e.id, version: e.version }, data: { ...data, version: { increment: 1 } } })).count) throw new ConflictException('Данные уже изменены — обновите лист ввода');
           const row = e ? await tx.siteReport.findUniqueOrThrow({ where: { id: e.id } }) : await tx.siteReport.create({ data: { ...data, siteId: r.siteId, periodId, enteredById: user.id } });
+          if (!sameMachinery) {
+            await tx.siteMachinery.deleteMany({ where: { reportId: row.id } });
+            if (after.machinery) await tx.siteMachinery.createMany({ data: after.machinery.map((l) => ({ reportId: row.id, kind: l.kind, qty: l.qty })) });
+          }
           await this.audit.write(
             {
               userId: user.id, action: e ? 'UPDATE' : 'CREATE', entity: 'site_report', entityId: row.id,
-              directionId: d.id, siteId: r.siteId, before: before ? { ...before, source: e!.source, attrs: e!.attrs, program: p.program, date: day(p.date), sheet: p.label } : null, after: { ...after, source: row.source, attrs: row.attrs, program: p.program, date: day(p.date), sheet: p.label }, comment: `показатели объекта · ${dateLabel}`, ip,
+              directionId: d.id, siteId: r.siteId, before: before ? { ...before, machinery: machineryText(before.machinery), source: e!.source, attrs: e!.attrs, program: p.program, date: day(p.date), sheet: p.label } : null, after: { ...after, machinery: machineryText(after.machinery), source: row.source, attrs: row.attrs, program: p.program, date: day(p.date), sheet: p.label }, comment: `показатели объекта · ${dateLabel}`, ip,
             },
             tx,
           );

@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const FLEET_KINDS = ['vehicles', 'assignments', 'incidents', 'fines', 'tolls', 'fuel', 'downtime', 'requests', 'snapshots'] as const;
 export type FleetKind = typeof FLEET_KINDS[number];
-export const FLEET_LABELS: Record<FleetKind | 'overview', string> = { overview: 'Обзор РЭБ', vehicles: 'Реестр техники', assignments: 'Распределение техники', incidents: 'ДТП', fines: 'Штрафы', tolls: 'Платные дороги', fuel: 'Топливо', downtime: 'Неиспользуемая техника', requests: 'Потребности в технике', snapshots: 'Исторические срезы' };
+export const FLEET_LABELS: Record<FleetKind | 'overview' | 'reconciliation', string> = { overview: 'Обзор РЭБ', reconciliation: 'Сверка техники', vehicles: 'Реестр техники', assignments: 'Распределение техники', incidents: 'ДТП', fines: 'Штрафы', tolls: 'Платные дороги', fuel: 'Топливо', downtime: 'Неиспользуемая техника', requests: 'Потребности в технике', snapshots: 'Исторические срезы' };
 export const OWNERSHIP = { OWN: 'Собственная', RENTED: 'Арендуемая', UNKNOWN: 'Не установлена' };
 export const TECHNICAL_STATE = { OK: 'Исправна', FAULTY: 'Неисправна', REPAIR: 'В ремонте', RETIRED: 'Выведена из эксплуатации', UNKNOWN: 'Не установлено' };
 export const USAGE_STATE = { ACTIVE: 'Задействована', RESERVE: 'В резерве', UNASSIGNED: 'Не распределена', UNNEEDED: 'Временно не востребована', UNKNOWN: 'Не установлено' };
@@ -56,7 +56,7 @@ export type FleetRow = { id: number; directionId: number; version: number; isArc
 export type FleetReference = { id: number; name: string; code?:string; directionId?: number; position?: string | null; phone?: string | null };
 export interface FleetRefs { registryId: number; canEdit: boolean; canManage: boolean; canFinance: boolean; canLiability: boolean; canAudit: boolean; users: FleetReference[]; departments: FleetReference[]; organizations: FleetReference[]; directions: FleetReference[]; sites: FleetReference[]; vehicles: FleetReference[]; assignments: FleetReference[]; fuelTypes: string[] }
 export interface FleetList { rows: FleetRow[]; total: number }
-export interface FleetOverview { asOf: string | null; counts: { total: number; own: number; rented: number; unknown: number; used: number; unused: number; repair: number; reserve: number } | null; incidents: number | null; fines: FleetPayments | null; tolls: FleetPayments | null; fuel: { period: string | null; liters: string | null; cost: string | null; monthly: {period:string;liters:string|null;cost:string|null}[] }; openRequests: number | null }
+export interface FleetOverview { asOf: string | null; counts: { total: number; own: number; rented: number; unknown: number; used: number; unused: number; repair: number; reserve: number } | null; incidents: number | null; fines: FleetPayments | null; tolls: FleetPayments | null; fuel: { period: string | null; liters: string | null; cost: string | null; monthly: {period:string;liters:string|null;cost:string|null}[] }; openRequests: number | null; categories: { category: string; total: number; kinds: { kind: string; total: number }[] }[] }
 export interface FleetPayments { count: number; charged: string | null; paid: string | null; balance: string | null; overdue: number }
 export interface FleetAnalytics { summary: Record<string,string|number|null>; monthly: {label:string;value:string|number|null}[]; byVehicle: {label:string;count:number;amount:string|null;vehicleId:number|null}[]; distribution: {group: 'direction'|'site'|'kind';label:string;quantity:number;vehicleIds:number[];targetDirectionId:number|null;siteId:number|null}[] }
 

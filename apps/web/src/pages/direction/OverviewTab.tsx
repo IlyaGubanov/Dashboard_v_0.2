@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Alert, Badge, Box, Button, Card, Grid, Group, Modal, ScrollArea, SimpleGrid, Skeleton, Stack, Table, Text, Tooltip, UnstyledButton } from '@mantine/core';
+import { IconChevronRight } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
-import { SITE_RISK_LABELS, type DirectionKpi, type SiteKpiRow, type SiteRisk } from '@mvs/shared';
+import type { DirectionKpi, SiteKpiRow } from '@mvs/shared';
 import { directionQueries, directionsQuery } from '../../api';
 import { useAppearance } from '../../ui/appearance';
 import { arrangeTiles } from '../../ui/overviewTiles';
@@ -13,8 +14,10 @@ import { Lag } from '../../ui/Lag';
 import { useFinanceHidden } from '../../ui/finance';
 import { asOfLabel } from '../overview/DirectionCard';
 import { NetworkLayingCard } from './NetworkLayingCard';
+import { TileDetailDrawer, type OpenTile } from './TileDetailDrawer';
 
-const RISK_ORDER: SiteRisk[] = ['crit', 'warn', 'ok', 'done', 'wait', 'na'];
+/** Сколько объектов показывать в обзоре; остальные — во вкладке «Объекты». */
+const SITES_SHOWN = 12;
 
 export function OverviewTab({
   code,
@@ -36,62 +39,18 @@ export function OverviewTab({
 
   return (
     <Stack>
-      <KpiHeader k={k} onOpenSite={onOpenSite} />
+      <KpiHeader k={k} code={code} date={date} rows={rows} onOpenSite={onOpenSite} />
       {code === 'networks' && <NetworkLayingCard rows={k.networkLaying} />}
-      <Grid gutter="md">
-        <Grid.Col span={{ base: 12, lg: 6 }}>
-          <Stack>
-            <RiskDistribution rows={rows} onShowSites={onShowSites} />
-            <SectionsTable rows={rows} hasPlan={k.plan != null} />
-          </Stack>
-        </Grid.Col>
-        <Grid.Col span={{ base: 12, lg: 6 }}>
-          <Card withBorder padding="lg">
-            <Text fw={600}>{k.plan != null ? 'Наибольшее отставание от графика' : 'Наименьшая доля выполненных позиций'}</Text>
-            <Text size="xs" c="dimmed" mb="sm">
-              Щелчок открывает карточку объекта
-            </Text>
-            <Stack gap={2}>
-              {(k.plan != null
-                ? rows.filter((r) => r.lag != null && (r.risk === 'warn' || r.risk === 'crit')).sort((a, b) => a.lag! - b.lag!)
-                : rows.filter((r) => r.fact != null && r.fact < 0.995).sort((a, b) => a.fact! - b.fact!)
-              )
-                .slice(0, 12)
-                .map((r) => (
-                  <UnstyledButton key={r.id} className="row-link" px={6} py={6} onClick={() => onOpenSite(r.id)}>
-                    <Group justify="space-between" wrap="nowrap">
-                      <Box style={{ minWidth: 0 }}>
-                        <Text size="sm" fw={500} truncate>
-                          {r.shortName}
-                        </Text>
-                        <Text size="xs" c="dimmed" truncate>
-                          {r.section ? `${r.section.name} · ` : ''}факт {pct(r.fact, 0)}
-                          {r.plan != null ? ` · план ${pct(r.plan, 0)}` : ''}
-                          {r.overdueItems ? ` · просрочено позиций: ${r.overdueItems}` : ''}
-                        </Text>
-                      </Box>
-                      <Box style={{ textAlign: 'right', flexShrink: 0 }}>
-                        {r.lag != null && (
-                          <div>
-                            <Lag v={r.lag} crit={r.risk === 'crit'} />
-                          </div>
-                        )}
-                        <RiskBadge risk={r.risk} size="xs" />
-                      </Box>
-                    </Group>
-                  </UnstyledButton>
-                ))}
-            </Stack>
-          </Card>
-        </Grid.Col>
-      </Grid>
+      <SitesList code={code} rows={rows} hasPlan={k.plan != null} onOpenSite={onOpenSite} onShowSites={onShowSites} />
+      <SectionsTable rows={rows} hasPlan={k.plan != null} />
     </Stack>
   );
 }
 
 /** Главные показатели направления на дату среза. */
-function KpiHeader({ k, onOpenSite }: { k: DirectionKpi; onOpenSite: (id: number) => void }) {
+function KpiHeader({ k, code, date, rows, onOpenSite }: { k: DirectionKpi; code: string; date?: string; rows: SiteKpiRow[]; onOpenSite: (id: number) => void }) {
   const [detail, setDetail] = useState<'volume' | 'status' | null>(null);
+  const [openTile, setOpenTile] = useState<OpenTile | null>(null);
   const report = k.reportPrograms?.find(p => p.periodId === k.periodId);
   const statusMetric = k.kpis.find(t => t.key === 'reportStatusCount');
   const statusKey = statusMetric ? `kpi:${statusMetric.slot ?? k.kpis.indexOf(statusMetric)}` : 'report-status';
@@ -122,6 +81,11 @@ function KpiHeader({ k, onOpenSite }: { k: DirectionKpi; onOpenSite: (id: number
     ],
     dirs?.find((d) => d.code === k.code)?.overviewTiles,
   );
+  // на плитке подпись строчными; в заголовке панели — как в настройке («Заключения МГЭ»)
+  const tileTitle = (key: string, label: string) => {
+    const source = k.kpis.find((x, i) => `kpi:${x.slot ?? i}` === key)?.label;
+    return source && source.toLowerCase() === label ? source : label[0].toUpperCase() + label.slice(1);
+  };
   return (
     <><Card withBorder padding="lg">
       <Grid gutter="lg" align="center">
@@ -168,12 +132,15 @@ function KpiHeader({ k, onOpenSite }: { k: DirectionKpi; onOpenSite: (id: number
                 <UnstyledButton aria-label={`${t.label}: ${t.value}`} onClick={() => setDetail(t.key === 'done' ? 'volume' : 'status')} style={{ width: '100%', minWidth: 0 }}>
                   <Metric label={t.label} value={t.value} color={t.color} />
                 </UnstyledButton>
-              </Tooltip> : <Metric key={t.key} label={t.label} value={t.value} color={t.color} />
+              </Tooltip> : <UnstyledButton key={t.key} className="tile-button" aria-label={`${t.label}: ${t.value}. Показать подробности`} onClick={() => setOpenTile({ key: t.key, title: tileTitle(t.key, t.label), value: t.value })} style={{ width: '100%', minWidth: 0 }}>
+                <Metric label={t.label} value={t.value} color={t.color} />
+              </UnstyledButton>
             ))}
           </SimpleGrid>
         </Grid.Col>
       </Grid>
     </Card>
+    <TileDetailDrawer tile={openTile} code={code} tileDate={date} rows={rows} onClose={() => setOpenTile(null)} onOpenSite={onOpenSite} />
     <Modal className="direction-page" opened={detail !== null} onClose={() => setDetail(null)} title={detail === 'volume' ? 'Выполнено по объёмам' : 'Завершено по отчётному статусу'} size="lg" zIndex={400}>
       <Stack gap="sm"><Text size="sm" c="dimmed">{report?.name} · {report?.asOf.split('-').reverse().join('.')}</Text>
         <Text size="sm">{detail === 'volume' ? report?.volumeMethod : report?.statusMethod}</Text>
@@ -185,35 +152,65 @@ function KpiHeader({ k, onOpenSite }: { k: DirectionKpi; onOpenSite: (id: number
   );
 }
 
-/** Сколько объектов в каждом состоянии — одна полоса, доли подписаны. */
-function RiskDistribution({ rows, onShowSites }: { rows: SiteKpiRow[]; onShowSites: () => void }) {
-  const counts = RISK_ORDER.map((r) => ({ risk: r, n: rows.filter((x) => x.risk === r).length })).filter((x) => x.n);
-  const total = rows.length || 1;
+/** Перечень объектов направления: сначала самые отстающие, щелчок открывает карточку. */
+function SitesList({ code, rows, hasPlan, onOpenSite, onShowSites }: { code: string; rows: SiteKpiRow[]; hasPlan: boolean; onOpenSite: (id: number) => void; onShowSites: () => void }) {
+  const { data: dirs } = useQuery(directionsQuery);
+  const title = dirs?.find((d) => d.code === code)?.shortName ?? 'Объекты';
+  const sorted = [...rows].sort((a, b) => (hasPlan ? (a.lag ?? Infinity) - (b.lag ?? Infinity) : 0) || (a.fact ?? Infinity) - (b.fact ?? Infinity));
   return (
     <Card withBorder padding="lg">
-      <Group justify="space-between" mb="sm">
-        <Text fw={600}>Объекты по состоянию</Text>
-        <Button variant="subtle" size="compact-sm" onClick={onShowSites}>
-          Весь реестр →
+      <Group justify="space-between" mb="sm" wrap="nowrap">
+        <div>
+          <Text fw={600}>{title}</Text>
+          <Text size="xs" c="dimmed">
+            {hasPlan ? 'Сначала самые отстающие. ' : ''}Щелчок открывает карточку
+          </Text>
+        </div>
+        <Button variant="subtle" size="compact-sm" onClick={onShowSites} style={{ flexShrink: 0 }}>
+          {rows.length > SITES_SHOWN ? `Весь реестр · ${int(rows.length)} →` : 'Весь реестр →'}
         </Button>
       </Group>
-      <Box style={{ display: 'flex', gap: 2, height: 14 }}>
-        {counts.map((c) => (
-          <Tooltip key={c.risk} label={`${SITE_RISK_LABELS[c.risk]}: ${c.n} (${pct(c.n / total, 0)})`} withArrow>
-            <Box style={{ flex: c.n, background: riskColor(c.risk), borderRadius: 4, minWidth: 4 }} />
-          </Tooltip>
-        ))}
-      </Box>
-      <Group gap="lg" mt="sm">
-        {counts.map((c) => (
-          <Group key={c.risk} gap={6} wrap="nowrap">
-            <RiskBadge risk={c.risk} size="xs" />
-            <Text size="xs" fw={600}>
-              {c.n}
-            </Text>
-          </Group>
-        ))}
-      </Group>
+      <Table.ScrollContainer minWidth={620}>
+        <Table verticalSpacing={8}>
+          <Table.Thead>
+            <Table.Tr>
+              <Table.Th>Объект</Table.Th>
+              <Table.Th w="28%">{hasPlan ? 'Факт и план' : 'Выполнение'}</Table.Th>
+              {hasPlan && <Table.Th ta="right">Отставание</Table.Th>}
+              <Table.Th ta="right">Люди</Table.Th>
+              <Table.Th ta="right">Техника</Table.Th>
+              <Table.Th w={24} />
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            {sorted.slice(0, SITES_SHOWN).map((r) => (
+              <Table.Tr key={r.id} className="row-link" tabIndex={0} role="link" aria-label={`Открыть карточку: ${r.shortName}`} onClick={() => onOpenSite(r.id)} onKeyDown={(e) => { if (e.key === 'Enter') onOpenSite(r.id); }}>
+                <Table.Td>
+                  <Text size="sm" fw={500}>
+                    {r.shortName}
+                  </Text>
+                  <Box mt={2}>
+                    <RiskBadge risk={r.risk} size="xs" />
+                  </Box>
+                </Table.Td>
+                <Table.Td>
+                  <FactPlanBar fact={r.fact} plan={r.plan} color={r.plan == null ? 'var(--series-1)' : riskColor(r.risk)} height={7} />
+                  <Text size="xs" c="dimmed" mt={2}>
+                    {pct(r.fact, 0)}
+                    {r.plan != null ? ` · план ${pct(r.plan, 0)}` : ''}
+                  </Text>
+                </Table.Td>
+                {hasPlan && <Table.Td ta="right">{r.lag != null ? <Lag v={r.lag} crit={r.risk === 'crit'} /> : '—'}</Table.Td>}
+                <Table.Td ta="right">{int(r.people)}</Table.Td>
+                <Table.Td ta="right">{int(r.tech)}</Table.Td>
+                <Table.Td>
+                  <IconChevronRight size={15} color="var(--status-none)" aria-hidden />
+                </Table.Td>
+              </Table.Tr>
+            ))}
+          </Table.Tbody>
+        </Table>
+      </Table.ScrollContainer>
     </Card>
   );
 }

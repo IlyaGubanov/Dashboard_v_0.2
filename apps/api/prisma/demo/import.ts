@@ -4,6 +4,7 @@
  *   npm run db:demo                      — загрузить в пустые направления (заполненные пропускаются)
  *   npm run db:demo -- --force           — перезагрузить: удалить данные направления и загрузить заново
  *   npm run db:demo -- --clear           — удалить данные направлений (когда появятся реальные)
+ *   npm run db:demo -- --fleet           — загрузить заново только демо-парк РЭБ (техника, внесённая вручную, остаётся)
  *   npm run db:demo -- --only=mkd,schools
  *   npm run db:demo -- --remarks         — только добавить демо-замечания (МКД, Сети), если замечаний в направлении нет
  *
@@ -25,6 +26,7 @@ import { importNetworks } from './networks';
 import { importSchools } from './schools';
 import { importStreets } from './streets';
 import { importRemarks } from './remarks';
+import { FLEET_CLEARED_KEY, clearDemoFleet, hasDemoFleet, importFleetDemo } from './fleet';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const IMPORTERS: Record<string, (db: Tx, directionId: number, data: any) => Promise<Record<string, number>>> = {
@@ -54,7 +56,26 @@ async function setCleared(code: string, on: boolean) {
   await prisma.appSetting.upsert({ where: { key: CLEARED }, create: { key: CLEARED, value: [...list] }, update: { value: [...list] } });
 }
 
+/** Демо-парк РЭБ. Обычный запуск не добавляет его к реальной технике и после --clear; --force и --fleet загружают заново. */
+async function loadFleet(reload: boolean) {
+  const list = await clearedList();
+  if (!reload) {
+    if (list.includes(FLEET_CLEARED_KEY) || (await hasDemoFleet(prisma))) return;
+    if (await prisma.fleetVehicle.count()) return console.log('РЭБ: уже есть техника — демо-парк не загружен (загрузить: --fleet)');
+  }
+  const stats = await prisma.$transaction(async (tx) => {
+    await clearDemoFleet(tx);
+    return importFleetDemo(tx);
+  }, { timeout: 300_000, maxWait: 30_000 });
+  if (list.includes(FLEET_CLEARED_KEY)) await setCleared(FLEET_CLEARED_KEY, false);
+  console.log(`РЭБ: ${Object.entries(stats).map(([k, v]) => `${k} ${v}`).join(', ')}`);
+}
+
 async function main() {
+  if (args.includes('--fleet')) return loadFleet(true);
+  // назначения демо-парка ссылаются на объекты: снимаем их раньше, чем направления перезагружаются
+  if (!remarksOnly && (force || clear)) await prisma.$transaction((tx) => clearDemoFleet(tx), { timeout: 120_000 });
+  if (clear) await setCleared(FLEET_CLEARED_KEY, true);
   const cleared = await clearedList();
   const codes = only ?? Object.keys(IMPORTERS);
   for (const code of codes) {
@@ -120,6 +141,7 @@ async function main() {
     if (cleared.includes(code)) await setCleared(code, false);
     console.log(`${dir.shortName}: ${summary} — ${((Date.now() - t0) / 1000).toFixed(1)} с`);
   }
+  if (!remarksOnly && !clear) await loadFleet(force);
   const removed = await prisma.$transaction((tx) => cleanupExampleUsers(tx));
   if (removed) console.log(`Удалено демо-сотрудников без привязок: ${removed}`);
 }

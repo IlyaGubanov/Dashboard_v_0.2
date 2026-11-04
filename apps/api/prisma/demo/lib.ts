@@ -140,7 +140,7 @@ export async function cleanupExampleUsers(db: Tx) {
     where: { isExample: true, canLogin: false },
     select: {
       id: true,
-      _count: { select: { memberships: true, siteAssignments: true, responsibleItems: true, enteredProgress: true, enteredReports: true } },
+      _count: { select: { memberships: true, siteAssignments: true, responsibleItems: true, enteredProgress: true, enteredReports: true, fleetVehicleCreatedById: true, fleetVehicleUpdatedById: true, fleetAssignmentCreatedById: true, fleetAssignmentUpdatedById: true, fleetDowntimeCreatedById: true, fleetDowntimeUpdatedById: true, fleetDowntimeEmployeeId: true } },
     },
   });
   const orphan = users.filter((u) => Object.values(u._count).every((n) => n === 0)).map((u) => u.id);

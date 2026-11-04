@@ -1,11 +1,12 @@
 import { queryOptions } from '@tanstack/react-query';
-import type { FleetKind,FleetList,FleetOverview,FleetRefs,FleetRow,FleetAnalytics } from '@mvs/shared';
+import type { FleetKind,FleetList,FleetOverview,FleetRefs,FleetRow,FleetAnalytics,MachineryView } from '@mvs/shared';
 import { api } from '../../api';
 
 export const FLEET_BASE='/fleet';
 export type Filters=Record<string,string|number|boolean|undefined>;
 export const params=(filter:Filters)=>new URLSearchParams(Object.entries(filter).filter(([,v])=>v!==undefined&&v!=='').map(([k,v])=>[k,String(v)])).toString();
 export const fleetQueries={
+ reconciliation:queryOptions({queryKey:['fleet','reconciliation'],queryFn:()=>api<MachineryView>(FLEET_BASE+'/reconciliation'),staleTime:0}),
  refs:queryOptions({queryKey:['fleet','refs'],queryFn:()=>api<FleetRefs>(FLEET_BASE+'/refs'),staleTime:30000}),
  list:(kind:FleetKind,filters:Filters)=>queryOptions({queryKey:['fleet',kind,filters],queryFn:()=>api<FleetList>(`${FLEET_BASE}/${kind}?${params(filters)}`),staleTime:0}),
  card:(kind:FleetKind,id:number)=>queryOptions({queryKey:['fleet',kind,id],queryFn:()=>api<FleetRow>(`${FLEET_BASE}/${kind}/${id}`),staleTime:0}),

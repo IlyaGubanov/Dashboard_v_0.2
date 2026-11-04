@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { machineryLineSchema, type MachineryLine } from './machinery';
 import type { PeriodKind } from './directions';
 import type { ReportSummary } from './report-summary';
 
@@ -27,6 +28,8 @@ export const entryReportSchema = z.object({
   remarksCount: count,
   workersBlocked: count,
   machinesBlocked: count,
+  /** техника по видам; пустой список — разбивки нет. Итог обязан совпасть с «техника + не допущено». */
+  machinery: z.array(machineryLineSchema).max(60).nullable().optional(),
   ks: money,
   paid: money,
   note: z.string().trim().max(1000).nullable().optional(),
@@ -67,6 +70,7 @@ export interface EntryReportValue {
   machines: number | null;
   workersBlocked: number | null;
   machinesBlocked: number | null;
+  machinery: MachineryLine[] | null;
   ks: number | null;
   paid: number | null;
   note: string | null;

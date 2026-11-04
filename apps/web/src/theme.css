@@ -251,6 +251,11 @@ button, a, input, select, textarea { touch-action: manipulation; }
 /* плитка показателя; --tile-color — свой цвет плитки из конструктора, вид и размеры — со страницы «Оформление» */
 .direction-metric { padding: 10px 12px; border-left: 2px solid var(--tile-color, var(--tile-accent)); background: var(--tile-bg); min-width: 0; }
 .direction-metric[data-colored] .tile-value { color: var(--tile-color); }
+/* плитка открывает панель подробностей */
+.tile-button { display: block; border-radius: 2px; }
+.tile-button .direction-metric { height: 100%; transition: background-color 0.12s; }
+.tile-button:hover .direction-metric, .tile-button:focus-visible .direction-metric { background: color-mix(in srgb, var(--mantine-primary-color-filled) 10%, var(--tile-bg)); }
+.tile-button:focus-visible { outline: 2px solid var(--mantine-primary-color-filled); outline-offset: 1px; }
 .matrix-table tbody tr:hover td { outline: 1px solid var(--series-1); outline-offset: -1px; }
 .matrix-table td { font-variant-numeric: tabular-nums; }
 .matrix-status-cell {

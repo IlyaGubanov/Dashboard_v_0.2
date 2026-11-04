@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Accordion,
+  ActionIcon,
   Affix,
   Alert,
   Badge,
@@ -26,8 +27,8 @@ import {
 import { useMediaQuery } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { IconCheck, IconDeviceFloppy, IconLock, IconLockOpen, IconPlus, IconSearch } from '@tabler/icons-react';
-import type { EntryReportValue, EntrySaveInput, EntrySheet, EntryValue, PeriodItem } from '@mvs/shared';
+import { IconCheck, IconDeviceFloppy, IconLock, IconLockOpen, IconPlus, IconSearch, IconTrash } from '@tabler/icons-react';
+import { MACHINERY_KINDS, type EntryReportValue, type EntrySaveInput, type EntrySheet, type EntryValue, type MachineryLine, type PeriodItem } from '@mvs/shared';
 import { api, ApiError, directionQueries } from '../../api';
 import { date, weekLabel } from '../../ui/format';
 import { DelayReason } from './DelayReasonField';
@@ -454,7 +455,7 @@ function SiteEntry({
   const setReport = (patch: Partial<EntryReportValue>) =>
     setDraft((d) => {
       const next = { ...d.reports[site.id], ...patch };
-      const clean = Object.entries(next).every(([k, v]) => (site.report.value as unknown as Record<string, unknown>)[k] === v);
+      const clean = Object.entries(next).every(([k, v]) => JSON.stringify((site.report.value as unknown as Record<string, unknown>)[k]) === JSON.stringify(v));
       const reports = { ...d.reports };
       if (clean) delete reports[site.id];
       else reports[site.id] = next;
@@ -532,7 +533,7 @@ function SiteEntry({
                     w={110}
                     min={0}
                     allowDecimal={false}
-                    disabled={ro}
+                    disabled={ro || !!rv.machinery?.length}
                     value={rv.machines ?? ''}
                     styles={dirtyStyle(rDirty('machines'))}
                     onChange={(v) => setReport({ machines: numOrNull(v) })}
@@ -582,6 +583,18 @@ function SiteEntry({
                   </Text>
                 )}
               </Group>
+            )}
+            {f.workers && (
+              <MachineryLines
+                lines={rv.machinery ?? []}
+                ro={ro}
+                dirty={rDirty('machinery')}
+                onChange={(lines) => {
+                  const sum = lines.reduce((a, l) => a + l.qty, 0);
+                  // общее число следует за разбивкой; пустая разбивка оставляет последнее число редактируемым
+                  setReport(lines.length ? { machinery: lines, machines: Math.max(0, sum - (rv.machinesBlocked ?? 0)) } : { machinery: null });
+                }}
+              />
             )}
 
             {narrow ? (
@@ -892,5 +905,65 @@ function ItemCard({
         )}
       </Stack>
     </Paper>
+  );
+}
+
+/** Техника по видам: из строк складывается общее число техники; по этим видам идёт сверка с РЭБ. */
+function MachineryLines({ lines, ro, dirty, onChange }: { lines: MachineryLine[]; ro: boolean; dirty: boolean; onChange: (lines: MachineryLine[]) => void }) {
+  const [adding, setAdding] = useState(false);
+  const used = new Set(lines.map((l) => l.kind));
+  const groups = MACHINERY_KINDS.map((c) => ({ group: c.category, items: c.kinds.filter((k) => !used.has(k)) })).filter((g) => g.items.length);
+  const replace = (i: number, line: MachineryLine) => onChange(lines.map((l, j) => (j === i ? line : l)));
+  return (
+    <Box>
+      <Text size="sm" fw={500} mb={2} c={dirty ? 'var(--status-warning)' : undefined}>
+        Техника по видам
+      </Text>
+      <Text size="xs" c="dimmed" mb={6}>
+        Сумма заменяет общее число техники. Эти данные сверяются с распределением РЭБ.
+      </Text>
+      <Stack gap={6}>
+        {lines.map((l, i) => (
+          <Group key={l.kind} gap="xs" wrap="nowrap">
+            <Text size="sm" style={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>
+              {l.kind}
+            </Text>
+            <NumberInput aria-label={`Количество: ${l.kind}`} w={84} min={1} allowDecimal={false} disabled={ro} value={l.qty} onChange={(v) => replace(i, { ...l, qty: Math.max(1, Number(v) || 1) })} />
+            {!ro && (
+              <ActionIcon variant="subtle" color="gray" aria-label={`Убрать: ${l.kind}`} onClick={() => onChange(lines.filter((_, j) => j !== i))}>
+                <IconTrash size={16} />
+              </ActionIcon>
+            )}
+          </Group>
+        ))}
+        {!ro && adding && (
+          <Select
+            autoFocus
+            searchable
+            placeholder="Выберите вид техники"
+            aria-label="Добавить вид техники"
+            data={groups}
+            value={null}
+            onChange={(kind) => {
+              if (kind) onChange([...lines, { kind, qty: 1 }]);
+              setAdding(false);
+            }}
+            onBlur={() => setAdding(false)}
+          />
+        )}
+        {!ro && !adding && (
+          <Group>
+            <Button size="compact-sm" variant="subtle" leftSection={<IconPlus size={14} />} onClick={() => setAdding(true)}>
+              Добавить вид
+            </Button>
+          </Group>
+        )}
+        {ro && !lines.length && (
+          <Text size="xs" c="dimmed">
+            Виды не указаны
+          </Text>
+        )}
+      </Stack>
+    </Box>
   );
 }

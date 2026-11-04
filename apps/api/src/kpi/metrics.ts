@@ -2,10 +2,10 @@
  * Библиотека дополнительных показателей. Направление выбирает нужные в настройках
  * (direction.settings.kpis = [{ metric, label, params }]) — новые направления собирают свой набор без программирования.
  */
-import type { KpiFormat, KpiTile } from '@mvs/shared';
+import type { KpiFormat, KpiTile, KpiTileDetail } from '@mvs/shared';
 import type { CalcResult } from './engine';
 import { calculate } from './engine';
-import { DAY_MS, type KDirection, type KPeriod } from './model';
+import { DAY_MS, isoDate, type KDirection, type KPeriod } from './model';
 
 interface Ctx {
   dir: KDirection;
@@ -145,4 +145,33 @@ export function computeTiles(dir: KDirection, period: KPeriod, P: number, r: Cal
     const v = m.fn({ dir, period, P, r, params: k.params ?? {} });
     return [{ key: k.metric, slot, label: k.label, ...v }];
   });
+}
+
+/** Показатели, которые нельзя разложить на объекты простым пересчётом: считаются по надстройке или по всему направлению. */
+const NOT_BY_SITE = new Set(['trackerOverdue', 'trackerStatusDone', 'scheduleLagDays']);
+
+/** Плитка по объектам: та же метрика считается отдельно для каждого объекта, поэтому сумма сходится с плиткой. */
+export function tileDetail(dir: KDirection, period: KPeriod, P: number, r: CalcResult, slot: number): KpiTileDetail | null {
+  const cfg = dir.settings.kpis?.[slot];
+  const m = cfg && METRICS[cfg.metric];
+  if (!cfg || !m) return null;
+  const params = cfg.params ?? {};
+  const total = m.fn({ dir, period, P, r, params });
+  const rows = NOT_BY_SITE.has(cfg.metric)
+    ? []
+    : r.sites.flatMap((s) => {
+        const value = m.fn({ dir, period, P, r: { ...r, sites: [s] }, params }).value;
+        return value ? [{ siteId: s.site.id, siteName: s.site.shortName, value }] : [];
+      });
+  const stage = params.stage == null ? null : String(params.stage);
+  return {
+    key: cfg.metric,
+    label: cfg.label,
+    format: total.format,
+    unit: total.unit,
+    asOf: isoDate(period.date),
+    planDate: isoDate(P),
+    rows: rows.sort((a, b) => b.value - a.value),
+    tracker: params.tracker != null && stage ? { code: String(params.tracker), stage } : undefined,
+  };
 }

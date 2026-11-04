@@ -11,6 +11,14 @@
 .staffing-table tr[data-selected] { background: var(--mantine-primary-color-light); }
 .staffing-bulk { background: var(--mantine-primary-color-light); border-radius: 6px; }
 .staffing-source { overflow-wrap: anywhere; }
+.staffing-editor td, .staffing-editor th { font-size: 13px; }
+.staffing-editor td { padding-inline: 4px; }
+.staffing-paste { padding: 10px; border: 1px solid var(--line); border-radius: 8px; }
+.staffing-journal-change { min-width: 240px; overflow-wrap: anywhere; }
+.staffing-payroll-grid td, .staffing-payroll-grid th { font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* первый столбец остаётся на месте при прокрутке месяцев вбок */
+.staffing-payroll-grid td:first-child, .staffing-payroll-grid th:first-child { position: sticky; left: 0; z-index: 1; width: 240px; min-width: 200px; max-width: 240px; white-space: normal; background: var(--panel); }
+@media (max-width: 600px) { .staffing-payroll-grid td:first-child, .staffing-payroll-grid th:first-child { width: 128px; min-width: 128px; max-width: 128px; overflow-wrap: anywhere; } }
 @media (max-width: 600px) {
   .staffing-header { align-items: flex-start; }
   .staffing-stats .staffing-stat { padding: 10px; }

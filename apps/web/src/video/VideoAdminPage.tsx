@@ -70,7 +70,7 @@ export function VideoAdminPage() {
     <Modal opened={!!archive} onClose={() => setArchive(null)} title={archive?.item.isArchived ? 'Восстановление' : 'Архивирование'} size="md">
       {archive && <Stack>{write.error && <Alert color="red">{write.error.message}</Alert>}<Text size="sm">{archive.item.name}</Text>{archive.kind === 'recorders' && !archive.item.isArchived && <>
         <Text size="sm">Будут приостановлены связанные камеры: {cameras.filter(c => c.recorderId === archive.item.id).length}. Их настройки сохранятся.</Text>
-        <ScrollArea mah={220}><Stack gap={4}>{cameras.filter(c => c.recorderId === archive.item.id).map(c => <Text key={c.id} size="sm">{c.name} · канал {c.channel}{c.isArchived ? ' · архив' : !c.enabled ? ' · отключена' : ''}</Text>)}</Stack></ScrollArea>
+        <ScrollArea.Autosize mah={220} type="auto"><Stack gap={4}>{cameras.filter(c => c.recorderId === archive.item.id).map(c => <Text key={c.id} size="sm">{c.name} · канал {c.channel}{c.isArchived ? ' · архив' : !c.enabled ? ' · отключена' : ''}</Text>)}</Stack></ScrollArea.Autosize>
       </>}{archive.item.isArchived && <Text size="sm" c="dimmed">Ранее отключённые и отдельно архивированные камеры сохранят своё состояние. Занятый канал нужно освободить перед восстановлением камеры.</Text>}
         <Group justify="flex-end"><Button variant="default" onClick={() => setArchive(null)}>Отмена</Button><Button color={archive.item.isArchived ? undefined : 'red'} loading={write.isPending} onClick={() => write.mutate({ path: '/video/' + archive.kind + '/' + archive.item.id + '/archive', body: { version: archive.item.version, isArchived: !archive.item.isArchived } })}>{archive.item.isArchived ? 'Восстановить' : 'В архив'}</Button></Group></Stack>}
     </Modal>

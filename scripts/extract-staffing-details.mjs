@@ -43,7 +43,7 @@ function groupOf(name) {
   throw new Error(`Неизвестный блок: «${name}»`);
 }
 /** Название должности без разряда, участка и лишних пробелов — для сопоставления факта и вакансий. */
-const baseTitle = s => clean(String(s).replace(/\/[^/]*\/?/g, ' ').replace(/\s*\d+\s*-?\s*(?:го\s+)?разряд\w*/gi, ' ').replace(/\s*\d+\s*категори\w*/gi, m => m)).replace(/\s+,/g, ',');
+const baseTitle = s => clean(String(s).replace(/\/[^/]*\/?/g, ' ').replace(/\s*\d+\s*-?\s*(?:го\s+)?разряд[а-яё]*/gi, ' ').replace(/\s*\d+\s*категори\w*/gi, m => m)).replace(/\s+,/g, ',');
 const key = s => baseTitle(s).toLocaleLowerCase('ru').replace(/ё/g, 'е');
 
 // 1. Факт по должностям на 26.10.2026: строка группы (B — название, C — итог), затем должности (A — номер).

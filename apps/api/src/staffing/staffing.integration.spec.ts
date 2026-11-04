@@ -18,6 +18,7 @@ describe.skipIf(!db)('сохранение штатной численности
   afterAll(async () => {
     if (actor) {
       await db!.staffingPeriod.deleteMany({ where: { month } });
+      await db!.staffingMovementDay.deleteMany({ where: { date: `${month}-02` } });
       await db!.staffingPayroll.deleteMany({ where: { year: 2098 } });
       await db!.auditLog.deleteMany({ where: { userId: actor.id } });
       await db!.user.delete({ where: { id: actor.id } });
@@ -41,10 +42,41 @@ describe.skipIf(!db)('сохранение штатной численности
     const restored = await service.save(actor, month, { version: 3, data, isArchived: false }, null);
     expect(restored.isArchived).toBe(false);
   });
+  it('хранит должности подразделения, пишет в журнал что изменилось и переименовывает группу со связями', async () => {
+    const current = (await service.view(actor)).periods.find(p => p.month === month)!;
+    const position = { id: 'pos', group: 'любая', rowId: 'test', title: 'Маляр', planned: 5, actual: 4, isArchived: false };
+    const saved = await service.save(actor, month, { version: current.version, data: { ...data, positions: [position] } }, null);
+    expect(saved.positions![0]).toMatchObject({ group: 'АУП', rowId: 'test' });
+    const journal = await service.journal(actor);
+    expect(journal.find(r => r.entityId === month)!.comment).toContain('должности: добавлено 1');
+    await expect(service.renameGroup({ ...actor, globalRole: 'MANAGEMENT' }, { from: 'АУП', to: 'Икс', month }, null)).rejects.toMatchObject({ status: 403 });
+    await expect(service.renameGroup(actor, { from: 'Нет такой группы', to: 'Икс', month }, null)).rejects.toMatchObject({ status: 404 });
+    expect(await service.renameGroup(actor, { from: 'АУП', to: 'Проверочная группа', month }, null)).toEqual({ periods: 1, days: 0 });
+    const renamed = (await service.view(actor)).periods.find(p => p.month === month)!;
+    expect(renamed.version).toBe(saved.version + 1);
+    expect(renamed.rows[0].group).toBe('Проверочная группа');
+    expect(renamed.positions![0].group).toBe('Проверочная группа');
+    // без указания среза меняются и дни приёма/увольнения; объединяемые группы складываются
+    await service.saveMovementDay(actor, `${month}-02`, { data: { date: `${month}-02`, note: '', rows: [{ group: 'Проверочная группа', hired: 1, dismissed: 2 }, { group: 'Проверочная группа 2', hired: 3, dismissed: 4 }] } }, null);
+    expect(await service.renameGroup(actor, { from: 'Проверочная группа', to: 'Проверочная группа 2' }, null)).toEqual({ periods: 1, days: 1 });
+    const view = await service.view(actor);
+    expect(view.movements.find(d => d.date === `${month}-02`)!.rows).toEqual([{ group: 'Проверочная группа 2', hired: 4, dismissed: 6 }]);
+    const merged = view.periods.find(p => p.month === month)!;
+    expect(merged.rows[0].group).toBe('Проверочная группа 2');
+    await service.save(actor, month, { version: merged.version, data }, null);
+  });
   it('проверяет доступ на сервере и исключает ФОТ при отключённых финансах', async () => {
     await expect(service.view({ ...actor, globalRole: 'USER' })).rejects.toMatchObject({ status: 403 });
     await expect(service.create({ ...actor, globalRole: 'MANAGEMENT' }, data, null)).rejects.toMatchObject({ status: 403 });
-    await service.createPayroll(actor, { year: 2098, label: 'Тест', rows: [{ id: 'test', department: 'Тест', category: 'ОП', amount: 5 }] }, null);
+    const created = await service.createPayroll(actor, { year: 2098, label: 'Тест', rows: [{ id: 'test', department: 'Тест', category: 'ОП', amount: 5 }] }, null);
+    const months = Array.from({ length: 12 }, (_, i) => i === 9 ? 1.5 : null);
+    const saved = await service.savePayroll(actor, 2098, { version: created!.version, data: { year: 2098, label: 'Тест', rows: [{ id: 'test', department: 'Тест', category: 'ОП', amount: 5, months }] } }, null);
+    expect(saved.rows[0].months![9]).toBe(1.5);
+    expect((await service.view(actor)).payroll.find(y => y.year === 2098)!.rows[0].months![9]).toBe(1.5);
+    expect((await service.journal(actor)).find(r => r.entityId === '2098')!.comment).toBe('октябрь, Тест: — → 1.5');
+    await expect(service.savePayroll(actor, 2098, { version: created!.version, data: { year: 2098, label: 'Тест', rows: [] } }, null)).rejects.toMatchObject({ status: 409 });
+    await expect(service.savePayroll({ ...actor, globalRole: 'MANAGEMENT' }, 2098, { version: saved.version, data: { year: 2098, label: 'Тест', rows: [] } }, null)).rejects.toMatchObject({ status: 403 });
+    await expect(service.savePayroll({ ...actor, deniedFeatures: ['finance'] }, 2098, { version: saved.version, data: { year: 2098, label: 'Тест', rows: [] } }, null)).rejects.toMatchObject({ status: 403 });
     const view = await service.view({ ...actor, globalRole: 'MANAGEMENT', deniedFeatures: ['finance'] });
     expect(view.payroll).toEqual([]);
     await expect(service.createPayroll({ ...actor, deniedFeatures: ['finance'] }, { year: 2099, label: 'Тест', rows: [] }, null)).rejects.toMatchObject({ status: 403 });

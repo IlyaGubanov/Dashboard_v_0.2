@@ -111,7 +111,7 @@ function MovementEditor({ date: initialDate, days, groups, onClose, onSaved }: {
     <Stack gap="sm">
       <Group align="flex-end"><TextInput type="date" label="Дата" value={date} onChange={e => { setDate(e.currentTarget.value); setError(''); }} w={170} />
         <Text size="sm" c={existing ? 'var(--status-warning)' : 'dimmed'} mb={8}>{existing ? '△ За этот день данные уже внесены — сохранение изменит их' : 'Новый день: пустое поле — 0'}</Text></Group>
-      <Table.ScrollContainer minWidth={420} mah={420}><Table verticalSpacing={4}>
+      <Table.ScrollContainer minWidth={420} maxHeight={420} scrollAreaProps={{ type: 'auto' }}><Table verticalSpacing={4} stickyHeader>
         <Table.Thead><Table.Tr><Table.Th>Группа</Table.Th><Table.Th w={110}>Принято</Table.Th><Table.Th w={110}>Уволено</Table.Th></Table.Tr></Table.Thead>
         <Table.Tbody>{groups.map(g => <Table.Tr key={g}><Table.Td><Text size="sm">{g}</Text></Table.Td>
           <Table.Td><NumberInput aria-label={`Принято: ${g}`} value={rowsFor(g).hired} min={0} allowDecimal={false} allowNegative={false} onChange={v => set(g, 'hired', v === '' ? '' : Number(v))} /></Table.Td>

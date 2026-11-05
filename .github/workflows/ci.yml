@@ -52,6 +52,8 @@ jobs:
       - run: npm run build -w @mvs/shared
       - name: Git workflow check
         run: node --test .github/scripts/sync-strategy.test.cjs
+      - name: Manual dev deployment script checks
+        run: python3 -m unittest discover -s deploy/tests -v
       - run: npm run typecheck
       - name: Check Prisma auxiliary TypeScript
         run: npx tsc --noEmit -p apps/api/prisma/tsconfig.json

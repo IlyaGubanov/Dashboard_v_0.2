@@ -55,7 +55,11 @@ target=$(git rev-parse origin/dev)
 previous=$(git rev-parse HEAD)
 
 if [[ $action == start ]]; then
-  [[ -z $(docker compose ps -a -q) ]] || die 'контейнеры уже существуют; для обновления используйте update с резервной копией'
+  containers=$(docker compose ps -a -q) || die 'не удалось проверить существующие контейнеры; исправьте ошибку Docker/Compose'
+  db_volumes=$(docker volume ls -q --filter label=com.docker.compose.project=mvsst-dev --filter label=com.docker.compose.volume=db_data) || die 'не удалось проверить том БД Docker'
+  files_volumes=$(docker volume ls -q --filter label=com.docker.compose.project=mvsst-dev --filter label=com.docker.compose.volume=files_data) || die 'не удалось проверить том файлов Docker'
+  [[ -z $containers ]] || die 'контейнеры уже существуют; для обновления используйте update с резервной копией'
+  [[ -z $db_volumes && -z $files_volumes ]] || die 'сохранились данные dev; сначала восстановите работающее окружение и копию, затем используйте update'
 else
   # До смены кода: если копия не получилась, работающая версия не обновляется.
   export BACKUP_DIR="${BACKUP_DIR:-/var/backups/mvsst-dev}/$(date +%Y%m%d-%H%M%S-%N)-${previous:0:12}"

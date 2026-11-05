@@ -173,20 +173,26 @@ exit
 Корневой сертификат обычно в fullchain не включают. Сертификат/ключ не отправлять в GitHub и чаты.
 Формат: [документация Caddy](https://caddyserver.com/docs/caddyfile/directives/tls).
 
-С **вашего ПК**, из папки с этими файлами, передайте их в домашнюю папку ADMIN на VM:
+В SSH-сеансе под **ADMIN** сначала создайте закрытую папку приёма:
+
+```bash
+install -d -m 0700 ~/mvsst-dev-tls
+```
+
+С **вашего ПК**, из папки с этими файлами, передайте их в эту папку на VM:
 
 ```text
-scp fullchain.pem privatekey.pem ADMIN@DEV_VM_IP:~/
+scp fullchain.pem privatekey.pem ADMIN@DEV_VM_IP:~/mvsst-dev-tls/
 ```
 
 Затем в SSH-сеансе под **ADMIN** (исходные файлы в домашнем каталоге удалятся после переноса):
 
 ```bash
-chmod 600 ~/fullchain.pem ~/privatekey.pem
+chmod 600 ~/mvsst-dev-tls/fullchain.pem ~/mvsst-dev-tls/privatekey.pem
 sudo install -d -m 0700 -o mvsst-dev -g mvsst-dev /srv/mvsst-dev/app/deploy/certs
-sudo install -m 0644 -o mvsst-dev -g mvsst-dev ~/fullchain.pem /srv/mvsst-dev/app/deploy/certs/cert.pem
-sudo install -m 0600 -o mvsst-dev -g mvsst-dev ~/privatekey.pem /srv/mvsst-dev/app/deploy/certs/key.pem
-rm -- ~/fullchain.pem ~/privatekey.pem
+sudo install -m 0644 -o mvsst-dev -g mvsst-dev ~/mvsst-dev-tls/fullchain.pem /srv/mvsst-dev/app/deploy/certs/cert.pem
+sudo install -m 0600 -o mvsst-dev -g mvsst-dev ~/mvsst-dev-tls/privatekey.pem /srv/mvsst-dev/app/deploy/certs/key.pem
+rm -- ~/mvsst-dev-tls/fullchain.pem ~/mvsst-dev-tls/privatekey.pem
 ```
 
 Файлы `deploy/certs/*.pem` и `.env` исключены из Git; Caddy получает сертификаты только для чтения.
@@ -259,6 +265,13 @@ df -h
 что все контейнеры остались на этой версии: смотрите журнал. До первой успешной установки файла нет.
 После исправления причины повторите update. Если первый start прервался и контейнеры уже созданы,
 сначала разберите журнал; повторный start преднамеренно не заменяет update с копией.
+Start также остановится, если контейнеры удалены, но тома БД/файлов сохранились (например, после
+обычного `docker compose down`). Для существовавшего окружения сначала верните его прежнюю
+версию в рабочее состояние и сделайте копию; затем запускайте update. При прерванной первой
+установке администратор сначала определяет, появились ли данные, и сохраняет нужные тома.
+Автоматического удаления томов или обхода копии скрипт не предлагает.
+Если до первой сборки успела пройти только проверка Caddy и сохранились лишь его служебные тома,
+повторный start разрешён: базы и пользовательских файлов ещё нет.
 
 Копии перед обновлениями: `/var/backups/mvsst-dev/<время-SHA>/`. Внутри БД, файлы, .env,
 `code-sha.txt` и, при наличии, `last-successful-sha.txt`. Они содержат пароли: храните закрыто,
@@ -292,7 +305,9 @@ flock -n .git/mvsst-dev.lock bash -c '
 '
 ```
 
-При ошибке validation до следующего запуска восстановите прежнюю пару. После успешной замены
+При любой ошибке validation или HTTPS восстановите прежнюю пару под тем же lock,
+перезапустите Caddy и снова проверьте HTTPS; не оставляйте неверную пару до следующего update.
+После успешной замены
 проверьте в браузере имя и срок нового сертификата. Кратко перезапустится только HTTPS-шлюз.
 Штатная копия приложения **не включает TLS-файлы**: их храните отдельно в защищённом хранилище.
 

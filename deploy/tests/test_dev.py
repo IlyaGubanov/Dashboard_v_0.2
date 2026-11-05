@@ -67,7 +67,11 @@ class DevDeployTest(unittest.TestCase):
         self.write_tool('docker', '''#!/usr/bin/env bash
 set -eu
 echo "$*" >> "$DOCKER_LOG"
+if [[ "$*" == "compose ps -a -q" && ${FAIL_PS:-0} == 1 ]]; then exit 44; fi
+if [[ "$1 ${2:-}" == "volume ls" && ${FAIL_VOLUME_LIST:-0} == 1 ]]; then exit 45; fi
 if [[ "$*" == "compose ps -a -q" && ${HAS_CONTAINERS:-0} == 1 ]]; then echo container-id; fi
+if [[ "$1 ${2:-}" == "volume ls" && ${HAS_VOLUMES:-0} == 1 ]]; then echo mvsst-dev_db_data; fi
+if [[ "$1 ${2:-}" == "volume ls" && ${HAS_CADDY_VOLUMES:-0} == 1 && "$*" != *compose.volume=* ]]; then echo mvsst-dev_caddy_data; fi
 if [[ "$*" == "compose build web" && ${FAIL_BUILD:-0} == 1 ]]; then exit 43; fi
 ''')
         self.write_tool('curl', '#!/usr/bin/env bash\nexit "${FAIL_HEALTH:-0}"\n')
@@ -212,6 +216,29 @@ if [[ "$*" == "compose build web" && ${FAIL_BUILD:-0} == 1 ]]; then exit 43; fi
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('update', result.stderr)
         self.assertFalse(self.marker().exists())
+
+    def test_start_refuses_persistent_data_after_containers_were_removed(self):
+        self.publish_next()
+        result = self.run_deploy('start', HAS_VOLUMES='1')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('данные', result.stderr)
+        self.assertEqual(self.git(self.app, 'rev-parse', 'HEAD').strip(), self.initial)
+        self.assertFalse(self.marker().exists())
+
+    def test_start_does_not_treat_failed_container_query_as_empty_environment(self):
+        result = self.run_deploy('start', FAIL_PS='1')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse(self.marker().exists())
+
+    def test_start_does_not_treat_failed_volume_query_as_empty_environment(self):
+        result = self.run_deploy('start', FAIL_VOLUME_LIST='1')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse(self.marker().exists())
+
+    def test_start_can_retry_after_only_caddy_validation_created_tls_volume(self):
+        result = self.run_deploy('start', HAS_CADDY_VOLUMES='1')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.marker().read_text().strip(), self.initial)
 
 
 if __name__ == '__main__':

@@ -489,7 +489,7 @@ function TrackerForm({ d, t, isNew, onCreated }: { d: DirectionDef; t: TrackerRo
 
         <Text fw={600}>Строки · {items.length}</Text>
         {errors.items && <Alert color="red">{errors.items}</Alert>}
-        <Table.ScrollContainer minWidth={700} mah={360}>
+        <Table.ScrollContainer minWidth={700} maxHeight={360} scrollAreaProps={{ type: 'auto' }}>
           <Table verticalSpacing={2}>
             <Table.Tbody>
               {v.items.map((it, i) =>

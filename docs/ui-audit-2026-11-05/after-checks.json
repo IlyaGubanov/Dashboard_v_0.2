@@ -1,0 +1,75 @@
+{
+  "results": [
+    {
+      "name": "overview",
+      "url": "/",
+      "w": 1920,
+      "h": 1080,
+      "scheme": "light",
+      "schemeActual": "light",
+      "scrollWidth": 1920,
+      "viewport": 1920
+    },
+    {
+      "name": "staffing",
+      "url": "/staffing",
+      "w": 1920,
+      "h": 1080,
+      "scheme": "light",
+      "schemeActual": "light",
+      "scrollWidth": 1920,
+      "viewport": 1920
+    },
+    {
+      "name": "staffing",
+      "url": "/staffing",
+      "w": 375,
+      "h": 812,
+      "scheme": "light",
+      "schemeActual": "light",
+      "scrollWidth": 375,
+      "viewport": 375
+    },
+    {
+      "name": "economics",
+      "url": "/economics",
+      "w": 375,
+      "h": 812,
+      "scheme": "dark",
+      "schemeActual": "dark",
+      "scrollWidth": 375,
+      "viewport": 375
+    },
+    {
+      "name": "economics",
+      "url": "/economics",
+      "w": 1920,
+      "h": 1080,
+      "scheme": "dark",
+      "schemeActual": "dark",
+      "scrollWidth": 1920,
+      "viewport": 1920
+    },
+    {
+      "name": "mkd",
+      "url": "/d/mkd?tab=matrix",
+      "w": 1920,
+      "h": 1080,
+      "scheme": "light",
+      "schemeActual": "light",
+      "scrollWidth": 1920,
+      "viewport": 1920
+    },
+    {
+      "name": "reb",
+      "url": "/reb",
+      "w": 1920,
+      "h": 1080,
+      "scheme": "light",
+      "schemeActual": "light",
+      "scrollWidth": 1920,
+      "viewport": 1920
+    }
+  ],
+  "errors": []
+}

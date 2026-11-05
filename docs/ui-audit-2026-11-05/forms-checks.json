@@ -1,0 +1,50 @@
+[
+  {
+    "phase": "before",
+    "name": "fleet-form",
+    "saveRect": {
+      "x": 232.546875,
+      "y": 1447.984375,
+      "width": 111.703125,
+      "height": 36
+    },
+    "saveVisibleInitially": false,
+    "overflow": false
+  },
+  {
+    "phase": "before",
+    "name": "user-form",
+    "saveRect": {
+      "x": 250.578125,
+      "y": 909.9375,
+      "width": 93.671875,
+      "height": 36
+    },
+    "saveVisibleInitially": false,
+    "overflow": false
+  },
+  {
+    "phase": "after",
+    "name": "fleet-form",
+    "saveRect": {
+      "x": 232.546875,
+      "y": 725.390625,
+      "width": 111.703125,
+      "height": 36
+    },
+    "saveVisibleInitially": true,
+    "overflow": false
+  },
+  {
+    "phase": "after",
+    "name": "user-form",
+    "saveRect": {
+      "x": 250.578125,
+      "y": 725.390625,
+      "width": 93.671875,
+      "height": 36
+    },
+    "saveVisibleInitially": true,
+    "overflow": false
+  }
+]

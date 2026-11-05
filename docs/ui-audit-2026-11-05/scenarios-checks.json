@@ -1,0 +1,81 @@
+{
+  "results": [
+    {
+      "login": "rukovod",
+      "directions": [
+        "schools",
+        "mkd",
+        "networks",
+        "streets",
+        "ui-audit"
+      ],
+      "usersStatus": 403,
+      "entryVisible": false
+    },
+    {
+      "login": "kurator",
+      "directions": [
+        "mkd",
+        "networks"
+      ],
+      "usersStatus": 403,
+      "entryVisible": true
+    },
+    {
+      "login": "vvod",
+      "directions": [
+        "mkd"
+      ],
+      "usersStatus": 403,
+      "entryVisible": true
+    },
+    {
+      "login": "viewer",
+      "directions": [
+        "mkd"
+      ],
+      "usersStatus": 403,
+      "entryVisible": false
+    },
+    {
+      "login": "restricted",
+      "directions": [
+        "mkd"
+      ],
+      "usersStatus": 403,
+      "mapStatus": 403,
+      "entryVisible": false
+    },
+    {
+      "login": "noaccess",
+      "directions": [],
+      "usersStatus": 403
+    },
+    {
+      "login": "admin",
+      "directions": [
+        "schools",
+        "mkd",
+        "networks",
+        "streets",
+        "ui-audit"
+      ],
+      "usersStatus": 200,
+      "entryVisible": true
+    },
+    {
+      "scenario": "dynamic-direction",
+      "status": 200
+    },
+    {
+      "scenario": "fleet-save-reopen",
+      "passed": true
+    },
+    {
+      "scenario": "panorama-upload-view-zoom-download",
+      "filename": "ui-audit-panorama.jpg",
+      "passed": true
+    }
+  ],
+  "errors": []
+}

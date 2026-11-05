@@ -1,0 +1,83 @@
+{
+  "results": [
+    {
+      "scenario": "constructor-tab",
+      "value": "main",
+      "saveInViewport": true,
+      "scrollWidth": 375
+    },
+    {
+      "scenario": "constructor-tab",
+      "value": "delay-reasons",
+      "saveInViewport": true,
+      "scrollWidth": 375
+    },
+    {
+      "scenario": "constructor-tab",
+      "value": "statuses",
+      "saveInViewport": true,
+      "scrollWidth": 375
+    },
+    {
+      "scenario": "constructor-tab",
+      "value": "fields",
+      "saveInViewport": true,
+      "scrollWidth": 375
+    },
+    {
+      "scenario": "constructor-tab",
+      "value": "trackers",
+      "saveInViewport": true,
+      "scrollWidth": 375
+    },
+    {
+      "scenario": "constructor-tab",
+      "value": "kpis",
+      "saveInViewport": true,
+      "scrollWidth": 375
+    },
+    {
+      "scenario": "constructor-tab",
+      "value": "tiles",
+      "saveInViewport": true,
+      "scrollWidth": 375
+    },
+    {
+      "scenario": "legacy-reb-redirect",
+      "passed": true
+    },
+    {
+      "scenario": "change-password-read-only",
+      "passed": true
+    },
+    {
+      "scenario": "error-state",
+      "passed": true
+    },
+    {
+      "scenario": "dynamic-empty",
+      "scrollWidth": 375
+    },
+    {
+      "scenario": "favicon",
+      "icons": [
+        {
+          "href": "/favicon.ico?v=20261105",
+          "sizes": "16x16 32x32 48x48",
+          "type": "image/x-icon"
+        },
+        {
+          "href": "/favicon-32.png?v=20261105",
+          "sizes": "32x32",
+          "type": "image/png"
+        },
+        {
+          "href": "/favicon.svg?v=20261105",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
+    }
+  ],
+  "errors": []
+}

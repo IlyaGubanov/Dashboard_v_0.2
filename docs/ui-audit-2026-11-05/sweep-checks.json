@@ -1,0 +1,2582 @@
+{
+  "urlCount": 97,
+  "results": [
+    {
+      "url": "/",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Производственная сводка",
+      "active": [],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/map",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Карта объектов",
+      "active": [],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/reb",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "РЭБ — Ремонтно-эксплуатационная база",
+      "active": [
+        "Обзор РЭБ"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/reb?fleet=overview",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "РЭБ — Ремонтно-эксплуатационная база",
+      "active": [
+        "Обзор РЭБ"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/reb?fleet=vehicles",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "РЭБ — Ремонтно-эксплуатационная база",
+      "active": [
+        "Реестр техники"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/reb?fleet=assignments",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "РЭБ — Ремонтно-эксплуатационная база",
+      "active": [
+        "Распределение техники"
+      ],
+      "clippedButtons": [],
+      "alerts": [
+        "Записей пока нет. Добавьте подтверждённые данные."
+      ]
+    },
+    {
+      "url": "/reb?fleet=incidents",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "РЭБ — Ремонтно-эксплуатационная база",
+      "active": [
+        "ДТП"
+      ],
+      "clippedButtons": [],
+      "alerts": [
+        "Записей пока нет. Добавьте подтверждённые данные."
+      ]
+    },
+    {
+      "url": "/reb?fleet=downtime",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "РЭБ — Ремонтно-эксплуатационная база",
+      "active": [
+        "Неиспользуемая техника"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/reb?fleet=requests",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "РЭБ — Ремонтно-эксплуатационная база",
+      "active": [
+        "Потребности в технике"
+      ],
+      "clippedButtons": [],
+      "alerts": [
+        "Записей пока нет. Добавьте подтверждённые данные."
+      ]
+    },
+    {
+      "url": "/contractors",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Подрядчики",
+      "active": [],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/video",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Видеонаблюдение",
+      "active": [],
+      "clippedButtons": [],
+      "alerts": [
+        "Камеры пока не настроены или не соответствуют выбранным фильтрам."
+      ]
+    },
+    {
+      "url": "/staffing",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Штатная численность",
+      "active": [
+        "Обзор"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/staffing?tab=overview",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Штатная численность",
+      "active": [
+        "Обзор"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/staffing?tab=departments",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Штатная численность",
+      "active": [
+        "Подразделения"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/staffing?tab=positions",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Штатная численность",
+      "active": [
+        "Должности"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/staffing?tab=movements",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Штатная численность",
+      "active": [
+        "Приём и увольнение"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/staffing?tab=payroll",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Штатная численность",
+      "active": [
+        "ФОТ"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/staffing?tab=journal",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Штатная численность",
+      "active": [
+        "Журнал"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/economics",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Экономика",
+      "active": [
+        "Обзор"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/economics?tab=overview",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Экономика",
+      "active": [
+        "Обзор"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/economics?tab=pnl",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Экономика",
+      "active": [
+        "Доходы и расходы"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/economics?tab=cash",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Экономика",
+      "active": [
+        "Движение денег"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/economics?tab=deviations",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Экономика",
+      "active": [
+        "Отклонения"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/economics?tab=limits",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Экономика",
+      "active": [
+        "Лимиты"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/economics?tab=fact",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Экономика",
+      "active": [
+        "Факт за месяц"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/economics?tab=articles",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Экономика",
+      "active": [
+        "Статьи"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/economics?tab=journal",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Экономика",
+      "active": [
+        "Журнал"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/admin/users",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Пользователи и роли",
+      "active": [],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/admin/directions",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Конструктор направлений",
+      "active": [],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/admin/directions/schools",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Капремонт школ 2026–2027",
+      "active": [
+        "Основное"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/admin/directions/schools?tab=main",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Капремонт школ 2026–2027",
+      "active": [
+        "Основное"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/admin/directions/schools?tab=delay-reasons",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Капремонт школ 2026–2027",
+      "active": [
+        "Основное"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/admin/directions/schools?tab=statuses",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Капремонт школ 2026–2027",
+      "active": [
+        "Основное"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/admin/directions/schools?tab=fields",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Капремонт школ 2026–2027",
+      "active": [
+        "Основное"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/admin/directions/schools?tab=trackers",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Капремонт школ 2026–2027",
+      "active": [
+        "Основное"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/admin/directions/schools?tab=kpis",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Капремонт школ 2026–2027",
+      "active": [
+        "Основное"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/admin/directions/schools?tab=tiles",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Капремонт школ 2026–2027",
+      "active": [
+        "Основное"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/admin/appearance",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Оформление",
+      "active": [],
+      "clippedButtons": [],
+      "alerts": [
+        "Контраст достаточный в обеих темах: текст и значки читаются."
+      ]
+    },
+    {
+      "url": "/admin/video",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Видеонаблюдение",
+      "active": [
+        "Регистраторы · 0"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/admin/video?tab=recorders",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Видеонаблюдение",
+      "active": [
+        "Регистраторы · 0"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/admin/video?tab=cameras",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Видеонаблюдение",
+      "active": [
+        "Камеры · 0"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/help",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Справка",
+      "active": [],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/schools",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Капремонт школ 2026–2027",
+      "active": [
+        "Обзор"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/schools?tab=entry",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Капремонт школ 2026–2027",
+      "active": [
+        "Ввод данных"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/schools?tab=overview",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Капремонт школ 2026–2027",
+      "active": [
+        "Обзор"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/schools?tab=sites",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Капремонт школ 2026–2027",
+      "active": [
+        "Объекты"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/schools?tab=reasons",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Капремонт школ 2026–2027",
+      "active": [
+        "Причины отставания"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/schools?tab=matrix",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Капремонт школ 2026–2027",
+      "active": [
+        "Матрица"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/schools?tab=schedule",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Капремонт школ 2026–2027",
+      "active": [
+        "График работ"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/schools?tab=trackers",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Капремонт школ 2026–2027",
+      "active": [
+        "Надстройки"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/schools?tab=dynamics",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Капремонт школ 2026–2027",
+      "active": [
+        "Динамика"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/schools?tab=remarks",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Капремонт школ 2026–2027",
+      "active": [
+        "Замечания"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/schools?tab=people",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Капремонт школ 2026–2027",
+      "active": [
+        "Ответственные"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/schools?tab=manage",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Капремонт школ 2026–2027",
+      "active": [
+        "Управление",
+        "Объекты · 4"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/schools?tab=journal",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Капремонт школ 2026–2027",
+      "active": [
+        "Журнал"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/schools?tab=settings",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Капремонт школ 2026–2027",
+      "active": [
+        "Устройство",
+        "Виды работ · 34"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/mkd",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Капремонт МКД — 2026",
+      "active": [
+        "Обзор"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/mkd?tab=entry",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Капремонт МКД — 2026",
+      "active": [
+        "Ввод данных"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/mkd?tab=overview",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Капремонт МКД — 2026",
+      "active": [
+        "Обзор"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/mkd?tab=sites",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Капремонт МКД — 2026",
+      "active": [
+        "Объекты"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/mkd?tab=reasons",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Капремонт МКД — 2026",
+      "active": [
+        "Причины отставания"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/mkd?tab=matrix",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Капремонт МКД — 2026",
+      "active": [
+        "Матрица"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/mkd?tab=schedule",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Капремонт МКД — 2026",
+      "active": [
+        "График работ"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/mkd?tab=dynamics",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Капремонт МКД — 2026",
+      "active": [
+        "Динамика"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/mkd?tab=remarks",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Капремонт МКД — 2026",
+      "active": [
+        "Замечания15"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/mkd?tab=people",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Капремонт МКД — 2026",
+      "active": [
+        "Ответственные"
+      ],
+      "clippedButtons": [],
+      "alerts": [
+        "Отчётная точка 26.10.2026 открыта: внесли данные 2 из 3 ответственных за ввод. Не внесли: Ответственный за ввод МКД (демо)."
+      ]
+    },
+    {
+      "url": "/d/mkd?tab=manage",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Капремонт МКД — 2026",
+      "active": [
+        "Управление",
+        "Объекты · 42"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/mkd?tab=journal",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Капремонт МКД — 2026",
+      "active": [
+        "Журнал"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/mkd?tab=settings",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Капремонт МКД — 2026",
+      "active": [
+        "Устройство",
+        "Виды работ · 17"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/networks",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Сети, коллекторы, водные объекты",
+      "active": [
+        "Обзор"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/networks?tab=entry",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Сети, коллекторы, водные объекты",
+      "active": [
+        "Ввод данных"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/networks?tab=overview",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Сети, коллекторы, водные объекты",
+      "active": [
+        "Обзор"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/networks?tab=sites",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Сети, коллекторы, водные объекты",
+      "active": [
+        "Объекты"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/networks?tab=reasons",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Сети, коллекторы, водные объекты",
+      "active": [
+        "Причины отставания"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/networks?tab=matrix",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Сети, коллекторы, водные объекты",
+      "active": [
+        "Матрица"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/networks?tab=schedule",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Сети, коллекторы, водные объекты",
+      "active": [
+        "График работ"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/networks?tab=trackers",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Сети, коллекторы, водные объекты",
+      "active": [
+        "Надстройки"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/networks?tab=dynamics",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Сети, коллекторы, водные объекты",
+      "active": [
+        "Динамика"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/networks?tab=remarks",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Сети, коллекторы, водные объекты",
+      "active": [
+        "Замечания14"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/networks?tab=people",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Сети, коллекторы, водные объекты",
+      "active": [
+        "Ответственные"
+      ],
+      "clippedButtons": [],
+      "alerts": [
+        "Отчётная точка 26.10.2026 открыта: внесли данные 0 из 5 ответственных за ввод. Не внесли: Иванов А.А., Кузнецов Д.М., Орлова М.И., Петров С.В., Сидорова Е.Н.."
+      ]
+    },
+    {
+      "url": "/d/networks?tab=manage",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Сети, коллекторы, водные объекты",
+      "active": [
+        "Управление",
+        "Объекты · 154"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/networks?tab=journal",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Сети, коллекторы, водные объекты",
+      "active": [
+        "Журнал"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/networks?tab=settings",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Сети, коллекторы, водные объекты",
+      "active": [
+        "Устройство",
+        "Виды работ · 9"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/streets",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Благоустройство улиц",
+      "active": [
+        "Обзор"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/streets?tab=overview",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Благоустройство улиц",
+      "active": [
+        "Обзор"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/streets?tab=sites",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Благоустройство улиц",
+      "active": [
+        "Объекты"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/streets?tab=reasons",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Благоустройство улиц",
+      "active": [
+        "Причины отставания"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/streets?tab=matrix",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Благоустройство улиц",
+      "active": [
+        "Матрица"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/streets?tab=dynamics",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Благоустройство улиц",
+      "active": [
+        "Динамика"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/streets?tab=remarks",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Благоустройство улиц",
+      "active": [
+        "Замечания"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/streets?tab=people",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Благоустройство улиц",
+      "active": [
+        "Ответственные"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/streets?tab=manage",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Благоустройство улиц",
+      "active": [
+        "Управление",
+        "Объекты · 37"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/streets?tab=journal",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Благоустройство улиц",
+      "active": [
+        "Журнал"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/streets?tab=settings",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "Благоустройство улиц",
+      "active": [
+        "Устройство",
+        "Виды работ · 20"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/reb?fleet=fines",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "РЭБ — Ремонтно-эксплуатационная база",
+      "active": [
+        "Расходы"
+      ],
+      "clippedButtons": [],
+      "alerts": [
+        "Записей пока нет. Добавьте подтверждённые данные."
+      ]
+    },
+    {
+      "url": "/reb?fleet=tolls",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "РЭБ — Ремонтно-эксплуатационная база",
+      "active": [
+        "Расходы"
+      ],
+      "clippedButtons": [],
+      "alerts": [
+        "Записей пока нет. Добавьте подтверждённые данные."
+      ]
+    },
+    {
+      "url": "/reb?fleet=fuel",
+      "width": 1920,
+      "scrollWidth": 1920,
+      "theme": "light",
+      "heading": "РЭБ — Ремонтно-эксплуатационная база",
+      "active": [
+        "Расходы"
+      ],
+      "clippedButtons": [],
+      "alerts": [
+        "Записей пока нет. Добавьте подтверждённые данные."
+      ]
+    },
+    {
+      "url": "/",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Производственная сводка",
+      "active": [],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/map",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Карта объектов",
+      "active": [],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/reb",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "РЭБ — Ремонтно-эксплуатационная база",
+      "active": [
+        "Обзор РЭБ"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/reb?fleet=overview",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "РЭБ — Ремонтно-эксплуатационная база",
+      "active": [
+        "Обзор РЭБ"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/reb?fleet=vehicles",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "РЭБ — Ремонтно-эксплуатационная база",
+      "active": [
+        "Реестр техники"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/reb?fleet=assignments",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "РЭБ — Ремонтно-эксплуатационная база",
+      "active": [
+        "Распределение техники"
+      ],
+      "clippedButtons": [],
+      "alerts": [
+        "Записей пока нет. Добавьте подтверждённые данные."
+      ]
+    },
+    {
+      "url": "/reb?fleet=incidents",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "РЭБ — Ремонтно-эксплуатационная база",
+      "active": [
+        "ДТП"
+      ],
+      "clippedButtons": [],
+      "alerts": [
+        "Записей пока нет. Добавьте подтверждённые данные."
+      ]
+    },
+    {
+      "url": "/reb?fleet=downtime",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "РЭБ — Ремонтно-эксплуатационная база",
+      "active": [
+        "Неиспользуемая техника"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/reb?fleet=requests",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "РЭБ — Ремонтно-эксплуатационная база",
+      "active": [
+        "Потребности в технике"
+      ],
+      "clippedButtons": [],
+      "alerts": [
+        "Записей пока нет. Добавьте подтверждённые данные."
+      ]
+    },
+    {
+      "url": "/contractors",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Подрядчики",
+      "active": [],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/video",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Видеонаблюдение",
+      "active": [],
+      "clippedButtons": [],
+      "alerts": [
+        "Камеры пока не настроены или не соответствуют выбранным фильтрам."
+      ]
+    },
+    {
+      "url": "/staffing",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Штатная численность",
+      "active": [
+        "Обзор"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/staffing?tab=overview",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Штатная численность",
+      "active": [
+        "Обзор"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/staffing?tab=departments",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Штатная численность",
+      "active": [
+        "Подразделения"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/staffing?tab=positions",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Штатная численность",
+      "active": [
+        "Должности"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/staffing?tab=movements",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Штатная численность",
+      "active": [
+        "Приём и увольнение"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/staffing?tab=payroll",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Штатная численность",
+      "active": [
+        "ФОТ"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/staffing?tab=journal",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Штатная численность",
+      "active": [
+        "Журнал"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/economics",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Экономика",
+      "active": [
+        "Обзор"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/economics?tab=overview",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Экономика",
+      "active": [
+        "Обзор"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/economics?tab=pnl",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Экономика",
+      "active": [
+        "Доходы и расходы"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/economics?tab=cash",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Экономика",
+      "active": [
+        "Движение денег"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/economics?tab=deviations",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Экономика",
+      "active": [
+        "Отклонения"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/economics?tab=limits",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Экономика",
+      "active": [
+        "Лимиты"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/economics?tab=fact",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Экономика",
+      "active": [
+        "Факт за месяц"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/economics?tab=articles",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Экономика",
+      "active": [
+        "Статьи"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/economics?tab=journal",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Экономика",
+      "active": [
+        "Журнал"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/admin/users",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Пользователи и роли",
+      "active": [],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/admin/directions",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Конструктор направлений",
+      "active": [],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/admin/directions/schools",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Капремонт школ 2026–2027",
+      "active": [
+        "Основное"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/admin/directions/schools?tab=main",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Капремонт школ 2026–2027",
+      "active": [
+        "Основное"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/admin/directions/schools?tab=delay-reasons",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Капремонт школ 2026–2027",
+      "active": [
+        "Основное"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/admin/directions/schools?tab=statuses",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Капремонт школ 2026–2027",
+      "active": [
+        "Основное"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/admin/directions/schools?tab=fields",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Капремонт школ 2026–2027",
+      "active": [
+        "Основное"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/admin/directions/schools?tab=trackers",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Капремонт школ 2026–2027",
+      "active": [
+        "Основное"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/admin/directions/schools?tab=kpis",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Капремонт школ 2026–2027",
+      "active": [
+        "Основное"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/admin/directions/schools?tab=tiles",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Капремонт школ 2026–2027",
+      "active": [
+        "Основное"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/admin/appearance",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Оформление",
+      "active": [],
+      "clippedButtons": [],
+      "alerts": [
+        "Контраст достаточный в обеих темах: текст и значки читаются."
+      ]
+    },
+    {
+      "url": "/admin/video",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Видеонаблюдение",
+      "active": [
+        "Регистраторы · 0"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/admin/video?tab=recorders",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Видеонаблюдение",
+      "active": [
+        "Регистраторы · 0"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/admin/video?tab=cameras",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Видеонаблюдение",
+      "active": [
+        "Камеры · 0"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/help",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Справка",
+      "active": [],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/schools",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Капремонт школ 2026–2027",
+      "active": [
+        "Обзор"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/schools?tab=entry",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Капремонт школ 2026–2027",
+      "active": [
+        "Ввод данных"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/schools?tab=overview",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Капремонт школ 2026–2027",
+      "active": [
+        "Обзор"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/schools?tab=sites",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Капремонт школ 2026–2027",
+      "active": [
+        "Объекты"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/schools?tab=reasons",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Капремонт школ 2026–2027",
+      "active": [
+        "Причины отставания"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/schools?tab=matrix",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Капремонт школ 2026–2027",
+      "active": [
+        "Матрица"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/schools?tab=schedule",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Капремонт школ 2026–2027",
+      "active": [
+        "График работ"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/schools?tab=trackers",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Капремонт школ 2026–2027",
+      "active": [
+        "Надстройки"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/schools?tab=dynamics",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Капремонт школ 2026–2027",
+      "active": [
+        "Динамика"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/schools?tab=remarks",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Капремонт школ 2026–2027",
+      "active": [
+        "Замечания"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/schools?tab=people",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Капремонт школ 2026–2027",
+      "active": [
+        "Ответственные"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/schools?tab=manage",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Капремонт школ 2026–2027",
+      "active": [
+        "Управление",
+        "Объекты · 4"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/schools?tab=journal",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Капремонт школ 2026–2027",
+      "active": [
+        "Журнал"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/schools?tab=settings",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Капремонт школ 2026–2027",
+      "active": [
+        "Устройство",
+        "Виды работ · 34"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/mkd",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Капремонт МКД — 2026",
+      "active": [
+        "Обзор"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/mkd?tab=entry",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Капремонт МКД — 2026",
+      "active": [
+        "Ввод данных"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/mkd?tab=overview",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Капремонт МКД — 2026",
+      "active": [
+        "Обзор"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/mkd?tab=sites",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Капремонт МКД — 2026",
+      "active": [
+        "Объекты"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/mkd?tab=reasons",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Капремонт МКД — 2026",
+      "active": [
+        "Причины отставания"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/mkd?tab=matrix",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Капремонт МКД — 2026",
+      "active": [
+        "Матрица"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/mkd?tab=schedule",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Капремонт МКД — 2026",
+      "active": [
+        "График работ"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/mkd?tab=dynamics",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Капремонт МКД — 2026",
+      "active": [
+        "Динамика"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/mkd?tab=remarks",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Капремонт МКД — 2026",
+      "active": [
+        "Замечания15"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/mkd?tab=people",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Капремонт МКД — 2026",
+      "active": [
+        "Ответственные"
+      ],
+      "clippedButtons": [],
+      "alerts": [
+        "Отчётная точка 26.10.2026 открыта: внесли данные 2 из 3 ответственных за ввод. Не внесли: Ответственный за ввод МКД (демо)."
+      ]
+    },
+    {
+      "url": "/d/mkd?tab=manage",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Капремонт МКД — 2026",
+      "active": [
+        "Управление",
+        "Объекты · 42"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/mkd?tab=journal",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Капремонт МКД — 2026",
+      "active": [
+        "Журнал"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/mkd?tab=settings",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Капремонт МКД — 2026",
+      "active": [
+        "Устройство",
+        "Виды работ · 17"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/networks",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Сети, коллекторы, водные объекты",
+      "active": [
+        "Обзор"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/networks?tab=entry",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Сети, коллекторы, водные объекты",
+      "active": [
+        "Ввод данных"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/networks?tab=overview",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Сети, коллекторы, водные объекты",
+      "active": [
+        "Обзор"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/networks?tab=sites",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Сети, коллекторы, водные объекты",
+      "active": [
+        "Объекты"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/networks?tab=reasons",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Сети, коллекторы, водные объекты",
+      "active": [
+        "Причины отставания"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/networks?tab=matrix",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Сети, коллекторы, водные объекты",
+      "active": [
+        "Матрица"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/networks?tab=schedule",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Сети, коллекторы, водные объекты",
+      "active": [
+        "График работ"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/networks?tab=trackers",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Сети, коллекторы, водные объекты",
+      "active": [
+        "Надстройки"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/networks?tab=dynamics",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Сети, коллекторы, водные объекты",
+      "active": [
+        "Динамика"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/networks?tab=remarks",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Сети, коллекторы, водные объекты",
+      "active": [
+        "Замечания14"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/networks?tab=people",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Сети, коллекторы, водные объекты",
+      "active": [
+        "Ответственные"
+      ],
+      "clippedButtons": [],
+      "alerts": [
+        "Отчётная точка 26.10.2026 открыта: внесли данные 0 из 5 ответственных за ввод. Не внесли: Иванов А.А., Кузнецов Д.М., Орлова М.И., Петров С.В., Сидорова Е.Н.."
+      ]
+    },
+    {
+      "url": "/d/networks?tab=manage",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Сети, коллекторы, водные объекты",
+      "active": [
+        "Управление",
+        "Объекты · 154"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/networks?tab=journal",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Сети, коллекторы, водные объекты",
+      "active": [
+        "Журнал"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/networks?tab=settings",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Сети, коллекторы, водные объекты",
+      "active": [
+        "Устройство",
+        "Виды работ · 9"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/streets",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Благоустройство улиц",
+      "active": [
+        "Обзор"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/streets?tab=overview",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Благоустройство улиц",
+      "active": [
+        "Обзор"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/streets?tab=sites",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Благоустройство улиц",
+      "active": [
+        "Объекты"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/streets?tab=reasons",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Благоустройство улиц",
+      "active": [
+        "Причины отставания"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/streets?tab=matrix",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Благоустройство улиц",
+      "active": [
+        "Матрица"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/streets?tab=dynamics",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Благоустройство улиц",
+      "active": [
+        "Динамика"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/streets?tab=remarks",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Благоустройство улиц",
+      "active": [
+        "Замечания"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/streets?tab=people",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Благоустройство улиц",
+      "active": [
+        "Ответственные"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/streets?tab=manage",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Благоустройство улиц",
+      "active": [
+        "Управление",
+        "Объекты · 37"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/streets?tab=journal",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Благоустройство улиц",
+      "active": [
+        "Журнал"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/d/streets?tab=settings",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "Благоустройство улиц",
+      "active": [
+        "Устройство",
+        "Виды работ · 20"
+      ],
+      "clippedButtons": [],
+      "alerts": []
+    },
+    {
+      "url": "/reb?fleet=fines",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "РЭБ — Ремонтно-эксплуатационная база",
+      "active": [
+        "Расходы"
+      ],
+      "clippedButtons": [],
+      "alerts": [
+        "Записей пока нет. Добавьте подтверждённые данные."
+      ]
+    },
+    {
+      "url": "/reb?fleet=tolls",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "РЭБ — Ремонтно-эксплуатационная база",
+      "active": [
+        "Расходы"
+      ],
+      "clippedButtons": [],
+      "alerts": [
+        "Записей пока нет. Добавьте подтверждённые данные."
+      ]
+    },
+    {
+      "url": "/reb?fleet=fuel",
+      "width": 375,
+      "scrollWidth": 375,
+      "theme": "dark",
+      "heading": "РЭБ — Ремонтно-эксплуатационная база",
+      "active": [
+        "Расходы"
+      ],
+      "clippedButtons": [],
+      "alerts": [
+        "Записей пока нет. Добавьте подтверждённые данные."
+      ]
+    },
+    {
+      "url": "/",
+      "width": 768,
+      "height": 1024,
+      "scrollWidth": 768,
+      "theme": "dark"
+    },
+    {
+      "url": "/map",
+      "width": 768,
+      "height": 1024,
+      "scrollWidth": 768,
+      "theme": "dark"
+    },
+    {
+      "url": "/reb",
+      "width": 768,
+      "height": 1024,
+      "scrollWidth": 768,
+      "theme": "dark"
+    },
+    {
+      "url": "/staffing",
+      "width": 768,
+      "height": 1024,
+      "scrollWidth": 768,
+      "theme": "dark"
+    },
+    {
+      "url": "/economics",
+      "width": 768,
+      "height": 1024,
+      "scrollWidth": 768,
+      "theme": "dark"
+    },
+    {
+      "url": "/admin/users",
+      "width": 768,
+      "height": 1024,
+      "scrollWidth": 768,
+      "theme": "dark"
+    },
+    {
+      "url": "/admin/appearance",
+      "width": 768,
+      "height": 1024,
+      "scrollWidth": 768,
+      "theme": "dark"
+    },
+    {
+      "url": "/d/mkd?tab=matrix",
+      "width": 768,
+      "height": 1024,
+      "scrollWidth": 768,
+      "theme": "dark"
+    },
+    {
+      "url": "/",
+      "width": 1366,
+      "height": 768,
+      "scrollWidth": 1366,
+      "theme": "dark"
+    },
+    {
+      "url": "/map",
+      "width": 1366,
+      "height": 768,
+      "scrollWidth": 1366,
+      "theme": "dark"
+    },
+    {
+      "url": "/reb",
+      "width": 1366,
+      "height": 768,
+      "scrollWidth": 1366,
+      "theme": "dark"
+    },
+    {
+      "url": "/staffing",
+      "width": 1366,
+      "height": 768,
+      "scrollWidth": 1366,
+      "theme": "dark"
+    },
+    {
+      "url": "/economics",
+      "width": 1366,
+      "height": 768,
+      "scrollWidth": 1366,
+      "theme": "dark"
+    },
+    {
+      "url": "/admin/users",
+      "width": 1366,
+      "height": 768,
+      "scrollWidth": 1366,
+      "theme": "dark"
+    },
+    {
+      "url": "/admin/appearance",
+      "width": 1366,
+      "height": 768,
+      "scrollWidth": 1366,
+      "theme": "dark"
+    },
+    {
+      "url": "/d/mkd?tab=matrix",
+      "width": 1366,
+      "height": 768,
+      "scrollWidth": 1366,
+      "theme": "dark"
+    },
+    {
+      "url": "/",
+      "width": 2560,
+      "height": 1440,
+      "scrollWidth": 2560,
+      "theme": "dark"
+    },
+    {
+      "url": "/map",
+      "width": 2560,
+      "height": 1440,
+      "scrollWidth": 2560,
+      "theme": "dark"
+    },
+    {
+      "url": "/reb",
+      "width": 2560,
+      "height": 1440,
+      "scrollWidth": 2560,
+      "theme": "dark"
+    },
+    {
+      "url": "/staffing",
+      "width": 2560,
+      "height": 1440,
+      "scrollWidth": 2560,
+      "theme": "dark"
+    },
+    {
+      "url": "/economics",
+      "width": 2560,
+      "height": 1440,
+      "scrollWidth": 2560,
+      "theme": "dark"
+    },
+    {
+      "url": "/admin/users",
+      "width": 2560,
+      "height": 1440,
+      "scrollWidth": 2560,
+      "theme": "dark"
+    },
+    {
+      "url": "/admin/appearance",
+      "width": 2560,
+      "height": 1440,
+      "scrollWidth": 2560,
+      "theme": "dark"
+    },
+    {
+      "url": "/d/mkd?tab=matrix",
+      "width": 2560,
+      "height": 1440,
+      "scrollWidth": 2560,
+      "theme": "dark"
+    },
+    {
+      "url": "/",
+      "width": 3440,
+      "height": 1440,
+      "scrollWidth": 3440,
+      "theme": "dark"
+    },
+    {
+      "url": "/map",
+      "width": 3440,
+      "height": 1440,
+      "scrollWidth": 3440,
+      "theme": "dark"
+    },
+    {
+      "url": "/reb",
+      "width": 3440,
+      "height": 1440,
+      "scrollWidth": 3440,
+      "theme": "dark"
+    },
+    {
+      "url": "/staffing",
+      "width": 3440,
+      "height": 1440,
+      "scrollWidth": 3440,
+      "theme": "dark"
+    },
+    {
+      "url": "/economics",
+      "width": 3440,
+      "height": 1440,
+      "scrollWidth": 3440,
+      "theme": "dark"
+    },
+    {
+      "url": "/admin/users",
+      "width": 3440,
+      "height": 1440,
+      "scrollWidth": 3440,
+      "theme": "dark"
+    },
+    {
+      "url": "/admin/appearance",
+      "width": 3440,
+      "height": 1440,
+      "scrollWidth": 3440,
+      "theme": "dark"
+    },
+    {
+      "url": "/d/mkd?tab=matrix",
+      "width": 3440,
+      "height": 1440,
+      "scrollWidth": 3440,
+      "theme": "dark"
+    }
+  ],
+  "errors": []
+}

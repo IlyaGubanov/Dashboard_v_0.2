@@ -1,0 +1,445 @@
+{
+  "results": [
+    {
+      "url": "/",
+      "heading": "Производственная сводка",
+      "tabs": [],
+      "width": 1920,
+      "scrollWidth": 1920
+    },
+    {
+      "url": "/map",
+      "heading": "Карта объектов",
+      "tabs": [],
+      "width": 1920,
+      "scrollWidth": 1920
+    },
+    {
+      "url": "/reb",
+      "heading": "РЭБ — Ремонтно-эксплуатационная база",
+      "tabs": [
+        {
+          "text": "Обзор РЭБ",
+          "id": "overview"
+        },
+        {
+          "text": "Реестр техники",
+          "id": "vehicles"
+        },
+        {
+          "text": "Распределение техники",
+          "id": "assignments"
+        },
+        {
+          "text": "ДТП",
+          "id": "incidents"
+        },
+        {
+          "text": "Неиспользуемая техника",
+          "id": "downtime"
+        },
+        {
+          "text": "Потребности в технике",
+          "id": "requests"
+        },
+        {
+          "text": "Расходы",
+          "id": "expenses"
+        }
+      ],
+      "width": 1920,
+      "scrollWidth": 1920
+    },
+    {
+      "url": "/contractors",
+      "heading": "Подрядчики",
+      "tabs": [],
+      "width": 1920,
+      "scrollWidth": 1920
+    },
+    {
+      "url": "/video",
+      "heading": "Видеонаблюдение",
+      "tabs": [],
+      "width": 1920,
+      "scrollWidth": 1920
+    },
+    {
+      "url": "/staffing",
+      "heading": "Штатная численность",
+      "tabs": [
+        {
+          "text": "Обзор",
+          "id": "overview"
+        },
+        {
+          "text": "Подразделения",
+          "id": "departments"
+        },
+        {
+          "text": "Должности",
+          "id": "positions"
+        },
+        {
+          "text": "Приём и увольнение",
+          "id": "movements"
+        },
+        {
+          "text": "ФОТ",
+          "id": "payroll"
+        },
+        {
+          "text": "Журнал",
+          "id": "journal"
+        }
+      ],
+      "width": 1920,
+      "scrollWidth": 1920
+    },
+    {
+      "url": "/economics",
+      "heading": "Экономика",
+      "tabs": [
+        {
+          "text": "Обзор",
+          "id": "overview"
+        },
+        {
+          "text": "Доходы и расходы",
+          "id": "pnl"
+        },
+        {
+          "text": "Движение денег",
+          "id": "cash"
+        },
+        {
+          "text": "Отклонения",
+          "id": "deviations"
+        },
+        {
+          "text": "Лимиты",
+          "id": "limits"
+        },
+        {
+          "text": "Факт за месяц",
+          "id": "fact"
+        },
+        {
+          "text": "Статьи",
+          "id": "articles"
+        },
+        {
+          "text": "Журнал",
+          "id": "journal"
+        }
+      ],
+      "width": 1920,
+      "scrollWidth": 1920
+    },
+    {
+      "url": "/admin/users",
+      "heading": "Пользователи и роли",
+      "tabs": [],
+      "width": 1920,
+      "scrollWidth": 1920
+    },
+    {
+      "url": "/admin/directions",
+      "heading": "Конструктор направлений",
+      "tabs": [],
+      "width": 1920,
+      "scrollWidth": 1920
+    },
+    {
+      "url": "/admin/directions/schools",
+      "heading": "Капремонт школ 2026–2027",
+      "tabs": [
+        {
+          "text": "Основное",
+          "id": "main"
+        },
+        {
+          "text": "Причины отставания",
+          "id": "delay-reasons"
+        },
+        {
+          "text": "Статусы · 0",
+          "id": "statuses"
+        },
+        {
+          "text": "Доп. поля · 8",
+          "id": "fields"
+        },
+        {
+          "text": "Надстройки · 3",
+          "id": "trackers"
+        },
+        {
+          "text": "Показатели сводки · 3",
+          "id": "kpis"
+        },
+        {
+          "text": "Плитки обзора",
+          "id": "tiles"
+        }
+      ],
+      "width": 1920,
+      "scrollWidth": 1920
+    },
+    {
+      "url": "/admin/appearance",
+      "heading": "Оформление",
+      "tabs": [],
+      "width": 1920,
+      "scrollWidth": 1920
+    },
+    {
+      "url": "/admin/video",
+      "heading": "Видеонаблюдение",
+      "tabs": [
+        {
+          "text": "Регистраторы · 0",
+          "id": "recorders"
+        },
+        {
+          "text": "Камеры · 0",
+          "id": "cameras"
+        }
+      ],
+      "width": 1920,
+      "scrollWidth": 1920
+    },
+    {
+      "url": "/help",
+      "heading": "Справка",
+      "tabs": [],
+      "width": 1920,
+      "scrollWidth": 1920
+    },
+    {
+      "url": "/d/schools",
+      "heading": "Капремонт школ 2026–2027",
+      "tabs": [
+        {
+          "text": "Ввод данных",
+          "id": "entry"
+        },
+        {
+          "text": "Обзор",
+          "id": "overview"
+        },
+        {
+          "text": "Объекты",
+          "id": "sites"
+        },
+        {
+          "text": "Причины отставания",
+          "id": "reasons"
+        },
+        {
+          "text": "Матрица",
+          "id": "matrix"
+        },
+        {
+          "text": "График работ",
+          "id": "schedule"
+        },
+        {
+          "text": "Надстройки",
+          "id": "trackers"
+        },
+        {
+          "text": "Динамика",
+          "id": "dynamics"
+        },
+        {
+          "text": "Замечания",
+          "id": "remarks"
+        },
+        {
+          "text": "Ответственные",
+          "id": "people"
+        },
+        {
+          "text": "Управление",
+          "id": "manage"
+        },
+        {
+          "text": "Журнал",
+          "id": "journal"
+        },
+        {
+          "text": "Устройство",
+          "id": "settings"
+        }
+      ],
+      "width": 1920,
+      "scrollWidth": 1920
+    },
+    {
+      "url": "/d/mkd",
+      "heading": "Капремонт МКД — 2026",
+      "tabs": [
+        {
+          "text": "Ввод данных",
+          "id": "entry"
+        },
+        {
+          "text": "Обзор",
+          "id": "overview"
+        },
+        {
+          "text": "Объекты",
+          "id": "sites"
+        },
+        {
+          "text": "Причины отставания",
+          "id": "reasons"
+        },
+        {
+          "text": "Матрица",
+          "id": "matrix"
+        },
+        {
+          "text": "График работ",
+          "id": "schedule"
+        },
+        {
+          "text": "Динамика",
+          "id": "dynamics"
+        },
+        {
+          "text": "Замечания15",
+          "id": "remarks"
+        },
+        {
+          "text": "Ответственные",
+          "id": "people"
+        },
+        {
+          "text": "Управление",
+          "id": "manage"
+        },
+        {
+          "text": "Журнал",
+          "id": "journal"
+        },
+        {
+          "text": "Устройство",
+          "id": "settings"
+        }
+      ],
+      "width": 1920,
+      "scrollWidth": 1920
+    },
+    {
+      "url": "/d/networks",
+      "heading": "Сети, коллекторы, водные объекты",
+      "tabs": [
+        {
+          "text": "Ввод данных",
+          "id": "entry"
+        },
+        {
+          "text": "Обзор",
+          "id": "overview"
+        },
+        {
+          "text": "Объекты",
+          "id": "sites"
+        },
+        {
+          "text": "Причины отставания",
+          "id": "reasons"
+        },
+        {
+          "text": "Матрица",
+          "id": "matrix"
+        },
+        {
+          "text": "График работ",
+          "id": "schedule"
+        },
+        {
+          "text": "Надстройки",
+          "id": "trackers"
+        },
+        {
+          "text": "Динамика",
+          "id": "dynamics"
+        },
+        {
+          "text": "Замечания14",
+          "id": "remarks"
+        },
+        {
+          "text": "Ответственные",
+          "id": "people"
+        },
+        {
+          "text": "Управление",
+          "id": "manage"
+        },
+        {
+          "text": "Журнал",
+          "id": "journal"
+        },
+        {
+          "text": "Устройство",
+          "id": "settings"
+        }
+      ],
+      "width": 1920,
+      "scrollWidth": 1920
+    },
+    {
+      "url": "/d/streets",
+      "heading": "Благоустройство улиц",
+      "tabs": [
+        {
+          "text": "Обзор",
+          "id": "overview"
+        },
+        {
+          "text": "Объекты",
+          "id": "sites"
+        },
+        {
+          "text": "Причины отставания",
+          "id": "reasons"
+        },
+        {
+          "text": "Матрица",
+          "id": "matrix"
+        },
+        {
+          "text": "Динамика",
+          "id": "dynamics"
+        },
+        {
+          "text": "Замечания",
+          "id": "remarks"
+        },
+        {
+          "text": "Ответственные",
+          "id": "people"
+        },
+        {
+          "text": "Управление",
+          "id": "manage"
+        },
+        {
+          "text": "Журнал",
+          "id": "journal"
+        },
+        {
+          "text": "Устройство",
+          "id": "settings"
+        }
+      ],
+      "width": 1920,
+      "scrollWidth": 1920
+    }
+  ],
+  "errors": []
+}

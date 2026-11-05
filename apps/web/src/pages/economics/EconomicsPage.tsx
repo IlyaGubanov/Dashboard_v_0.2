@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActionIcon, Alert, Button, Group, Menu, Modal, Skeleton, Stack, Tabs, Text, Title, Tooltip } from '@mantine/core';
+import { ActionIcon, Alert, Button, Group, Menu, Modal, Skeleton, Stack, Tabs, Text, Tooltip } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getRouteApi } from '@tanstack/react-router';
@@ -15,6 +15,8 @@ import { EconArticles } from './EconArticles';
 import { EconEditorsDialog, EconJournal, EconSettingsDialog } from './EconDialogs';
 import type { EconTab, EconomicsSearch } from './search';
 import './economics.css';
+import { PageHeader } from '../../ui/PageHeader';
+import { MobileSectionSelect } from '../../ui/MobileSectionSelect';
 
 const route = getRouteApi('/app/economics');
 
@@ -60,16 +62,10 @@ export function EconomicsPage() {
   }
 
   return (
-    <Stack gap="md">
-      <Group justify="space-between" align="center" wrap="nowrap">
-        <Group gap="sm" wrap="nowrap">
-          <IconCoins size={28} aria-hidden />
-          <div>
-            <Title order={2} size="h3">Экономика</Title>
-            <Text size="sm" c="dimmed">Нормы и лимиты расходов, факт ПЭО по месяцам · суммы без НДС (ставка {data.settings.vatRate}%)</Text>
-          </div>
-        </Group>
-        <Group gap="xs" wrap="nowrap">
+    <Stack gap="md" className="economics-page">
+      <PageHeader title="Экономика" icon={<IconCoins size={24} />}
+        description={<>Нормы и лимиты расходов, факт ПЭО по месяцам · суммы без НДС (ставка {data.settings.vatRate}%)</>}
+        actions={<>
           <Tooltip label="Обновить">
             <ActionIcon variant="default" aria-label="Обновить данные экономики" loading={query.isFetching} onClick={() => query.refetch()}><IconRefresh size={16} /></ActionIcon>
           </Tooltip>
@@ -84,11 +80,18 @@ export function EconomicsPage() {
               </Menu.Dropdown>
             </Menu>
           )}
-        </Group>
-      </Group>
+        </>} />
+
+      <MobileSectionSelect label="Раздел экономики" value={tab} onChange={v => update({ tab: v as EconTab })}
+        data={[
+          { value: 'overview', label: 'Обзор' }, { value: 'pnl', label: 'Доходы и расходы' },
+          { value: 'cash', label: 'Движение денег' }, { value: 'deviations', label: 'Отклонения' },
+          { value: 'limits', label: 'Лимиты' }, { value: 'fact', label: 'Факт за месяц' },
+          { value: 'articles', label: 'Статьи' }, ...(data.canAudit ? [{ value: 'journal', label: 'Журнал' }] : []),
+        ]} />
 
       <Tabs value={tab} onChange={(v) => update({ tab: (v as EconTab) ?? undefined })} keepMounted={false}>
-        <Tabs.List>
+        <Tabs.List visibleFrom="sm">
           <Tabs.Tab value="overview" leftSection={<IconChartBar size={16} />}>Обзор</Tabs.Tab>
           <Tabs.Tab value="pnl" leftSection={<IconReportMoney size={16} />}>Доходы и расходы</Tabs.Tab>
           <Tabs.Tab value="cash" leftSection={<IconCash size={16} />}>Движение денег</Tabs.Tab>

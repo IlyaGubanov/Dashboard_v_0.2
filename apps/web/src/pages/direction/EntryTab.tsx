@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Accordion,
   Affix,
@@ -67,6 +67,16 @@ export function EntryTab({ code, periodKind, program = '', onDirty }: { code: st
   const [notUpdated, setNotUpdated] = useState(false);
   const [conflicts, setConflicts] = useState<string[]>([]);
   const narrow = useMediaQuery('(max-width: 48em)');
+  const [savePanelHeight, setSavePanelHeight] = useState(70);
+  // Affix появляется в портале после первой правки: подписываемся именно при появлении DOM панели.
+  const savePanelRef = useCallback((node: HTMLDivElement | null) => {
+    if (!node) return;
+    const measure = () => setSavePanelHeight(node.getBoundingClientRect().height);
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    measure();
+    return () => observer.disconnect();
+  }, []);
   // раскрытые объекты; содержимое свёрнутых не рисуется — на телефоне сотни полей тормозят
   const [opened, setOpened] = useState<string[] | null>(null);
 
@@ -207,7 +217,7 @@ export function EntryTab({ code, periodKind, program = '', onDirty }: { code: st
         )}
       </Group>
 
-      <Accordion multiple variant="separated" value={shownOpen} onChange={setOpened} mb={dirtyCount && narrow ? 70 : undefined}>
+      <Accordion multiple variant="separated" value={shownOpen} onChange={setOpened} mb={dirtyCount && narrow ? savePanelHeight + 12 : undefined}>
         {sites.map((s) => (
           <SiteEntry
             key={s.id}
@@ -229,7 +239,7 @@ export function EntryTab({ code, periodKind, program = '', onDirty }: { code: st
 
       {dirtyCount > 0 && (
         <Affix position={narrow ? { bottom: 0, left: 0, right: 0 } : { bottom: 20, right: 20 }}>
-          <Paper shadow="lg" p="sm" withBorder radius={narrow ? 0 : undefined}>
+          <Paper ref={savePanelRef} className="entry-save-panel" shadow="lg" p="sm" withBorder radius={narrow ? 0 : undefined}>
             {narrow ? (
               // на телефоне — во всю ширину, число изменений на кнопке
               <Group wrap="nowrap" gap="xs">

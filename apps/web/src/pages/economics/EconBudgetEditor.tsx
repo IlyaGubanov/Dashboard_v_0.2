@@ -1,3 +1,4 @@
+import { FormActions } from '../../ui/FormActions';
 import { useMemo, useState } from 'react';
 import { Alert, Badge, Box, Button, Checkbox, Group, Menu, Modal, NumberInput, Paper, Popover, Progress, SegmentedControl, SimpleGrid, Stack, Table, Text, Textarea, TextInput, Tooltip } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
@@ -264,7 +265,7 @@ export function BudgetEditor({ budget, data, onClose }: { budget: EconBudget; da
         </div>
         <Textarea label="Примечание" value={note} onChange={(e) => setNote(e.currentTarget.value)} autosize minRows={2} maxRows={6} disabled={!canEdit} error={fields.note} />
         {error && <Alert color="red">{error}</Alert>}
-        <Group justify="space-between">
+        <FormActions justify="space-between">
           {canEdit ? (
             <Button variant="subtle" color={budget.isArchived ? undefined : 'red'} leftSection={budget.isArchived ? <IconRestore size={16} /> : <IconArchive size={16} />} onClick={() => save(!budget.isArchived)} loading={busy}>
               {budget.isArchived ? 'Восстановить' : 'В архив'}
@@ -274,7 +275,7 @@ export function BudgetEditor({ budget, data, onClose }: { budget: EconBudget; da
             <Button variant="default" onClick={onClose}>{canEdit ? 'Отмена' : 'Закрыть'}</Button>
             {canEdit && <Button loading={busy} onClick={() => save()}>Сохранить</Button>}
           </Group>
-        </Group>
+        </FormActions>
       </Stack>
     </Modal>
   );

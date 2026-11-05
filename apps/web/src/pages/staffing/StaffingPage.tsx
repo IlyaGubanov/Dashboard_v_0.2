@@ -1,6 +1,6 @@
 /** Используем компоненты и иконки действующего приложения (Mantine/Tabler), чтобы раздел наследовал оформление и доступность. */
 import { useMemo, useState } from 'react';
-import { ActionIcon, Alert, Badge, Button, Checkbox, Group, Menu, Modal, Pagination, Paper, SegmentedControl, Select, SimpleGrid, Skeleton, Stack, Switch, Table, Tabs, Text, TextInput, Title, Tooltip, UnstyledButton } from '@mantine/core';
+import { ActionIcon, Alert, Badge, Button, Checkbox, Group, Menu, Modal, Pagination, Paper, SegmentedControl, Select, SimpleGrid, Skeleton, Stack, Switch, Table, Tabs, Text, TextInput, Tooltip, UnstyledButton } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getRouteApi } from '@tanstack/react-router';
@@ -16,15 +16,17 @@ import { useFinanceHidden } from '../../ui/finance';
 import { EditorsDialog, GroupsDialog, PayrollEditor, PayrollMonthEditor, PeriodEditor, RowEditor, RowsTableEditor } from './StaffingForms';
 import type { StaffingSearch } from './search';
 import './staffing.css';
+import { PageHeader } from '../../ui/PageHeader';
+import { MobileSectionSelect } from '../../ui/MobileSectionSelect';
 
 const route = getRouteApi('/app/staffing');
 const n = (v: number | null | undefined) => v == null ? '—' : v.toLocaleString('ru-RU', { maximumFractionDigits: 2 });
 const d = (v: string) => v.split('-').reverse().join('.');
 const gap = (r: StaffingRow) => r.actual == null || r.planned == null ? null : Math.round((r.planned - r.actual) * 100) / 100;
 const emptyRow = (): StaffingRow => ({ id: crypto.randomUUID(), department: '', category: 'ОП', planned: null, actual: null, note: '', function: '', isArchived: false });
-/** Карточка показателя: у каждой свой тон палитры --cat-* (полоса, фон, значок), значение — обычным цветом текста для читаемости. */
+/** Спокойная поверхность, тон категории — на полосе и значке, предупреждение — в подписи. */
 function Stat({ label, value, hint, warning, tooltip, tone, icon }: { label: string; value: string; hint: string; warning?: boolean; tooltip?: string; tone: number; icon: React.ReactNode }) {
-  return <Tooltip label={tooltip || hint} multiline w={300}><Paper withBorder p="md" className="staffing-stat" style={{ '--stat-tone': `var(--cat-${tone})`, '--stat-ink': `var(--cat-ink-${tone})` } as React.CSSProperties}>
+  return <Tooltip label={tooltip || hint} multiline w={300}><Paper withBorder p="md" className="staffing-stat" style={{ '--stat-tone': `var(--cat-${tone})` } as React.CSSProperties}>
     <Group gap="xs" wrap="nowrap" justify="space-between" align="flex-start"><Text size="sm" fw={600} className="staffing-stat-label">{label}</Text><span className="staffing-stat-icon" aria-hidden>{icon}</span></Group>
     <Text className="staffing-stat-value" fw={650}>{value}</Text>
     <Text size="xs" c={warning ? 'var(--status-warning)' : 'dimmed'}>{warning ? '△ ' : ''}{hint}</Text>
@@ -110,11 +112,10 @@ export function StaffingPage() {
   if (!data) return <Stack><Skeleton height={44} /><SimpleGrid cols={{ base: 2, md: 4 }}>{[1, 2, 3, 4].map(i => <Skeleton key={i} height={108} />)}</SimpleGrid><Skeleton height={320} /></Stack>;
 
   return <Stack gap="md" className="staffing-page">
-    <Group justify="space-between" align="center" className="staffing-header">
-      <Group gap="sm"><div className="staffing-title-icon"><IconUsers size={22} /></div><div><Title order={2} size="h3">Штатная численность</Title>
-        <Group gap="xs" mt={2} className="staffing-dates">{current ? <Text className="staffing-asof">Данные на {d(current.asOf)}{current.isArchived ? ' · архив' : ''}</Text> : <Text size="sm" c="dimmed">Учёт по подразделениям и категориям</Text>}
-          <Badge variant="light" color="gray" size="lg" radius="sm" leftSection={<IconCalendarEvent size={15} />} className="staffing-today">Сегодня {today}</Badge></Group></div></Group>
-      <Group gap="xs" className="staffing-controls">
+    <PageHeader title="Штатная численность" icon={<IconUsers size={24} />}
+      description={current ? <>Данные на {d(current.asOf)}{current.isArchived ? ' · архив' : ''}</> : 'Учёт по подразделениям и категориям'}
+      metadata={<Badge variant="light" color="gray" size="sm" radius="sm" mt={6} leftSection={<IconCalendarEvent size={15} />} className="staffing-today">Сегодня {today}</Badge>}
+      actions={<>
         <Tooltip label="Обновить"><ActionIcon variant="default" aria-label="Обновить штатную численность" loading={query.isFetching} onClick={() => query.refetch()}><IconRefresh size={16} /></ActionIcon></Tooltip>
         <Menu position="bottom-end"><Menu.Target><ActionIcon variant="default" aria-label="Действия раздела"><IconDots size={18} /></ActionIcon></Menu.Target><Menu.Dropdown>
           {data.canExport && current && <Menu.Item leftSection={<IconDownload size={16} />} onClick={exportRows}>Выгрузить реестр в Excel (CSV)</Menu.Item>}
@@ -126,8 +127,7 @@ export function StaffingPage() {
           {canEdit && current && <Menu.Item color={current.isArchived ? undefined : 'red'} leftSection={<IconArchive size={16} />} onClick={() => setConfirm({ title: current.isArchived ? 'Восстановить срез?' : 'Архивировать срез? Данные и история сохранятся.', action: () => savePeriod(current, !current.isArchived) })}>{current.isArchived ? 'Восстановить срез' : 'Архивировать срез'}</Menu.Item>}
         </Menu.Dropdown></Menu>
         {canEdit && <Button leftSection={<IconPlus size={16} />} size="sm" onClick={() => setPeriodForm('new')}>Новый срез</Button>}
-      </Group>
-    </Group>
+      </>} />
     {query.error && <Alert color="red">{query.error.message}</Alert>}
     {actionError && !confirm && <Alert color="red" withCloseButton onClose={() => setActionError('')}>{actionError}</Alert>}
     {!periods.length ? <Paper withBorder p="xl"><Stack align="center" gap="sm"><IconCalendar size={32} /><Text fw={600}>Срезов пока нет</Text><Text size="sm" c="dimmed">{canEdit ? 'Загрузите выбранное штатное расписание или создайте первый месячный срез.' : 'Ответственный за данные ещё не добавил срезы.'}</Text>{canEdit && <Button loading={busy} onClick={() => runAction(() => api('/staffing/import-source', { method: 'POST' }))}>Загрузить исходное расписание</Button>}</Stack></Paper> : <>
@@ -138,14 +138,20 @@ export function StaffingPage() {
         <Text size="xs" c="dimmed" ml="auto">{canEdit ? 'Редактирование доступно' : 'Просмотр'} · {periods.length} среза</Text>
       </Group>
       {!current ? <Alert color="gray">Активных срезов нет. Включите «Архив срезов», чтобы восстановить данные.</Alert> : <>
-        <SimpleGrid cols={{ base: 2, lg: 4 }} spacing="sm" className="staffing-stats">
+        <MobileSectionSelect label="Раздел штатной численности" value={tab} onChange={v => update({ tab: v })}
+          data={[
+            { value: 'overview', label: 'Обзор' }, { value: 'departments', label: 'Подразделения' },
+            { value: 'positions', label: 'Должности' }, { value: 'movements', label: 'Приём и увольнение' },
+            ...(showFinance ? [{ value: 'payroll', label: 'ФОТ' }] : []), ...(data.canAudit ? [{ value: 'journal', label: 'Журнал' }] : []),
+          ]} />
+        <SimpleGrid cols={{ base: 1, xs: 2, lg: 4 }} spacing="sm" className="staffing-stats">
           <Stat tone={1} icon={<IconUsersGroup size={20} />} label="Штатная численность" value={`${n(stats.planned)} ед.`} hint={`${stats.count - stats.missingPlan} / ${stats.count} подразделений`} warning={stats.missingPlan > 0} tooltip="Сумма известных штатных единиц. Пропуски не заменяются нулями." />
           <Stat tone={3} icon={<IconUserCheck size={20} />} label="Фактическая численность" value={`${n(stats.actual)} чел.`} hint={`${stats.count - stats.missingActual} / ${stats.count} подразделений`} warning={stats.missingActual > 0} tooltip="Сумма заполненного факта. При пропусках это частичная численность, а не подтверждённый общий итог." />
           <Stat tone={2} icon={<IconUserExclamation size={20} />} label={stats.paired < stats.count ? 'Известный дефицит, ед.' : 'Незакрытые единицы'} value={n(stats.vacancies)} hint={`${stats.paired}/${stats.count} сопоставимых · превышение ${n(stats.excess)}`} warning={(stats.vacancies ?? 0) > 0 || stats.paired < stats.count} tooltip={`Сумма положительных разниц штат − факт. По заполненным парам: ${stats.paired} из ${stats.count}. Превышение в других подразделениях не уменьшает дефицит.`} />
           <Stat tone={5} icon={<IconGauge size={20} />} label="Укомплектованность" value={stats.occupancy == null ? '—' : `${n(stats.occupancy * 100)} %`} hint={`${stats.paired} / ${stats.count} сопоставимых`} tooltip="Факт / штат по подразделениям, где заполнены оба показателя. Может превышать 100%." />
         </SimpleGrid>
         <Tabs value={tab} onChange={v => update({ tab: v ?? undefined })}>
-          <Tabs.List className="staffing-controls"><Tabs.Tab value="overview">Обзор</Tabs.Tab><Tabs.Tab value="departments">Подразделения</Tabs.Tab><Tabs.Tab value="positions">Должности</Tabs.Tab><Tabs.Tab value="movements">Приём и увольнение</Tabs.Tab>{showFinance && <Tabs.Tab value="payroll">ФОТ</Tabs.Tab>}{data.canAudit && <Tabs.Tab value="journal">Журнал</Tabs.Tab>}</Tabs.List>
+          <Tabs.List visibleFrom="sm" className="staffing-controls"><Tabs.Tab value="overview">Обзор</Tabs.Tab><Tabs.Tab value="departments">Подразделения</Tabs.Tab><Tabs.Tab value="positions">Должности</Tabs.Tab><Tabs.Tab value="movements">Приём и увольнение</Tabs.Tab>{showFinance && <Tabs.Tab value="payroll">ФОТ</Tabs.Tab>}{data.canAudit && <Tabs.Tab value="journal">Журнал</Tabs.Tab>}</Tabs.List>
           <Tabs.Panel value="overview" pt="md"><Overview periods={active} current={current} previous={previous} open={setRow} movements={data.movements ?? []} measure={search.pie ?? 'actual'} onMeasure={m => update({ pie: m === 'planned' ? m : undefined })} openGroup={group => { update({ tab: 'departments', group, q: undefined, category: undefined, status: undefined }); setPage(1); }} editGroup={canEdit ? editGroup : undefined} /></Tabs.Panel>
           <Tabs.Panel value="positions" pt="md"><PositionsTab period={current} previous={previous} canEdit={canEdit} canExport={data.canExport} group={search.group} onGroup={group => update({ group })} onSave={value => savePeriod(value)} /></Tabs.Panel>
           <Tabs.Panel value="movements" pt="md"><MovementsTab days={data.movements ?? []} groups={staffingGroups(current.rows).map(g => g.group)} canEdit={canEdit} onSaved={refresh} /></Tabs.Panel>

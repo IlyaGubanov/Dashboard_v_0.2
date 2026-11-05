@@ -26,9 +26,9 @@ export function StatusMark({ status, label, size = 'sm' }: { status: EconStatus;
 function Tile({ label, value, hint, status, tooltip }: { label: string; value: string; hint?: React.ReactNode; status?: EconStatus; tooltip: string }) {
   return (
     <Tooltip label={tooltip} multiline w={320}>
-      <Paper withBorder p="md" radius="md" style={status && status !== 'none' ? { borderLeft: `4px solid ${STATUS_VAR[status]}` } : undefined}>
+      <Paper withBorder p="md" className="analytics-metric" style={status && status !== 'none' ? { borderLeft: `4px solid ${STATUS_VAR[status]}` } : undefined}>
         <Text size="sm" c="dimmed" fw={500}>{label}</Text>
-        <Text fz={24} fw={650} lh={1.3} style={{ fontVariantNumeric: 'tabular-nums' }}>{value}</Text>
+        <Text className="analytics-metric-value" fw={650} lh={1.3}>{value}</Text>
         {hint && <Box mt={2}>{typeof hint === 'string' ? <Text size="xs" c="dimmed">{hint}</Text> : hint}</Box>}
       </Paper>
     </Tooltip>
@@ -238,11 +238,12 @@ function Structure({ data, list: all }: { data: EconSetup; list: BudgetAnalysis[
         {rows.map((r) => <Box key={r.a.id} h="100%" style={{ flex: `${r.v} 0 0`, background: articleColor(data.articles, r.a.id) }} />)}
         {margin > 0 && <Box h="100%" style={{ flex: `${margin} 0 0`, background: 'var(--mantine-color-default-hover)' }} />}
       </Group>
+      <Table.ScrollContainer minWidth={460}>
       <Table verticalSpacing={3} fz="sm" className="econ-nowrap">
         <Table.Tbody>
           {rows.map((r) => (
             <Table.Tr key={r.a.id}>
-              <Table.Td><Group gap={8} wrap="nowrap"><Box w={10} h={10} style={{ borderRadius: 2, background: articleColor(data.articles, r.a.id), flexShrink: 0 }} /><Text size="sm" lineClamp={1}>{r.a.name}</Text></Group></Table.Td>
+              <Table.Td><Group gap={8} wrap="nowrap"><Box w={10} h={10} style={{ borderRadius: 2, background: articleColor(data.articles, r.a.id), flexShrink: 0 }} /><Text size="sm" style={{ overflowWrap: 'anywhere' }}>{r.a.name}</Text></Group></Table.Td>
               <Table.Td ta="right">{money(r.v)}</Table.Td>
               <Table.Td ta="right" w={70}>{pct(r.v / cost)}</Table.Td>
             </Table.Tr>
@@ -254,6 +255,7 @@ function Structure({ data, list: all }: { data: EconSetup; list: BudgetAnalysis[
           </Table.Tr>
         </Table.Tbody>
       </Table>
+      </Table.ScrollContainer>
       {margin < 0 && <StatusMark status="critical" size="xs" label="Лимиты больше стоимости — заложен убыток" />}
     </Stack>
   );

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert,Button,Group,SegmentedControl,Select,SimpleGrid,Skeleton,Stack,Switch,Tabs,Text,TextInput,Title } from '@mantine/core';
+import { Alert,Button,Group,SegmentedControl,Select,SimpleGrid,Skeleton,Stack,Switch,Tabs,TextInput } from '@mantine/core';
 import { useQuery,useQueryClient } from '@tanstack/react-query';
 import { getRouteApi } from '@tanstack/react-router';
 import { IconPlus,IconRefresh,IconSearch,IconTruck } from '@tabler/icons-react';
@@ -13,6 +13,7 @@ import { FleetOverview } from './FleetOverview';
 import { FleetList } from './FleetList';
 import { FleetForm } from './FleetForm';
 import { FleetDrawer } from './FleetDrawer';
+import { PageHeader } from '../../ui/PageHeader';
 
 const route=getRouteApi('/app/reb');
 export default function FleetPage() {
@@ -33,7 +34,8 @@ export default function FleetPage() {
  const refresh=()=>{qc.invalidateQueries({queryKey:['fleet']});qc.invalidateQueries({queryKey:['overview']});};
  const labels=[{value:'overview',label:FLEET_LABELS.overview},...FLEET_KINDS.filter(k=>!['snapshots','fines','tolls','fuel'].includes(k)).map(value=>({value,label:FLEET_LABELS[value]})),{value:'expenses',label:'Расходы'}];
  return <Stack gap="md" style={{minWidth:0}}>
-  <Group justify="space-between" align="flex-start"><Group gap="sm" wrap="nowrap"><IconTruck size={30}/><div><Title order={2}>РЭБ — Ремонтно-эксплуатационная база</Title><Text size="sm" c="dimmed">{FLEET_LABELS[section]}</Text></div></Group><Group gap="xs"><Button size="xs" variant="default" leftSection={<IconRefresh size={14}/>} onClick={refresh}>Обновить</Button>{canCreate?<Button size="xs" leftSection={<IconPlus size={14}/>} onClick={()=>setCreate(true)}>Добавить</Button>:null}</Group></Group>
+  <PageHeader title="РЭБ — Ремонтно-эксплуатационная база" description={FLEET_LABELS[section]} icon={<IconTruck size={24}/>}
+   actions={<><Button size="xs" variant="default" leftSection={<IconRefresh size={14}/>} onClick={refresh}>Обновить</Button>{canCreate?<Button size="xs" leftSection={<IconPlus size={14}/>} onClick={()=>setCreate(true)}>Добавить</Button>:null}</>}/>
   <Select hiddenFrom="sm" label="Раздел РЭБ" value={['fines','tolls','fuel'].includes(section)?'expenses':section} data={labels} allowDeselect={false} onChange={v=>sectionSet(v==='expenses'?'fines':v as typeof section)}/>
   <Tabs value={['fines','tolls','fuel'].includes(section)?'expenses':section} onChange={v=>sectionSet(v==='expenses'?'fines':v as typeof section)}><Tabs.List visibleFrom="sm" style={{flexWrap:'wrap'}}>{labels.map(t=><Tabs.Tab key={t.value} value={t.value}>{t.label}</Tabs.Tab>)}</Tabs.List></Tabs>
   {['fines','tolls','fuel'].includes(section)?<SegmentedControl value={section} onChange={v=>sectionSet(v as typeof section)} data={(['fines','tolls','fuel'] as const).map(value=>({value,label:FLEET_LABELS[value]}))}/>:null}

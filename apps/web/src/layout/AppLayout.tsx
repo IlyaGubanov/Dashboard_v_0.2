@@ -56,7 +56,7 @@ export function AppLayout() {
       <AppShell.Header>
         <Group className="header-content" h="100%" px="md" justify="space-between" wrap="nowrap">
           <Group className="header-brand" gap="sm" wrap="nowrap">
-            <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" aria-label="Меню" />
+            <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" aria-label="Меню" aria-expanded={opened} aria-controls="main-navigation" />
             <Brand />
           </Group>
           <Group className="header-actions" gap="xs" wrap="nowrap">
@@ -105,7 +105,7 @@ export function AppLayout() {
         </Group>
       </AppShell.Header>
 
-      <AppShell.Navbar p="xs">
+      <AppShell.Navbar p="xs" id="main-navigation" component="nav" aria-label="Основная навигация">
         <AppShell.Section grow component={ScrollArea}>
           {canSee(me, 'overview') && (
             <NavLink
@@ -132,7 +132,10 @@ export function AppLayout() {
               onClick={close}
             />
           ))}
-          {me?.fleetRole&&canSee(me,'fleet')?<NavLink component={Link} to="/reb" label="РЭБ" leftSection={<IconTruck size={18}/>} active={path==='/reb'} onClick={close} mt="md"/>:null}
+          {(me?.fleetRole && canSee(me, 'fleet') || canSee(me, 'contractors') || me?.videoAccess?.view || staffingAccess?.canView || economicsAccess?.canView) && (
+            <Text size="xs" c="dimmed" tt="uppercase" fw={600} px="sm" mt="md" mb={4}>Корпоративные инструменты</Text>
+          )}
+          {me?.fleetRole&&canSee(me,'fleet')?<NavLink component={Link} to="/reb" label="РЭБ" leftSection={<IconTruck size={18}/>} active={path==='/reb'} onClick={close}/>:null}
           {canSee(me, 'contractors') && (
             <NavLink
               component={Link}

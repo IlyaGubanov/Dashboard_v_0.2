@@ -1,3 +1,4 @@
+import { FormActions } from '../../ui/FormActions';
 import { useState } from 'react';
 import { Alert,Button,Checkbox,Group,Modal,MultiSelect,NumberInput,Select,SimpleGrid,Stack,Text,Textarea,TextInput } from '@mantine/core';
 import { useMutation,useQueryClient } from '@tanstack/react-query';
@@ -29,7 +30,7 @@ export function FleetForm({kind,row,refs,onClose,onSaved}:{kind:FleetKind;row?:F
    <SimpleGrid cols={{base:1,sm:2}}>{fields.map(field=><FieldControl key={field.key} field={field} value={values[field.key]} onChange={v=>set(field.key,v)} error={errors[field.key]} refs={refs} values={values}/>)}</SimpleGrid>
    {errors._?<Alert color="red">{errors._}</Alert>:null}
    {mutation.error?<Alert color="red">{mutation.error.message}{mutation.error instanceof ApiError&&mutation.error.status===409?' Закройте форму и откройте карточку заново.':''}</Alert>:null}
-   <Group justify="flex-end"><Button variant="default" onClick={onClose}>Отмена</Button><Button type="submit" loading={mutation.isPending}>Сохранить</Button></Group>
+   <FormActions justify="flex-end"><Button variant="default" onClick={onClose}>Отмена</Button><Button type="submit" loading={mutation.isPending}>Сохранить</Button></FormActions>
   </Stack></fieldset></form>
  </Modal>;
 }

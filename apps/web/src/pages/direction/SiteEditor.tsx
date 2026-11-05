@@ -1,3 +1,4 @@
+import { FormActions } from '../../ui/FormActions';
 import { useEffect, useState } from 'react';
 import {
   ActionIcon,
@@ -248,7 +249,7 @@ function Passport({ code, site, refs, onCreated }: { code: string; site?: SiteEd
         </div>
       ))}
 
-      <Group justify="space-between">
+      <FormActions justify="space-between">
         {site ? (
           <Button variant="subtle" color={site.isArchived ? 'blue' : 'red'} leftSection={site.isArchived ? <IconArrowBackUp size={16} /> : <IconArchive size={16} />} onClick={archive}>
             {site.isArchived ? 'Вернуть из архива' : 'В архив'}
@@ -259,7 +260,7 @@ function Passport({ code, site, refs, onCreated }: { code: string; site?: SiteEd
         <Button loading={saving} onClick={save}>
           {site ? 'Сохранить' : 'Создать объект'}
         </Button>
-      </Group>
+      </FormActions>
     </Stack>
   );
 }
@@ -418,14 +419,14 @@ function ItemModal({ code, siteId, item, refs, onClose, onSaved }: { code: strin
           </Group>
         </SimpleGrid>
         <Textarea label="Примечание" autosize minRows={2} value={v.note ?? ''} onChange={(e) => set({ note: e.currentTarget.value })} />
-        <Group justify="flex-end">
+        <FormActions justify="flex-end">
           <Button variant="default" onClick={onClose}>
             Отмена
           </Button>
           <Button loading={saving} onClick={save} disabled={!v.workTypeId}>
             Сохранить
           </Button>
-        </Group>
+        </FormActions>
       </Stack>
     </Modal>
   );
@@ -469,14 +470,14 @@ function People({ code, site, refs }: { code: string; site: SiteEdit; refs: Mana
         </Group>
       ))}
       {error && <Alert color="red">{error}</Alert>}
-      <Group justify="space-between">
+      <FormActions justify="space-between">
         <Button variant="light" leftSection={<IconPlus size={16} />} onClick={() => setRows([...rows, { userId: 0, role: 'ENTRY' }])}>
           Добавить
         </Button>
         <Button loading={saving} onClick={save}>
           Сохранить
         </Button>
-      </Group>
+      </FormActions>
     </Stack>
   );
 }

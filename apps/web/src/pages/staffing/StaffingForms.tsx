@@ -1,3 +1,4 @@
+import { FormActions } from '../../ui/FormActions';
 import { useMemo, useState } from 'react';
 import { Alert, Autocomplete, Button, Checkbox, Group, Modal, MultiSelect, NativeSelect, NumberInput, Select, SimpleGrid, Stack, Table, Tabs, Text, Textarea, TextInput } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
@@ -66,7 +67,7 @@ export function RowEditor({ row, period, canEdit, tab, onClose, onSave }: { row:
       </Tabs>
       {Object.keys(fields).length > 0 && active !== 'main' && <Alert color="red" p="xs">Проверьте поля на вкладке «Основное»</Alert>}
       {error && <Alert color="red">{error}</Alert>}
-      <Group justify="flex-end"><Button variant="default" onClick={onClose}>Закрыть</Button>{canEdit && <Button loading={busy} onClick={save}>Сохранить</Button>}</Group>
+      <FormActions justify="flex-end"><Button variant="default" onClick={onClose}>Закрыть</Button>{canEdit && <Button loading={busy} onClick={save}>Сохранить</Button>}</FormActions>
     </Stack>
   </Modal>;
 }
@@ -111,7 +112,7 @@ export function RowsTableEditor({ period, rows, onClose, onSave }: { period: Sta
       </Table></Table.ScrollContainer>
       <datalist id="staffing-groups">{groups.map(g => <option key={g} value={g} />)}</datalist>
       {error && <Alert color="red">{error}</Alert>}
-      <Group justify="flex-end"><Button variant="default" onClick={onClose}>Отмена</Button><Button loading={busy} onClick={save}>Сохранить</Button></Group>
+      <FormActions justify="flex-end"><Button variant="default" onClick={onClose}>Отмена</Button><Button loading={busy} onClick={save}>Сохранить</Button></FormActions>
     </Stack>
   </Modal>;
 }
@@ -180,7 +181,7 @@ export function PeriodEditor({ periods, initial, onClose, onSave }: { periods: S
       {copy && <Text size="xs" c="dimmed">{copyActual ? 'Факт будет скопирован — проверьте его перед сохранением данных.' : 'Факт в новом срезе будет пустым.'} Исходный срез сохранится.</Text>}
       <Textarea label="Источник и примечание" value={note} onChange={e => setNote(e.currentTarget.value)} maxLength={3000} />
       {error && <Alert color="red">{error}</Alert>}
-      <Group justify="flex-end"><Button variant="default" onClick={onClose}>Отмена</Button><Button onClick={save} loading={busy}>Сохранить срез</Button></Group>
+      <FormActions justify="flex-end"><Button variant="default" onClick={onClose}>Отмена</Button><Button onClick={save} loading={busy}>Сохранить срез</Button></FormActions>
     </Stack>
   </Modal>;
 }
@@ -201,7 +202,7 @@ export function EditorsDialog({ onClose }: { onClose: () => void }) {
       <Text size="sm">Администратор и куратор направления назначают ответственных. Назначенные сотрудники смогут вести все срезы и ФОТ. Руководство имеет доступ на просмотр. Скрытие раздела и ограничения финансов сохраняют действие.</Text>
       <MultiSelect label="Ответственные" searchable data={query.data?.users.map(u => ({ value: String(u.id), label: `${u.fullName} (${u.login})` })) ?? []} value={chosen ?? query.data?.userIds.map(String) ?? []} onChange={setChosen} disabled={!query.data} />
       {(error || query.error) && <Alert color="red">{error || message(query.error)}</Alert>}
-      <Group justify="flex-end"><Button variant="default" onClick={onClose}>Отмена</Button><Button disabled={!query.data} loading={busy} onClick={save}>Сохранить доступ</Button></Group>
+      <FormActions justify="flex-end"><Button variant="default" onClick={onClose}>Отмена</Button><Button disabled={!query.data} loading={busy} onClick={save}>Сохранить доступ</Button></FormActions>
     </Stack>
   </Modal>;
 }
@@ -256,8 +257,8 @@ export function PayrollMonthEditor({ years, period, start, onClose, onSave }: { 
       {rows.length > 0 && !shown.length && <Text size="sm" c="dimmed" ta="center">Подразделения не найдены</Text>}
       <Text size="xs" c="dimmed">Пустое поле — нет данных, ноль — подтверждённый ноль. Месяц можно сменить, не сохраняя: внесённое останется. Годовой ФОТ обновится сам, только если был пуст или совпадал с суммой месяцев.</Text>
       {error && <Alert color="red">{error}</Alert>}
-      <Group justify="space-between" gap="xs"><Text size="xs" c="dimmed">{editedMonths.length ? `Изменено месяцев: ${editedMonths.length} (${editedMonths.sort((a, b) => a - b).map(m => STAFFING_MONTHS[m].toLowerCase()).join(', ')})` : 'Изменений пока нет'}</Text>
-        <Group gap="xs"><Button variant="default" onClick={onClose}>Отмена</Button><Button loading={busy} disabled={!editedMonths.length} onClick={save}>Сохранить</Button></Group></Group>
+      <FormActions justify="space-between" gap="xs"><Text size="xs" c="dimmed">{editedMonths.length ? `Изменено месяцев: ${editedMonths.length} (${editedMonths.sort((a, b) => a - b).map(m => STAFFING_MONTHS[m].toLowerCase()).join(', ')})` : 'Изменений пока нет'}</Text>
+        <Group gap="xs"><Button variant="default" onClick={onClose}>Отмена</Button><Button loading={busy} disabled={!editedMonths.length} onClick={save}>Сохранить</Button></Group></FormActions>
     </Stack>
   </Modal>;
 }
@@ -288,7 +289,7 @@ export function PayrollEditor({ initial, period, onClose, onSave }: { initial?: 
         </Table>
       </Table.ScrollContainer>
       {error && <Alert color="red">{error}</Alert>}
-      <Group justify="flex-end"><Button variant="default" onClick={onClose}>Отмена</Button><Button loading={busy} onClick={save}>Сохранить ФОТ</Button></Group>
+      <FormActions justify="flex-end"><Button variant="default" onClick={onClose}>Отмена</Button><Button loading={busy} onClick={save}>Сохранить ФОТ</Button></FormActions>
     </Stack>
   </Modal>;
 }

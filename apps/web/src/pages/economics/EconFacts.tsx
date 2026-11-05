@@ -1,3 +1,4 @@
+import { FormActions } from '../../ui/FormActions';
 import { Fragment, useMemo, useState } from 'react';
 import { Alert, Badge, Button, FileButton, Group, List, Modal, NumberInput, Paper, Select, SimpleGrid, Skeleton, Stack, Table, Text, Textarea, TextInput, Tooltip, UnstyledButton } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
@@ -297,16 +298,14 @@ function MonthSheet({ data, view }: { data: EconSetup; view: EconMonthView }) {
 
       {error && <Alert color="red" icon={<IconAlertTriangle size={16} />}>{error}</Alert>}
       {editable && dirty && (
-        <Paper withBorder p="sm" radius="md" style={{ position: 'sticky', bottom: 8, zIndex: 5 }}>
-          <Group justify="space-between" gap="sm">
-            <Text size="sm">Изменено строк: {Object.keys(drafts).length}{companyDraft ? ' и общие расходы' : ''}</Text>
-            <Group gap="xs">
-              <Textarea size="xs" w={260} autosize maxRows={2} placeholder="Комментарий для журнала (необязательно)" value={comment} onChange={(e) => setComment(e.currentTarget.value)} aria-label="Комментарий к сохранению" />
-              <Button variant="default" onClick={() => { setDrafts({}); setCompanyDraft(null); setError(''); }} disabled={busy}>Отменить</Button>
-              <Button leftSection={<IconDeviceFloppy size={16} />} loading={busy} onClick={save}>Сохранить</Button>
-            </Group>
+        <FormActions justify="space-between" gap="sm">
+          <Text size="sm">Изменено строк: {Object.keys(drafts).length}{companyDraft ? ' и общие расходы' : ''}</Text>
+          <Group gap="xs">
+            <Textarea size="xs" w={260} autosize maxRows={2} placeholder="Комментарий для журнала (необязательно)" value={comment} onChange={(e) => setComment(e.currentTarget.value)} aria-label="Комментарий к сохранению" />
+            <Button variant="default" onClick={() => { setDrafts({}); setCompanyDraft(null); setError(''); }} disabled={busy}>Отменить</Button>
+            <Button leftSection={<IconDeviceFloppy size={16} />} loading={busy} onClick={save}>Сохранить</Button>
           </Group>
-        </Paper>
+        </FormActions>
       )}
 
       {importing && <ImportDialog data={data} month={view.month} direct={direct} company={company} budgets={budgets.filter((b) => !b.isArchived)} onClose={() => setImporting(false)} onApply={applyImport} />}

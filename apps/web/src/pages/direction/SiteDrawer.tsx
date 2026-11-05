@@ -17,6 +17,7 @@ import { Lag } from '../../ui/Lag';
 import { useFinanceHidden } from '../../ui/finance';
 import { useAccess } from '../../ui/access';
 import { SiteFiles, SiteRemarks } from './SiteExtras';
+import { MobileSectionSelect } from '../../ui/MobileSectionSelect';
 import { ForecastLabel } from '../../ui/ForecastLabel';
 
 const ROLE: Record<string, string> = {
@@ -80,7 +81,7 @@ export function SiteDrawer({
         )
       }
       // широкие таблицы прокручиваются внутри себя, панель не расширяют
-      styles={{ body: { minWidth: 0, overflowX: 'hidden' }, content: { overflowX: 'hidden' } }}
+      styles={{ body: { minWidth: 0, overflowX: 'clip' }, content: { overflowX: 'hidden' } }}
     >
       {error && <Alert color="red">{(error as Error).message}</Alert>}
       {isLoading && <Skeleton h={400} />}
@@ -105,6 +106,7 @@ function Card({ data: c, code, workItemId, showReasons, onShowReasons, onOpenRem
   const financeHidden = useFinanceHidden();
   const hasHistory = c.history.filter((h) => h.fact != null).length > 1;
   const showRemarks = useAccess().canSee('remarks');
+  const [tab, setTab] = useState('items');
   return (
     <Stack>
       <Box p="md" style={{ background: 'var(--surface-muted)', borderRadius: 8 }}>
@@ -140,8 +142,16 @@ function Card({ data: c, code, workItemId, showReasons, onShowReasons, onOpenRem
         </SimpleGrid>
       </Box>
 
-      <Tabs defaultValue="items" keepMounted={false}>
-        <Tabs.List>
+      <MobileSectionSelect label="Раздел карточки объекта" value={tab} onChange={setTab} data={[
+        { value: 'items', label: `Работы · ${c.items.length}` }, { value: 'passport', label: 'Паспорт и ответственные' },
+        ...(hasHistory ? [{ value: 'history', label: 'Динамика' }] : []),
+        ...c.trackers.map(t => ({ value: `t-${t.code}`, label: t.name })),
+        ...(c.contracts.length ? [{ value: 'contracts', label: `Договоры · ${c.contracts.length}` }] : []),
+        ...(showRemarks ? [{ value: 'remarks', label: `Замечания${r.remarksOpen ? ` · ${r.remarksOpen}` : ''}` }] : []),
+        { value: 'files', label: 'Файлы и фото' }, ...(videoAllowed ? [{ value: 'cameras', label: `Камеры · ${cameraCount}` }] : []),
+      ]} />
+      <Tabs value={tab} onChange={v => setTab(v ?? 'items')} keepMounted={false}>
+        <Tabs.List visibleFrom="sm">
           <Tabs.Tab value="items">Работы · {c.items.length}</Tabs.Tab>
           <Tabs.Tab value="passport">Паспорт и ответственные</Tabs.Tab>
           {hasHistory && <Tabs.Tab value="history">Динамика</Tabs.Tab>}

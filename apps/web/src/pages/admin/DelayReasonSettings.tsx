@@ -1,3 +1,4 @@
+import { FormActions } from '../../ui/FormActions';
 import { useState } from 'react';
 import { Alert, Button, Checkbox, Group, MultiSelect, Skeleton, Stack, Text, TextInput } from '@mantine/core';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -38,6 +39,6 @@ function SettingsForm({ code, data }: { code: string; data: DelayReasonAdmin }) 
     {!data.workTypes.length && <Text c="dimmed" size="sm">Виды работ пока не созданы. Общее назначение будет применяться к новым работам.</Text>}
     {save.error && <Alert color="red">{save.error.message}</Alert>}
     {save.isSuccess && !draft && <Text role="status" size="sm">Настройки сохранены</Text>}
-    <Group><Button loading={save.isPending} disabled={!draft} onClick={() => save.mutate()}>Сохранить настройки причин</Button><Button variant="default" disabled={!draft || save.isPending} onClick={() => setDraft(null)}>Отменить</Button></Group>
+    <FormActions><Button loading={save.isPending} disabled={!draft} onClick={() => save.mutate()}>Сохранить настройки причин</Button><Button variant="default" disabled={!draft || save.isPending} onClick={() => setDraft(null)}>Отменить</Button></FormActions>
   </Stack>;
 }

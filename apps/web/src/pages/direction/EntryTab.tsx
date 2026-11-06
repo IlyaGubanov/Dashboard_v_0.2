@@ -632,7 +632,7 @@ function SiteEntry({
                               {i.version == null && i.from ? ` · значение с ${date(i.from)}` : ''}
                               {i.version != null && i.enteredBy ? ` · ${i.enteredBy}` : ''}
                             </Text>
-                            <DelayReason code={sheet.direction.code} periodId={sheet.period.id} workItemId={i.id} />
+                            <DelayReason code={sheet.direction.code} periodId={sheet.period.id} workItemId={i.id} onlyDelayed />
                           </Table.Td>
                           {f.status && (
                             <Table.Td>
@@ -780,7 +780,7 @@ function ItemCard({
   return (
     <Paper withBorder p="sm" radius="md">
       <Text fw={600}>{i.name}</Text>
-      <DelayReason code={code} periodId={periodId} workItemId={i.id} />
+      <DelayReason code={code} periodId={periodId} workItemId={i.id} onlyDelayed />
       <Text size="xs" c="dimmed" mb={6}>
         {[i.group, i.planEnd ? `до ${date(i.planEnd)}` : null, byQty ? (i.planQty == null ? 'проектный объём не указан' : `проект ${i.planQty} ${i.unit ?? ''}`) : null].filter(Boolean).join(' · ')}
         {i.version == null && i.from ? ` · значение с ${date(i.from)}` : ''}

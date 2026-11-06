@@ -1,3 +1,4 @@
+import { FormActions } from '../ui/FormActions';
 /**
  * Карточка сотрудника: личные данные, роли в направлениях, видимость разделов и возможности.
  * Каждая вкладка сохраняется отдельно; все изменения пишутся в журнал на сервере.
@@ -260,7 +261,7 @@ function ProfileForm({ user, onDone, onCancel }: { user: UserListItem | null; on
             )}
           </>
         )}
-        <Group justify="flex-end">
+        <FormActions justify="flex-end">
           {onCancel && (
             <Button variant="default" onClick={onCancel}>
               Отмена
@@ -269,7 +270,7 @@ function ProfileForm({ user, onDone, onCancel }: { user: UserListItem | null; on
           <Button type="submit" loading={form.submitting} disabled={!!user && !form.isDirty()}>
             {user ? 'Сохранить' : 'Создать'}
           </Button>
-        </Group>
+        </FormActions>
       </Stack>
     </form>
   );
@@ -357,14 +358,14 @@ function AccessPanel({ user }: { user: UserListItem }) {
     <Stack>
       <AccessFields role={user.globalRole} value={value} onChange={setValue} />
       {user.globalRole !== 'ADMIN' && (
-        <Group justify="space-between">
+        <FormActions justify="space-between">
           <Button variant="subtle" onClick={() => setValue({ hiddenSections: [], deniedFeatures: [] })}>
             Включить всё
           </Button>
           <Button loading={save.isPending} disabled={!changed} onClick={() => save.mutate()}>
             Сохранить
           </Button>
-        </Group>
+        </FormActions>
       )}
     </Stack>
   );
@@ -459,11 +460,11 @@ function RolesPanel({ user }: { user: UserListItem }) {
           {error}
         </Text>
       )}
-      <Group justify="flex-end">
+      <FormActions justify="flex-end">
         <Button loading={save.isPending} onClick={() => save.mutate()}>
           Сохранить роли
         </Button>
-      </Group>
+      </FormActions>
     </Stack>
   );
 }

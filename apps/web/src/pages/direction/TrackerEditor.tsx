@@ -1,3 +1,4 @@
+import { FormActions } from '../../ui/FormActions';
 import { useState } from 'react';
 import { Alert, Button, Checkbox, Group, NumberInput, Select, SimpleGrid, Stack, Table, Text, TextInput } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
@@ -69,7 +70,7 @@ export function TrackerEditor({ t, code, siteId, onDone }: { t: SiteCardTracker;
   };
 
   const footer = (
-    <Group justify="space-between">
+    <FormActions justify="space-between">
       <Text size="sm" c="dimmed">
         Изменено строк: {changedRows.length}
       </Text>
@@ -81,7 +82,7 @@ export function TrackerEditor({ t, code, siteId, onDone }: { t: SiteCardTracker;
           Сохранить
         </Button>
       </Group>
-    </Group>
+    </FormActions>
   );
 
   if (t.layout === 'CARD') {

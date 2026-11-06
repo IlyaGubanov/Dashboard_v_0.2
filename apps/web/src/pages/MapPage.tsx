@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Accordion, Alert, Badge, Box, Button, Card, Group, Modal, MultiSelect, Pagination, ScrollArea, Skeleton, Stack, Text, Title, UnstyledButton } from '@mantine/core';
+import { Accordion, Alert, Badge, Box, Button, Card, Group, Modal, MultiSelect, Pagination, ScrollArea, Skeleton, Stack, Text, UnstyledButton } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { getRouteApi } from '@tanstack/react-router';
 import { IconMapPin, IconRefresh, IconX } from '@tabler/icons-react';
@@ -10,6 +10,7 @@ import { ObjectsMapCanvas } from './map/ObjectsMapCanvas';
 import { MapSiteInfo } from './map/MapSiteInfo';
 import { SiteDrawer } from './direction/SiteDrawer';
 import { RemarkDrawer } from './direction/RemarkDrawer';
+import { PageHeader } from '../ui/PageHeader';
 
 interface MapSearch extends MapFilters { code?: string; site?: number; remark?: number }
 export function parseMapSearch(s: Record<string, unknown>): MapSearch {
@@ -50,10 +51,8 @@ export function MapPage() {
   const visibleChoices = choices.filter((s) => choiceKeys.has(mapEntityKey(s.directionCode, s.id)));
 
   return <Stack gap="md">
-    <Group justify="space-between">
-      <div><Title order={2}>Карта объектов</Title><Text size="sm" c="dimmed">Все доступные направления</Text></div>
-      <Button variant="default" size="xs" leftSection={<IconRefresh size={16} />} loading={query.isFetching} onClick={() => query.refetch()}>Обновить</Button>
-    </Group>
+    <PageHeader title="Карта объектов" description="Все доступные направления" icon={<IconMapPin size={24} />}
+      actions={<Button variant="default" size="xs" leftSection={<IconRefresh size={16} />} loading={query.isFetching} onClick={() => query.refetch()}>Обновить</Button>} />
     {query.error && <Alert color="red">{(query.error as Error).message}</Alert>}
     {query.isLoading ? <Skeleton h={480} /> : <>
       {!data.directions.length && <Alert color="gray">Нет доступных направлений. Обратитесь к администратору.</Alert>}

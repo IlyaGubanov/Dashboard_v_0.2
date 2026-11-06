@@ -1,3 +1,4 @@
+import { FormActions } from '../../ui/FormActions';
 import { Fragment, useEffect, useState } from 'react';
 import {
   ActionIcon,
@@ -44,6 +45,7 @@ import { api, ApiError } from '../../api';
 import { DirectionIcon } from '../../ui/DirectionIcon';
 import { DirectionForm } from './DirectionForm';
 import { DelayReasonSettings } from './DelayReasonSettings';
+import { MobileSectionSelect } from '../../ui/MobileSectionSelect';
 
 const route = getRouteApi('/app/admin/directions/$code');
 type Opt = { value: string; label: string; color?: string; done?: boolean };
@@ -96,11 +98,12 @@ function RowTools({ i, n, onMove, onRemove, removeHint }: { i: number; n: number
 
 export function DirectionEditorPage() {
   const { code } = route.useParams();
+  const [tab, setTab] = useState('main');
   const { data: d, error } = useQuery({ queryKey: ['admin', 'direction', code], queryFn: () => api<DirectionDef>(`/admin/directions/${code}`) });
   if (error) return <Alert color="red">{(error as Error).message}</Alert>;
   if (!d) return <Skeleton h={400} />;
   return (
-    <Stack className="reading-page">
+    <Stack className="reading-page direction-editor-page">
       <Anchor component={Link} to="/admin/directions" size="sm">
         ← Все направления
       </Anchor>
@@ -118,8 +121,14 @@ export function DirectionEditorPage() {
         </div>
         {!d.isActive && <Badge color="gray">выключено</Badge>}
       </Group>
-      <Tabs defaultValue="main" keepMounted={false}>
-        <Tabs.List>
+      <MobileSectionSelect label="Раздел конструктора" value={tab} onChange={setTab} data={[
+        { value: 'main', label: 'Основное' }, { value: 'delay-reasons', label: 'Причины отставания' },
+        { value: 'statuses', label: `Статусы · ${d.statuses.length}` }, { value: 'fields', label: `Доп. поля · ${d.fields.filter(f => !f.isArchived).length}` },
+        { value: 'trackers', label: `Надстройки · ${d.trackers.length}` }, { value: 'kpis', label: `Показатели сводки · ${d.kpis.length}` },
+        { value: 'tiles', label: 'Плитки обзора' },
+      ]} />
+      <Tabs value={tab} onChange={v => setTab(v ?? 'main')} keepMounted={false}>
+        <Tabs.List visibleFrom="sm">
           <Tabs.Tab value="main">Основное</Tabs.Tab>
           <Tabs.Tab value="delay-reasons">Причины отставания</Tabs.Tab>
           <Tabs.Tab value="statuses">Статусы · {d.statuses.length}</Tabs.Tab>
@@ -160,9 +169,9 @@ function Main({ d }: { d: DirectionDef }) {
     <Card withBorder padding="lg">
       <Stack>
         <DirectionForm v={v} setV={setV} errors={errors} />
-        <Group justify="flex-end">
+        <FormActions justify="flex-end">
           <Button onClick={async () => setErrors((await save('', 'PATCH', v)) ?? {})}>Сохранить</Button>
-        </Group>
+        </FormActions>
       </Stack>
     </Card>
   );
@@ -239,7 +248,7 @@ function Statuses({ d }: { d: DirectionDef }) {
           </Table.Tbody>
         </Table>
         </Table.ScrollContainer>
-        <Group justify="space-between">
+        <FormActions justify="space-between">
           <Button
             variant="light"
             leftSection={<IconPlus size={16} />}
@@ -259,7 +268,7 @@ function Statuses({ d }: { d: DirectionDef }) {
           >
             Сохранить статусы
           </Button>
-        </Group>
+        </FormActions>
       </Stack>
     </Card>
   );
@@ -349,7 +358,7 @@ function Fields({ d }: { d: DirectionDef }) {
             </Table.Tbody>
           </Table>
         </Table.ScrollContainer>
-        <Group justify="space-between">
+        <FormActions justify="space-between">
           <Button
             variant="light"
             leftSection={<IconPlus size={16} />}
@@ -369,7 +378,7 @@ function Fields({ d }: { d: DirectionDef }) {
           >
             Сохранить поля
           </Button>
-        </Group>
+        </FormActions>
       </Stack>
     </Card>
   );
@@ -522,9 +531,9 @@ function TrackerForm({ d, t, isNew, onCreated }: { d: DirectionDef; t: TrackerRo
             Добавить
           </Button>
         </Group>
-        <Group justify="flex-end">
+        <FormActions justify="flex-end">
           <Button onClick={submit}>{isNew ? 'Создать надстройку' : 'Сохранить надстройку'}</Button>
-        </Group>
+        </FormActions>
       </Stack>
     </Card>
   );
@@ -612,9 +621,9 @@ function Tiles({ d }: { d: DirectionDef }) {
             </Group>
           </Card>
         ))}
-        <Group justify="flex-end">
+        <FormActions justify="flex-end">
           <Button onClick={async () => setErrors((await save('/tiles', 'PUT', rows)) ?? {})}>Сохранить плитки</Button>
-        </Group>
+        </FormActions>
       </Stack>
     </Card>
   );
@@ -669,12 +678,12 @@ function Kpis({ d }: { d: DirectionDef }) {
             </Card>
           );
         })}
-        <Group justify="space-between">
+        <FormActions justify="space-between">
           <Button variant="light" leftSection={<IconPlus size={16} />} disabled={rows.length >= 6} onClick={() => setRows([...rows, { metric: 'overdueItems', label: 'Просрочено позиций', params: {} }])}>
             Добавить показатель
           </Button>
           <Button onClick={async () => setErrors((await save('/kpis', 'PUT', rows)) ?? {})}>Сохранить показатели</Button>
-        </Group>
+        </FormActions>
       </Stack>
     </Card>
   );

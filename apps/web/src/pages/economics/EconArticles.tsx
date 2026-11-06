@@ -1,3 +1,4 @@
+import { FormActions } from '../../ui/FormActions';
 import { useState } from 'react';
 import { Alert, Badge, Button, Group, Modal, Paper, Select, Stack, Switch, Table, Text, Textarea, TextInput } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
@@ -91,10 +92,10 @@ function ArticleDialog({ article, onClose }: { article: EconArticle | null; onCl
         <Textarea label="Методика установления лимита" description="Подсказка для ПЭО в карточке лимитов" value={method} onChange={(e) => setMethod(e.currentTarget.value)} autosize minRows={3} maxRows={8} error={fields.method} />
         {article && <Switch label="В архиве (не предлагается в новых лимитах; внесённые данные сохраняются)" checked={archived} onChange={(e) => setArchived(e.currentTarget.checked)} />}
         {error && <Alert color="red">{error}</Alert>}
-        <Group justify="flex-end">
+        <FormActions justify="flex-end">
           <Button variant="default" onClick={onClose}>Отмена</Button>
           <Button loading={busy} onClick={save}>Сохранить</Button>
-        </Group>
+        </FormActions>
       </Stack>
     </Modal>
   );

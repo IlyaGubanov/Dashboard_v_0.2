@@ -141,19 +141,20 @@ export function AppearancePage() {
             чтобы посмотреть, и вернитесь сюда: черновик не пропадёт. Остальные пользователи увидят изменения после сохранения.
           </Text>
         </div>
-        <Group gap="xs">
-          {dirty && (
-            <Badge color="orange" variant="light">
-              не сохранено
-            </Badge>
-          )}
-          <Button variant="default" onClick={() => (setDraft(null), setErrors({}))} disabled={!dirty}>
-            Отменить изменения
-          </Button>
-          <Button onClick={save} loading={saving} disabled={!dirty}>
-            Сохранить для всех
-          </Button>
-        </Group>
+      </Group>
+
+      <Group gap="xs" className="appearance-actions" justify="flex-end">
+        {dirty && (
+          <Badge color="orange" variant="light">
+            не сохранено
+          </Badge>
+        )}
+        <Button variant="default" onClick={() => (setDraft(null), setErrors({}))} disabled={!dirty}>
+          Отменить изменения
+        </Button>
+        <Button onClick={save} loading={saving} disabled={!dirty}>
+          Сохранить для всех
+        </Button>
       </Group>
 
       <Grid gutter="md">

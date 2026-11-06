@@ -1,0 +1,49 @@
+[
+  {
+    "scenario": "constructor-desktop",
+    "tab": "main",
+    "active": "Основное"
+  },
+  {
+    "scenario": "constructor-desktop",
+    "tab": "delay-reasons",
+    "active": "Причины отставания"
+  },
+  {
+    "scenario": "constructor-desktop",
+    "tab": "statuses",
+    "active": "Статусы · 0"
+  },
+  {
+    "scenario": "constructor-desktop",
+    "tab": "fields",
+    "active": "Доп. поля · 8"
+  },
+  {
+    "scenario": "constructor-desktop",
+    "tab": "trackers",
+    "active": "Надстройки · 3"
+  },
+  {
+    "scenario": "constructor-desktop",
+    "tab": "kpis",
+    "active": "Показатели сводки · 3"
+  },
+  {
+    "scenario": "constructor-desktop",
+    "tab": "tiles",
+    "active": "Плитки обзора"
+  },
+  {
+    "scenario": "report-entry",
+    "scrollWidth": 375
+  },
+  {
+    "scenario": "sites-sort",
+    "passed": true
+  },
+  {
+    "scenario": "sites-search-empty-reset",
+    "passed": true
+  }
+]

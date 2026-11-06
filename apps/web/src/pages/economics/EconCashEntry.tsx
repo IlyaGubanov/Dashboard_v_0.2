@@ -1,3 +1,4 @@
+import { FormActions } from '../../ui/FormActions';
 import { useMemo, useState } from 'react';
 import { Alert, Button, Group, List, Menu, Modal, NumberInput, Paper, SegmentedControl, Select, Stack, Table, Text, Textarea, Tooltip, UnstyledButton } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
@@ -197,16 +198,14 @@ function Sheet({ data, view, scope, update }: { data: EconSetup; view: EconCashV
 
       {error && <Alert color="red">{error}</Alert>}
       {canEdit && dirty && (
-        <Paper withBorder p="sm" radius="md" style={{ position: 'sticky', bottom: 8, zIndex: 5 }}>
-          <Group justify="space-between" gap="sm">
-            <Text size="sm">Есть несохранённые изменения</Text>
-            <Group gap="xs">
-              <Textarea size="xs" w={260} autosize maxRows={2} placeholder="Комментарий для журнала (необязательно)" value={comment} onChange={(e) => setComment(e.currentTarget.value)} aria-label="Комментарий к сохранению" />
-              <Button variant="default" onClick={() => { setGrid(initial); setOpening(sheet.opening); setError(''); }} disabled={busy}>Отменить</Button>
-              <Button leftSection={<IconDeviceFloppy size={16} />} loading={busy} onClick={save}>Сохранить</Button>
-            </Group>
+        <FormActions justify="space-between" gap="sm">
+          <Text size="sm">Есть несохранённые изменения</Text>
+          <Group gap="xs">
+            <Textarea size="xs" w={260} autosize maxRows={2} placeholder="Комментарий для журнала (необязательно)" value={comment} onChange={(e) => setComment(e.currentTarget.value)} aria-label="Комментарий к сохранению" />
+            <Button variant="default" onClick={() => { setGrid(initial); setOpening(sheet.opening); setError(''); }} disabled={busy}>Отменить</Button>
+            <Button leftSection={<IconDeviceFloppy size={16} />} loading={busy} onClick={save}>Сохранить</Button>
           </Group>
-        </Paper>
+        </FormActions>
       )}
       {importing && (
         <PasteDialog

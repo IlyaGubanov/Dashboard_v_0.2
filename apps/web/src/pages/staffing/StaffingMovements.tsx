@@ -1,3 +1,4 @@
+import { FormActions } from '../../ui/FormActions';
 /** Вкладка «Приём и увольнение»: график по дням/неделям/месяцам, итоги по группам, ввод за день (как лист «Приемыувольнения»). */
 import { useCallback, useMemo, useState } from 'react';
 import { Alert, Button, Group, Modal, NumberInput, Paper, SegmentedControl, Select, SimpleGrid, Stack, Table, Text, Textarea, TextInput, UnstyledButton } from '@mantine/core';
@@ -120,7 +121,7 @@ function MovementEditor({ date: initialDate, days, groups, onClose, onSaved }: {
       </Table></Table.ScrollContainer>
       <Textarea label="Примечание (переводы, источник найма)" value={note[date] ?? existing?.note ?? ''} onChange={e => { const v = e.currentTarget.value; setNote(s => ({ ...s, [date]: v })); }} maxLength={2000} autosize minRows={2} />
       {error && <Alert color="red">{error}</Alert>}
-      <Group justify="flex-end"><Button variant="default" onClick={onClose}>Отмена</Button><Button loading={busy} onClick={save}>Сохранить день</Button></Group>
+      <FormActions justify="flex-end"><Button variant="default" onClick={onClose}>Отмена</Button><Button loading={busy} onClick={save}>Сохранить день</Button></FormActions>
     </Stack>
   </Modal>;
 }

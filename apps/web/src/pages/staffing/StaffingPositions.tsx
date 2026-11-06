@@ -1,3 +1,4 @@
+import { FormActions } from '../../ui/FormActions';
 /**
  * Должности подразделений: таблица правки в карточке подразделения, вкладка «Должности» по всему срезу
  * и загрузка таблицы из Excel (как лист «По должностям»: № / Должность / Количество).
@@ -226,7 +227,7 @@ function PositionDialog({ position, isNew, rows, all, onClose, onSave }: { posit
       </SimpleGrid>
       <Text size="xs" c="dimmed">Пустое поле — нет данных. Ноль — подтверждённое нулевое значение. Если итог подразделения совпадал с суммой должностей, он обновится сам.</Text>
       {error && <Alert color="red">{error}</Alert>}
-      <Group justify="flex-end"><Button variant="default" onClick={onClose}>Отмена</Button><Button loading={busy} onClick={save}>Сохранить</Button></Group>
+      <FormActions justify="flex-end"><Button variant="default" onClick={onClose}>Отмена</Button><Button loading={busy} onClick={save}>Сохранить</Button></FormActions>
     </Stack>
   </Modal>;
 }

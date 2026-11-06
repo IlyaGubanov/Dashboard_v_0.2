@@ -1,5 +1,6 @@
+import { FormActions } from '../ui/FormActions';
 import { useState } from 'react';
-import { Alert, Button, Checkbox, Group, Loader, ScrollArea, Stack, Table, Text, TextInput } from '@mantine/core';
+import { Alert, Button, Checkbox, Loader, ScrollArea, Stack, Table, Text, TextInput } from '@mantine/core';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api';
 import { videoAdminQuery } from './VideoAdminPage';
@@ -31,6 +32,6 @@ function GrantForm({ userId, initial, sites, isAdmin }: { userId: number; initia
       })}
     </Table.Tbody></Table></ScrollArea.Autosize>
     {save.error && <Alert color="red">{save.error.message}</Alert>}{saved && <Text size="sm">Доступ сохранён</Text>}
-    <Group justify="flex-end"><Button loading={save.isPending} onClick={() => save.mutate()}>Сохранить доступ к камерам</Button></Group>
+    <FormActions justify="flex-end"><Button loading={save.isPending} onClick={() => save.mutate()}>Сохранить доступ к камерам</Button></FormActions>
   </Stack>;
 }

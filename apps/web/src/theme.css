@@ -307,3 +307,46 @@ button, a, input, select, textarea { touch-action: manipulation; }
 
 /* Уведомление MIT поставляется в /licenses/pannellum.txt; рабочий просмотрщик не показывает about-плашку. */
 .panorama-viewer .pnlm-about-msg { display: none !important; }
+
+/* Общие поверхности и заголовки повторного аудита. Настраиваемые цвета и размеры наследуются из Mantine. */
+.page-header { padding-bottom: var(--mantine-spacing-sm); border-bottom: 1px solid var(--line); }
+.page-header-heading { flex: 1 1 280px; min-width: 0; }
+.page-header-copy { min-width: 0; overflow-wrap: anywhere; }
+.page-header-icon { display: grid; place-items: center; flex: 0 0 auto; width: 38px; height: 38px; border: 1px solid var(--line); border-radius: var(--mantine-radius-sm); color: var(--mantine-primary-color-filled); background: var(--panel); }
+.page-header-actions { flex: 0 1 auto; max-width: 100%; }
+.page-header .mantine-Title-root { line-height: 1.3; }
+.analytics-metric { min-width: 0; border-color: var(--line); }
+.analytics-metric-value { font-size: calc(var(--mantine-font-size-md) * 1.85); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.economics-page, .economics-page .mantine-Tabs-root, .economics-page .mantine-Tabs-panel,
+.staffing-page .mantine-Tabs-root, .staffing-page .mantine-Tabs-panel { min-width: 0; }
+.mantine-Modal-title, .mantine-Drawer-title { font-weight: 650; line-height: 1.4; overflow-wrap: anywhere; }
+.mantine-Modal-close, .mantine-Drawer-close { flex-shrink: 0; }
+.mantine-Alert-message { overflow-wrap: anywhere; }
+/* Подпись действия всегда читается целиком, в том числе в compact-кнопках и при крупном шрифте. */
+.mantine-Button-root { max-width: 100%; height: auto; min-height: var(--button-height); padding-block: 0.45em; }
+.mantine-Button-inner { height: auto; min-width: 0; }
+.mantine-Button-label { white-space: normal; height: auto; min-width: 0; line-height: 1.35; overflow: visible; overflow-wrap: anywhere; }
+.mantine-Button-section { flex-shrink: 0; }
+.form-actions { position: sticky; bottom: 0; z-index: 5; flex-shrink: 0; background: var(--panel); border-top: 1px solid var(--line); padding: var(--mantine-spacing-sm) 0 max(var(--mantine-spacing-xs), env(safe-area-inset-bottom)); }
+.form-actions .mantine-Button-root { flex-shrink: 1; }
+.entry-save-panel { padding-bottom: max(var(--mantine-spacing-sm), env(safe-area-inset-bottom)); }
+/* Card по умолчанию обрезает содержимое и становится ложным scroll-контейнером для sticky. */
+.direction-editor-page .mantine-Card-root:has(.form-actions) { overflow: visible; }
+.mantine-Modal-content:has(.form-actions), .mantine-Drawer-content:has(.form-actions) { scroll-padding-bottom: 110px; }
+.mantine-Modal-body:has(.form-actions) :is(input, textarea, button, [tabindex]),
+.mantine-Drawer-body:has(.form-actions) :is(input, textarea, button, [tabindex]) { scroll-margin-block: 100px; }
+.appearance-actions { position: sticky; top: 68px; z-index: 6; background: var(--panel); padding: var(--mantine-spacing-sm); border: 1px solid var(--line); border-radius: var(--mantine-radius-sm); }
+.mantine-NavLink-body { min-width: 0; }
+.mantine-NavLink-label, .mantine-NavLink-description { overflow-wrap: anywhere; }
+.mantine-Table-scrollContainer { max-width: 100%; }
+@media (max-width: 767px) {
+  .header-brand { flex: 1; min-width: 0; }
+  .header-brand .brand-name { font-size: var(--mantine-font-size-xs); line-height: 1.25; overflow-wrap: anywhere; }
+  .header-brand .brand-caption { display: none; }
+  .header-brand .brand img { width: 28px; height: 28px; }
+  .header-actions { flex-shrink: 0; }
+  .page-header-heading { flex-basis: 100%; }
+  .page-header-actions { margin-left: 50px; }
+  .page-header-actions:only-child { margin-left: 0; }
+  .form-actions { gap: var(--mantine-spacing-xs); }
+}

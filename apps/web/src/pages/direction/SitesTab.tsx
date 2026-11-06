@@ -131,6 +131,7 @@ export function SitesTab({
     <Card withBorder padding={0}>
       <Group p="md" gap="sm" wrap="wrap">
         <TextInput
+          aria-label="Поиск объектов, кураторов и подрядчиков"
           placeholder="Объект, куратор, подрядчик"
           leftSection={<IconSearch size={16} />}
           value={q}

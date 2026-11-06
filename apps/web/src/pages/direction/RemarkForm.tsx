@@ -1,5 +1,6 @@
+import { FormActions } from '../../ui/FormActions';
 import { useEffect, useState } from 'react';
-import { Autocomplete, Button, Group, Modal, SegmentedControl, Select, SimpleGrid, Stack, Text, TextInput, Textarea } from '@mantine/core';
+import { Autocomplete, Button, Modal, SegmentedControl, Select, SimpleGrid, Stack, Text, TextInput, Textarea } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { REMARK_SEVERITIES, REMARK_SEVERITY_LABELS, type RemarkCard, type RemarkInput, type RemarkList } from '@mvs/shared';
@@ -139,14 +140,14 @@ export function RemarkForm({
             <PendingFiles files={files} onRemove={(i) => setFiles(files.filter((_, j) => j !== i))} />
           </Stack>
         )}
-        <Group justify="flex-end">
+        <FormActions justify="flex-end">
           <Button variant="default" onClick={onClose}>
             Отмена
           </Button>
           <Button onClick={submit} loading={busy}>
             {edit ? 'Сохранить' : 'Выставить замечание'}
           </Button>
-        </Group>
+        </FormActions>
       </Stack>
     </Modal>
   );

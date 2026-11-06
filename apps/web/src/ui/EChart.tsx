@@ -19,16 +19,19 @@ export interface ChartColors {
   grid: string;
   plan: string;
   surface: string;
-  /** размер подписей, px: 12 × множитель текста направления (--text-scale из «Оформления») */
+  /** Размер подписей из вычисленного шрифта контейнера, включая отдельное оформление направлений. */
   fontSize: number;
+  /** Вычисленный шрифт контейнера: учитывает выбор администратора и доступный резервный шрифт. */
+  fontFamily: string;
 }
 
 function readColors(el: HTMLElement | null): ChartColors {
   const s = getComputedStyle(document.documentElement);
   const v = (name: string) => s.getPropertyValue(name).trim();
-  const scale = el ? parseFloat(getComputedStyle(el).getPropertyValue('--text-scale')) || 1 : 1;
+  const containerStyle = getComputedStyle(el ?? document.body);
   return {
-    fontSize: Math.round(12 * scale),
+    fontSize: Math.max(10, Math.round(parseFloat(containerStyle.fontSize) - 2)),
+    fontFamily: containerStyle.fontFamily,
     series: [v('--series-1'), v('--series-2'), v('--series-3')],
     cat: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(i => v(`--cat-${i}`)),
     catInk: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(i => v(`--cat-ink-${i}`)),
@@ -48,7 +51,7 @@ function readColors(el: HTMLElement | null): ChartColors {
 export function baseOption(c: ChartColors): EChartsOption {
   return {
     animation: false,
-    textStyle: { fontFamily: 'Montserrat, "Segoe UI", Arial, sans-serif', color: c.text, fontSize: c.fontSize },
+    textStyle: { fontFamily: c.fontFamily, color: c.text, fontSize: c.fontSize },
     grid: { left: 12, right: 20, top: 42, bottom: 12, containLabel: true },
     tooltip: {
       trigger: 'axis',
@@ -102,7 +105,18 @@ export function EChart({ option, height = 280, ariaLabel, onClick }: { option: (
   useEffect(() => {
     if (!ready || !chart.current) return;
     // цвета темы применяются после того, как Mantine обновил атрибут схемы
-    const id = requestAnimationFrame(() => chart.current?.setOption(option(readColors(ref.current)), true));
+    const id = requestAnimationFrame(() => {
+      const colors = readColors(ref.current);
+      const next = option(colors);
+      // У осей ECharts собственный размер 12px: общий textStyle его не переопределяет.
+      for (const name of ['xAxis', 'yAxis'] as const) {
+        const axes = next[name];
+        for (const axis of axes ? (Array.isArray(axes) ? axes : [axes]) : []) {
+          axis.axisLabel = { ...axis.axisLabel, fontSize: colors.fontSize, fontFamily: colors.fontFamily };
+        }
+      }
+      chart.current?.setOption(next, true);
+    });
     return () => cancelAnimationFrame(id);
   }, [ready, option, scheme, appearance]);
 

@@ -1,5 +1,6 @@
+import { FormActions } from '../../ui/FormActions';
 import { useState } from 'react';
-import { Alert, Button, Group, Modal, MultiSelect, NumberInput, Paper, Skeleton, Stack, Table, Text } from '@mantine/core';
+import { Alert, Button, Modal, MultiSelect, NumberInput, Paper, Skeleton, Stack, Table, Text } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { econSettingsSchema, type EconAuditItem, type EconEditors, type EconSettings } from '@mvs/shared';
@@ -38,10 +39,10 @@ export function EconSettingsDialog({ settings, onClose }: { settings: EconSettin
         <NumberInput label="Средняя тарифная ставка рабочего, ₽ за чел.-ч" description="Норма трудочасов = лимит ФОТ ÷ ставка (кнопка «Подставить» в карточке лимитов)" value={laborRate ?? ''} onChange={(v) => setLaborRate(numOrNull(v))} {...rate} error={fields.laborRate} />
         <NumberInput label="Средняя стоимость машино-часа, ₽" description="Норма машино-часов = лимит техники ÷ стоимость часа" value={machineRate ?? ''} onChange={(v) => setMachineRate(numOrNull(v))} {...rate} error={fields.machineRate} />
         {error && <Alert color="red">{error}</Alert>}
-        <Group justify="flex-end">
+        <FormActions justify="flex-end">
           <Button variant="default" onClick={onClose}>Отмена</Button>
           <Button loading={busy} onClick={save}>Сохранить</Button>
-        </Group>
+        </FormActions>
       </Stack>
     </Modal>
   );
@@ -84,10 +85,10 @@ export function EconEditorsDialog({ onClose }: { onClose: () => void }) {
           />
         )}
         {(error || query.error) && <Alert color="red">{error || query.error?.message}</Alert>}
-        <Group justify="flex-end">
+        <FormActions justify="flex-end">
           <Button variant="default" onClick={onClose}>Отмена</Button>
           <Button loading={busy} onClick={save} disabled={!query.data}>Сохранить</Button>
-        </Group>
+        </FormActions>
       </Stack>
     </Modal>
   );

@@ -1,3 +1,4 @@
+import { FormActions } from '../../ui/FormActions';
 import { useMemo, useState } from 'react';
 import { Alert, Badge, Button, Group, Modal, Paper, SegmentedControl, Select, SimpleGrid, Skeleton, Stack, Table, Text, Textarea, TextInput, Tooltip } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
@@ -426,10 +427,10 @@ function EditDialog({ record, view, title, articleName, directionId, onClose }: 
           <Textarea label="Итог: что сделано" value={form.result} onChange={(e) => set({ result: e.currentTarget.value })} error={fields.result} autosize minRows={2} />
         </Tooltip>
         {error && <Alert color="red">{error}</Alert>}
-        <Group justify="flex-end">
+        <FormActions justify="flex-end">
           <Button variant="default" onClick={onClose}>Отмена</Button>
           <Button loading={busy} onClick={save}>Сохранить</Button>
-        </Group>
+        </FormActions>
       </Stack>
     </Modal>
   );

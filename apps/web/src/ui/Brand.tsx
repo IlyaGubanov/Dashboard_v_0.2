@@ -1,4 +1,5 @@
 import { useAppearance } from './appearance';
+import { Fragment } from 'react';
 
 /** Официальный знак без изменения пропорций и цветов; название и подпись — из настроек оформления. */
 export function Brand() {
@@ -7,7 +8,9 @@ export function Brand() {
     <div className="brand" translate="no">
       <img src="/brand/logo.svg" width={44} height={44} alt={`Логотип ${a.brandName}`} />
       <div className="brand-copy">
-        <div className="brand-name">{a.brandName}</div>
+        <div className="brand-name">{a.brandName.split(/(?<=[а-яёa-z])(?=[А-ЯЁA-Z])/u).map((part, i) => (
+          <Fragment key={i}>{i > 0 && <wbr />}{part}</Fragment>
+        ))}</div>
         {a.brandCaption && <div className="brand-caption">{a.brandCaption}</div>}
       </div>
     </div>
